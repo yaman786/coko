@@ -7,7 +7,7 @@ import { Label } from '../../../components/ui/label';
 import { Badge } from '../../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog';
-import { Plus, AlertTriangle, RefreshCcw, Archive, Loader2, Trash2, Edit3, PackagePlus, Calculator } from 'lucide-react';
+import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive } from 'lucide-react';
 import { api } from '../../../services/api';
 import type { Product } from '../../../types';
 import { toast } from 'sonner';
@@ -26,7 +26,9 @@ export function InventoryTable() {
     const [restockItem, setRestockItem] = useState<Product | null>(null);
     const [restockQty, setRestockQty] = useState('');
     const [restockTubs, setRestockTubs] = useState('');
-    const [restockYield, setRestockYield] = useState('23');
+    const [restockExtraScoops, setRestockExtraScoops] = useState('');
+    const [restockYield, setRestockYield] = useState('24');
+    const [restockTubCost, setRestockTubCost] = useState('');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -38,7 +40,7 @@ export function InventoryTable() {
         lowStockThreshold: '10',
         tubsReceived: '',
         tubCost: '',
-        tubYield: '23',
+        tubYield: '24',
     });
 
     // 1. Data Fetching
@@ -79,7 +81,7 @@ export function InventoryTable() {
         setFormData({
             name: '', category: 'Bio-products', subcategory: '',
             price: '', costPrice: '', stock: '', lowStockThreshold: '10',
-            tubsReceived: '', tubCost: '', tubYield: '23'
+            tubsReceived: '', tubCost: '', tubYield: '24'
         });
         setEditingItem(null);
         setFormErrors({});
@@ -178,7 +180,9 @@ export function InventoryTable() {
         setRestockItem(item);
         setRestockQty('');
         setRestockTubs('');
-        setRestockYield(item.yield?.toString() || '23');
+        setRestockExtraScoops('');
+        setRestockYield(item.yield?.toString() || '24');
+        setRestockTubCost('');
     };
 
     const handleConfirmRestock = () => {
@@ -189,8 +193,22 @@ export function InventoryTable() {
             return;
         }
         const newStock = restockItem.stock + addQty;
+
+        // ── Weighted Average Cost Price ──
+        // If user entered a new Cost/Tub, blend old stock cost with new batch cost.
+        // If left blank, keep the existing costPrice unchanged.
+        let newCostPrice = restockItem.costPrice;
+        const newTubCost = parseFloat(restockTubCost);
+        const yieldPerTub = parseFloat(restockYield) || 24;
+        if (!isNaN(newTubCost) && newTubCost > 0) {
+            const newCostPerScoop = newTubCost / yieldPerTub;
+            const oldValue = (restockItem.stock) * (restockItem.costPrice || 0);
+            const newValue = addQty * newCostPerScoop;
+            newCostPrice = (oldValue + newValue) / newStock;
+        }
+
         upsertMutation.mutate(
-            { ...restockItem, stock: newStock },
+            { ...restockItem, stock: newStock, costPrice: newCostPrice },
             {
                 onSuccess: () => {
                     toast.success('Stock Updated', {
@@ -199,8 +217,8 @@ export function InventoryTable() {
                     api.logActivity({
                         action: 'PRODUCT_RESTOCKED',
                         category: 'INVENTORY',
-                        description: `Restocked "${restockItem.name}": ${restockItem.stock} → ${newStock} (+${addQty})`,
-                        metadata: { productId: restockItem.id, name: restockItem.name, previousStock: restockItem.stock, newStock, added: addQty },
+                        description: `Restocked "${restockItem.name}": ${restockItem.stock} → ${newStock} (+${addQty}). Cost/scoop: Nrs.${newCostPrice?.toFixed(2)}`,
+                        metadata: { productId: restockItem.id, name: restockItem.name, previousStock: restockItem.stock, newStock, added: addQty, newCostPrice },
                         actor_email: user?.email || 'unknown',
                         actor_name: user?.email?.split('@')[0] || 'Unknown',
                     });
@@ -452,16 +470,14 @@ export function InventoryTable() {
                                 <span className="text-lg font-black text-slate-800">{restockItem.stock} {restockItem.category === 'Scoops' ? 'scoops' : 'pcs'}</span>
                             </div>
 
-                            {/* Scoops: Optional tub calculator */}
-                            {restockItem.category === 'Scoops' && (
-                                <div className="p-3 bg-amber-50/50 rounded-lg border border-amber-200/60 space-y-3">
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-wider">
-                                        <Calculator className="w-3.5 h-3.5" />
-                                        Tub Calculator (optional)
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-1 space-y-1">
-                                            <Label className="text-xs text-slate-500">Tubs</Label>
+                            {/* Scoops: Tub + Extra Scoops Restock */}
+                            {restockItem.category === 'Scoops' ? (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                                            <Label className="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase">
+                                                <PackagePlus className="w-3.5 h-3.5" /> Full Tubs to Add
+                                            </Label>
                                             <Input
                                                 type="number"
                                                 min="0"
@@ -470,61 +486,97 @@ export function InventoryTable() {
                                                 onChange={(e) => {
                                                     setRestockTubs(e.target.value);
                                                     const tubs = parseInt(e.target.value) || 0;
-                                                    const yld = parseInt(restockYield) || 23;
-                                                    if (tubs > 0) setRestockQty((tubs * yld).toString());
+                                                    const extra = parseInt(restockExtraScoops) || 0;
+                                                    const yld = parseInt(restockYield) || 24;
+                                                    if (tubs > 0 || extra > 0) {
+                                                        setRestockQty((tubs * yld + extra).toString());
+                                                    } else {
+                                                        setRestockQty('');
+                                                    }
                                                 }}
-                                                className="h-9"
+                                                className="h-10 text-lg font-bold"
                                             />
                                         </div>
-                                        <span className="text-slate-400 font-bold mt-5">×</span>
-                                        <div className="flex-1 space-y-1">
-                                            <Label className="text-xs text-slate-500">Yield</Label>
+                                        <div className="space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase">🥄 Extra Loose Scoops</Label>
                                             <Input
                                                 type="number"
-                                                min="1"
-                                                value={restockYield}
+                                                min="0"
+                                                placeholder="0"
+                                                value={restockExtraScoops}
                                                 onChange={(e) => {
-                                                    setRestockYield(e.target.value);
+                                                    setRestockExtraScoops(e.target.value);
                                                     const tubs = parseInt(restockTubs) || 0;
-                                                    const yld = parseInt(e.target.value) || 23;
-                                                    if (tubs > 0) setRestockQty((tubs * yld).toString());
+                                                    const extra = parseInt(e.target.value) || 0;
+                                                    const yld = parseInt(restockYield) || 24;
+                                                    if (tubs > 0 || extra > 0) {
+                                                        setRestockQty((tubs * yld + extra).toString());
+                                                    } else {
+                                                        setRestockQty('');
+                                                    }
                                                 }}
-                                                className="h-9"
+                                                className="h-10 text-lg font-bold"
                                             />
                                         </div>
-                                        <span className="text-slate-400 font-bold mt-5">=</span>
-                                        <div className="flex-1 mt-5">
-                                            <span className="text-sm font-bold text-amber-700">
-                                                {((parseInt(restockTubs) || 0) * (parseInt(restockYield) || 23))} scoops
+                                    </div>
+
+                                    {/* Cost/Tub field for weighted average calculation */}
+                                    <div className="p-3 bg-amber-50/50 rounded-lg border border-amber-200/60 space-y-2">
+                                        <Label className="text-xs font-bold text-amber-700 uppercase tracking-wider">New Cost/Tub (Optional)</Label>
+                                        <p className="text-xs text-amber-700/80 mb-1">Updates your blended cost per scoop. Leave blank if prices haven't changed.</p>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            placeholder={`Default: Nrs. ${((restockItem.costPrice || 0) * (parseFloat(restockYield) || 24)).toFixed(0)}/tub`}
+                                            value={restockTubCost}
+                                            onChange={(e) => setRestockTubCost(e.target.value)}
+                                            className="h-9"
+                                        />
+                                        {restockTubCost && parseFloat(restockTubCost) > 0 && (parseInt(restockQty) || 0) > 0 && (() => {
+                                            const newCostPerScoop = parseFloat(restockTubCost) / (parseFloat(restockYield) || 24);
+                                            const oldValue = restockItem.stock * (restockItem.costPrice || 0);
+                                            const newValue = (parseInt(restockQty) || 0) * newCostPerScoop;
+                                            const totalStock = restockItem.stock + (parseInt(restockQty) || 0);
+                                            const blended = totalStock > 0 ? (oldValue + newValue) / totalStock : 0;
+                                            return (
+                                                <p className="text-xs text-amber-700 font-semibold mt-2">
+                                                    Blended cost: Nrs. {blended.toFixed(2)}/scoop
+                                                    <span className="text-slate-400 font-normal"> (was Nrs. {(restockItem.costPrice || 0).toFixed(2)}/scoop)</span>
+                                                </p>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Preview */}
+                                    {(parseInt(restockQty) || 0) > 0 && (
+                                        <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200 mt-2">
+                                            <span className="text-sm font-medium text-emerald-800">Total Scoops to Add:</span>
+                                            <span className="text-xl font-black text-emerald-700">+{restockQty || '0'} scoops</span>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {/* Main input: Add quantity for non-scoops */}
+                                    <Label className="text-sm font-semibold">Add Quantity</Label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        placeholder="Enter quantity to add..."
+                                        value={restockQty}
+                                        onChange={(e) => setRestockQty(e.target.value)}
+                                        className="h-11 text-lg font-bold"
+                                        autoFocus
+                                    />
+                                    {/* Preview */}
+                                    {(parseInt(restockQty) || 0) > 0 && (
+                                        <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200 mt-2">
+                                            <span className="text-sm font-medium text-emerald-700">New Stock</span>
+                                            <span className="text-lg font-black text-emerald-700">
+                                                {restockItem.stock} + {parseInt(restockQty) || 0} = {restockItem.stock + (parseInt(restockQty) || 0)}
                                             </span>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Main input: Add quantity */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold">
-                                    {restockItem.category === 'Scoops' ? 'Add Scoops' : 'Add Quantity'}
-                                </Label>
-                                <Input
-                                    type="number"
-                                    min="1"
-                                    placeholder={restockItem.category === 'Scoops' ? 'Enter scoops to add...' : 'Enter quantity to add...'}
-                                    value={restockQty}
-                                    onChange={(e) => setRestockQty(e.target.value)}
-                                    className="h-11 text-lg font-bold"
-                                    autoFocus
-                                />
-                            </div>
-
-                            {/* Preview */}
-                            {(parseInt(restockQty) || 0) > 0 && (
-                                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                                    <span className="text-sm font-medium text-emerald-700">New Stock</span>
-                                    <span className="text-lg font-black text-emerald-700">
-                                        {restockItem.stock} + {parseInt(restockQty) || 0} = {restockItem.stock + (parseInt(restockQty) || 0)}
-                                    </span>
+                                    )}
                                 </div>
                             )}
 
@@ -540,6 +592,6 @@ export function InventoryTable() {
                     )}
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

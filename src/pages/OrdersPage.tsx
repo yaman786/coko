@@ -300,7 +300,7 @@ export function OrdersPage() {
                                                                 Complimentary
                                                             </Badge>
                                                         )}
-                                                        <Badge variant="outline" className={`text-[10px] h-4 border-none text-white ${order.status === 'completed' ? 'bg-gray-400' : order.status === 'refunded' ? 'bg-rose-500' : 'bg-amber-500'}`}>
+                                                        <Badge variant="outline" className={`text-[10px] h-4 border-none text-white ${order.status === 'completed' ? 'bg-gray-400' : order.status === 'cancelled' ? 'bg-rose-500' : 'bg-amber-500'}`}>
                                                             {order.status}
                                                         </Badge>
                                                     </div>
@@ -321,7 +321,7 @@ export function OrdersPage() {
                                             </div>
                                             <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                                                 <div className="text-right">
-                                                    <p className={`text-sm font-black ${order.status === 'refunded' ? 'text-gray-400 line-through' : 'text-purple-700'}`}>
+                                                    <p className={`text-sm font-black ${order.status === 'cancelled' ? 'text-gray-400 line-through' : 'text-purple-700'}`}>
                                                         Nrs. {order.totalAmount.toLocaleString()}
                                                     </p>
                                                     <p className="text-[10px] text-gray-400 font-medium">
@@ -459,7 +459,6 @@ export function OrdersPage() {
                                     <SelectContent>
                                         <SelectItem value="completed">Completed</SelectItem>
                                         <SelectItem value="pending">Pending</SelectItem>
-                                        <SelectItem value="refunded">Refunded / Voided</SelectItem>
                                         <SelectItem value="cancelled">Cancelled</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -500,7 +499,7 @@ export function OrdersPage() {
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This will permanently delete Order #{deletingOrderId?.slice(0, 8)} from the database.
-                            If you just want to reverse the finances, consider Editing the order and setting the status to 'Refunded'.
+                            If you just want to reverse the finances, consider Editing the order and setting the status to 'Cancelled'.
                             This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
