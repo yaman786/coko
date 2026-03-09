@@ -22,6 +22,17 @@ export const api = {
         return data || [];
     },
 
+    async getProductById(id: string): Promise<Product | null> {
+        const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) return null;
+        return data;
+    },
+
     async upsertProduct(product: Product): Promise<void> {
         const { error } = await supabase
             .from('products')
