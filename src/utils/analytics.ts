@@ -147,6 +147,10 @@ export async function getTopProducts(limit: number = 5, period: number | { start
         api.getProductAnalytics(prevStart, prevEnd)
     ]);
 
+    if (!Array.isArray(rawData)) {
+        return [];
+    }
+
     // Build a map of previous period data for quick lookup
     const prevDataMap = new Map<string, any>();
     for (const row of prevRawData) {

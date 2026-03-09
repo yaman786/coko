@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp, ChevronRight, Layers, List } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp, ChevronRight, Layers, List, AlertTriangle } from 'lucide-react';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { getTopProducts } from '../utils/analytics';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -60,7 +60,7 @@ export function ProductAnalyticsPage() {
     const queryKeyDatePart = typeof dateFilter === 'number' ? dateFilter : `${customFrom}_${customTo}`;
 
     // Fetch data (using 999999 as limit to get all products)
-    const { data: rawProducts = [], isLoading } = useQuery({
+    const { data: rawProducts = [], isLoading, isError, error } = useQuery({
         queryKey: ['allProductAnalytics', queryKeyDatePart],
         queryFn: () => getTopProducts(999999, dateFilter),
     });
@@ -419,6 +419,20 @@ export function ProductAnalyticsPage() {
                             <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
                                 <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
                                 <p>Crunching product metrics...</p>
+                            </div>
+                        ) : isError ? (
+                            <div className="flex flex-col items-center justify-center h-64 gap-3 text-red-500 bg-red-50/50 rounded-lg m-4 border border-red-100">
+                                <AlertTriangle className="w-8 h-8" />
+                                <div className="text-center">
+                                    <p className="font-bold">Analytics Data Error</p>
+                                    <p className="text-sm opacity-80 max-w-md">{(error as any)?.message || 'Unknown database error'}</p>
+                                </div>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-semibold transition-colors"
+                                >
+                                    Retry Connection
+                                </button>
                             </div>
                         ) : products.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-64 text-slate-500">
