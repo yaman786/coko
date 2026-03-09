@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,6 +8,7 @@ const navigation = [
     { name: 'POS', href: '/', icon: ShoppingCart },
     { name: 'Orders', href: '/orders', icon: Receipt },
     { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Analytics', href: '/analytics/products', icon: TrendingUp },
     { name: 'Inventory', href: '/inventory', icon: Package },
     { name: 'Settings', href: '/settings', icon: Settings }
 ];

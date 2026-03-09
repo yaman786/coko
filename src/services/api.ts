@@ -7,6 +7,7 @@ export interface OrderItemPayload {
     name: string;
     price: number;
     quantity: number;
+    cost_price?: number;
 }
 
 export const api = {
@@ -39,6 +40,15 @@ export const api = {
             .eq('id', id);
 
         if (error) throw error;
+    },
+
+    async getProductAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+        const { data, error } = await supabase.rpc('get_product_analytics', {
+            p_start_date: startDate.toISOString(),
+            p_end_date: endDate.toISOString()
+        });
+        if (error) throw error;
+        return data || [];
     },
 
     async processOrder(params: {
@@ -238,6 +248,19 @@ export const api = {
             .select('*')
             .order('createdAt', { ascending: false })
             .limit(limit);
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async getAuditLogsByProduct(productId: string): Promise<AuditLogEntry[]> {
+        // We use the contains operator for the JSONB metadata column
+        // This finds logs where the metadata JSON object contains { "productId": productId }
+        const { data, error } = await supabase
+            .from('audit_log')
+            .select('*')
+            .contains('metadata', { productId: productId })
+            .order('createdAt', { ascending: false });
 
         if (error) throw error;
         return data || [];

@@ -22,9 +22,13 @@ export interface RevenueData {
 }
 
 export interface TopProduct {
+    id: string;
     name: string;
     revenue: number;
     quantity: number;
+    cost: number;
+    profit: number;
+    marginPct: number;
 }
 
 export interface RecentOrder {
@@ -54,9 +58,11 @@ export interface RecentOrder {
  * Dashboard Metrics — now accepts a `days` parameter so the
  * period filter (Today/Week/Month) controls ALL stat cards.
  */
-export async function getDashboardMetrics(days: number = 30): Promise<DashboardMetrics> {
-    const start = startOfDay(subDays(new Date(), days - 1));
-    const end = endOfDay(new Date());
+export async function getDashboardMetrics(period: number | { start: Date; end: Date } = 30): Promise<DashboardMetrics> {
+    const start = typeof period === 'number' ? startOfDay(subDays(new Date(), period - 1)) : startOfDay(period.start);
+    const end = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
+
+    console.log(`[Analytics] Fetching Metrics Range: ${format(start, 'yyyy-MM-dd HH:mm:ss')} to ${format(end, 'yyyy-MM-dd HH:mm:ss')}`);
     const orders = await api.getOrdersByDateRange(start, end);
 
     const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
@@ -98,10 +104,11 @@ export async function getDashboardMetrics(days: number = 30): Promise<DashboardM
     };
 }
 
-export async function getRevenueTrend(days: number = 7): Promise<RevenueData[]> {
-    const endDate = endOfDay(new Date());
-    const startDate = startOfDay(subDays(endDate, days - 1));
+export async function getRevenueTrend(period: number | { start: Date; end: Date } = 7): Promise<RevenueData[]> {
+    const startDate = typeof period === 'number' ? startOfDay(subDays(endOfDay(new Date()), period - 1)) : startOfDay(period.start);
+    const endDate = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
 
+    console.log(`[Analytics] Fetching Trend Range: ${format(startDate, 'yyyy-MM-dd HH:mm:ss')} to ${format(endDate, 'yyyy-MM-dd HH:mm:ss')}`);
     const orders = await api.getOrdersByDateRange(startDate, endDate);
     const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
 
@@ -122,30 +129,32 @@ export async function getRevenueTrend(days: number = 7): Promise<RevenueData[]> 
 /**
  * Top Products — now accepts a `days` parameter for period filtering.
  */
-export async function getTopProducts(limit: number = 5, days: number = 30): Promise<TopProduct[]> {
-    const start = startOfDay(subDays(new Date(), days - 1));
-    const end = endOfDay(new Date());
-    const orders = await api.getOrdersByDateRange(start, end);
+export async function getTopProducts(limit: number = 5, period: number | { start: Date; end: Date } = 30): Promise<TopProduct[]> {
+    const start = typeof period === 'number' ? startOfDay(subDays(new Date(), period - 1)) : startOfDay(period.start);
+    const end = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
 
-    const productMap = new Map<string, { revenue: number, quantity: number }>();
+    // Use the optimized Database RPC for aggregation
+    const rawData = await api.getProductAnalytics(start, end);
 
-    orders.forEach(order => {
-        order.items.forEach(item => {
-            const current = productMap.get(item.name) || { revenue: 0, quantity: 0 };
-            productMap.set(item.name, {
-                revenue: current.revenue + (item.price * item.quantity),
-                quantity: current.quantity + item.quantity
-            });
-        });
-    });
+    return rawData
+        .map((row: any) => {
+            const revenue = Number(row.net_revenue) || 0;
+            const cost = Number(row.total_cost) || 0;
+            const quantity = Number(row.quantity_sold) || 0;
+            const profit = revenue - cost;
+            const marginPct = revenue > 0 ? (profit / revenue) * 100 : 0;
 
-    return Array.from(productMap.entries())
-        .map(([name, stats]) => ({
-            name,
-            revenue: stats.revenue,
-            quantity: stats.quantity
-        }))
-        .sort((a, b) => b.revenue - a.revenue)
+            return {
+                id: row.product_id,
+                name: row.product_name,
+                revenue,
+                quantity,
+                cost,
+                profit,
+                marginPct
+            };
+        })
+        .sort((a: any, b: any) => b.revenue - a.revenue)
         .slice(0, limit);
 }
 

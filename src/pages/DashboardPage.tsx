@@ -1,5 +1,5 @@
 import { useState, Component, type ReactNode, type ErrorInfo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { StatCard } from '../features/dashboard/components/StatCard';
 import { RevenueChart } from '../features/dashboard/components/RevenueChart';
 import { TopProductsCard } from '../features/dashboard/components/TopProductsCard';
@@ -53,7 +53,6 @@ export function DashboardPage() {
 
 function DashboardContent() {
     usePageTitle('Dashboard');
-    const queryClient = useQueryClient();
     const { user } = useAuth();
     const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'custom'>('today');
     const [customFrom, setCustomFrom] = useState('');
@@ -67,24 +66,41 @@ function DashboardContent() {
                     ? Math.max(1, Math.ceil((new Date(customTo).getTime() - new Date(customFrom).getTime()) / 86400000) + 1)
                     : 30;
 
-    // 1. Concurrent and Cached Data Fetching — ALL queries use the `days` period
+    const dateFilter = (period === 'custom' && customFrom && customTo)
+        ? { start: new Date(customFrom), end: new Date(customTo) }
+        : period === 'custom' ? 30 : days;
+
+    const queryKeyDatePart = typeof dateFilter === 'number' ? dateFilter : `${customFrom}_${customTo}`;
+
+    // Diagnostic Log for developers
+    if (period === 'custom') {
+        console.log('[Dashboard] Custom Filter Active:', { customFrom, customTo, dateFilter, queryKeyDatePart });
+    }
+
+    // 1. Concurrent and Cached Data Fetching — ALL queries use the `dateFilter` period
     const { data: metrics, isLoading: metricsLoading } = useQuery({
-        queryKey: ['dashboardMetrics', days],
-        queryFn: () => getDashboardMetrics(days),
+        queryKey: ['dashboardMetrics', queryKeyDatePart],
+        queryFn: () => {
+            console.log('[Query] Fetching metrics for:', dateFilter);
+            return getDashboardMetrics(dateFilter);
+        },
         staleTime: 1000 * 60 * 2, // 2 minutes
     });
 
-    const { data: revenueData = [], isLoading: revenueLoading } = useQuery({
-        queryKey: ['revenueTrend', days],
-        queryFn: () => getRevenueTrend(days),
+    const { data: revenueData = [] } = useQuery({
+        queryKey: ['revenueTrend', queryKeyDatePart],
+        queryFn: () => {
+            console.log('[Query] Fetching revenue trend for:', dateFilter);
+            return getRevenueTrend(dateFilter);
+        },
     });
 
-    const { data: topProducts = [], isLoading: productsLoading } = useQuery({
-        queryKey: ['topProducts', days],
-        queryFn: () => getTopProducts(5, days),
+    const { data: topProducts = [] } = useQuery({
+        queryKey: ['topProducts', queryKeyDatePart],
+        queryFn: () => getTopProducts(5, dateFilter),
     });
 
-    const { data: recentOrders = [], isLoading: ordersLoading } = useQuery({
+    const { data: recentOrders = [] } = useQuery({
         queryKey: ['recentOrders'],
         queryFn: () => getRecentOrders(10),
     });
@@ -102,15 +118,6 @@ function DashboardContent() {
         outOfStock: allProducts.filter(p => p.stock <= 0).length,
         criticalItems: allProducts.filter(p => p.stock <= Math.max(1, Math.floor((p.lowStockThreshold ?? 10) / 2)) && p.stock > 0).map(p => p.name)
     };
-
-    const handleRefresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['dashboardMetrics'] });
-        queryClient.invalidateQueries({ queryKey: ['revenueTrend'] });
-        queryClient.invalidateQueries({ queryKey: ['topProducts'] });
-        queryClient.invalidateQueries({ queryKey: ['recentOrders'] });
-    };
-
-    const isRefetching = metricsLoading || revenueLoading || productsLoading || ordersLoading;
 
     // --- Export Logic ---
     const getDateRangeLabel = () => {
@@ -183,13 +190,6 @@ function DashboardContent() {
                                 {p}
                             </button>
                         ))}
-                        <button
-                            onClick={handleRefresh}
-                            className="p-2 text-gray-400 hover:text-purple-600 rounded-md transition-colors min-h-[36px]"
-                            title="Refresh Data"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin text-purple-600' : ''}`} />
-                        </button>
                     </div>
                     {period === 'custom' && (
                         <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 border border-gray-200 shadow-sm">
@@ -368,10 +368,10 @@ function DashboardContent() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 <TopProductsCard
-                    title="Top Selling Products"
-                    products={topProducts.slice(0, 5)}
+                    title="Product Analytics Board"
+                    products={topProducts}
                 />
                 <RecentOrdersCard
                     title="Recent Transactions"

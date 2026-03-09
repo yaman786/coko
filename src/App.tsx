@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m
 const POSPage = lazy(() => import('./pages/POSPage').then(m => ({ default: m.POSPage })));
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default: m.OrdersPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ProductAnalyticsPage = lazy(() => import('./pages/ProductAnalyticsPage').then(m => ({ default: m.ProductAnalyticsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
@@ -73,6 +74,7 @@ function App() {
                 <Route path="/orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
                 <Route path="/inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
                 <Route path="/dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
+                <Route path="/analytics/products" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
                 <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
               </Route>
             </Routes>

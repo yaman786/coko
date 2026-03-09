@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import {
     Search, ChevronDown, ChevronUp, Receipt, Clock,
-    ShoppingBag, Loader2, Calendar, User, Pencil, Trash2, Tag, Gift
+    Loader2, Calendar, User, Pencil, Trash2, Tag, Gift, AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -60,6 +60,7 @@ export function OrdersPage() {
     // CRUD State
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+    const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
 
     // Form inputs for editing
     const [editStatus, setEditStatus] = useState<string>('');
@@ -141,6 +142,18 @@ export function OrdersPage() {
 
     const handleSaveEdit = () => {
         if (!editingOrder) return;
+
+        // If status is changed to cancelled, show confirmation dialog
+        if (editStatus === 'cancelled' && editingOrder.status !== 'cancelled') {
+            setIsStatusConfirmOpen(true);
+            return;
+        }
+
+        executeStatusUpdate();
+    };
+
+    const executeStatusUpdate = () => {
+        if (!editingOrder) return;
         updateMutation.mutate({
             id: editingOrder.id,
             updates: {
@@ -148,6 +161,7 @@ export function OrdersPage() {
                 paymentMethod: editPaymentMethod
             }
         });
+        setIsStatusConfirmOpen(false);
     };
 
     // Filter orders
@@ -188,6 +202,18 @@ export function OrdersPage() {
     const totalItems = filteredOrders.reduce((sum, o) =>
         sum + o.items.reduce((s, i) => s + i.quantity, 0),
         0);
+
+    // Group orders by date for UI grouping
+    const groupedOrders = useMemo(() => {
+        return filteredOrders.reduce((groups, order) => {
+            const dateStr = format(new Date(order.createdAt), 'MMMM d, yyyy');
+            if (!groups[dateStr]) {
+                groups[dateStr] = [];
+            }
+            groups[dateStr].push(order);
+            return groups;
+        }, {} as Record<string, typeof filteredOrders>);
+    }, [filteredOrders]);
 
     if (isLoading) {
         return (
@@ -271,169 +297,183 @@ export function OrdersPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="divide-y divide-gray-100">
-                            {filteredOrders.map((order) => {
-                                const isExpanded = expandedOrderId === order.id;
-                                const orderDate = new Date(order.createdAt);
-
-                                return (
-                                    <div key={order.id} className="transition-colors hover:bg-gray-50/50">
-                                        {/* Order Row */}
-                                        <button
-                                            onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
-                                            className="w-full flex items-center justify-between px-6 py-4 text-left"
-                                        >
-                                            <div className="flex items-center gap-4 min-w-0 flex-1">
-                                                <div className="flex-shrink-0 p-2 rounded-lg bg-purple-100">
-                                                    <ShoppingBag className="w-4 h-4 text-purple-700" />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className="text-sm font-bold text-gray-800">
-                                                            Order #{order.id.slice(0, 8)}
-                                                        </span>
-                                                        <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider h-4 border-none text-white ${order.paymentMethod === 'Cash' ? 'bg-emerald-500' : order.paymentMethod === 'Card' ? 'bg-blue-500' : order.paymentMethod === 'Split' ? 'bg-purple-500' : 'bg-gray-500'}`}>
-                                                            {order.paymentMethod || 'Cash'}
-                                                        </Badge>
-                                                        {order.isComplimentary && (
-                                                            <Badge variant="outline" className="text-[10px] h-4 border-none bg-purple-700 text-white font-black uppercase tracking-widest">
-                                                                Complimentary
-                                                            </Badge>
-                                                        )}
-                                                        <Badge variant="outline" className={`text-[10px] h-4 border-none text-white ${order.status === 'completed' ? 'bg-gray-400' : order.status === 'cancelled' ? 'bg-rose-500' : 'bg-amber-500'}`}>
-                                                            {order.status}
-                                                        </Badge>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                                                        <span className="flex items-center gap-1">
-                                                            <Clock className="w-3 h-3" />
-                                                            {format(orderDate, 'MMM d, yyyy · h:mm a')}
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <User className="w-3 h-3" />
-                                                            {order.cashierName || order.cashierId?.split('@')[0] || 'System'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-400 mt-1 truncate">
-                                                        {order.items.map(i => `${i.quantity}× ${i.name}`).join(', ')}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                                                <div className="text-right">
-                                                    <p className={`text-sm font-black ${order.status === 'cancelled' ? 'text-gray-400 line-through' : 'text-purple-700'}`}>
-                                                        Nrs. {order.totalAmount.toLocaleString()}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-400 font-medium">
-                                                        {order.items.reduce((s, i) => s + i.quantity, 0)} items
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-1 border-l border-gray-100 pl-3">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-purple-600 rounded-full" onClick={(e) => openEditModal(order, e)}>
-                                                        <Pencil className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-full" onClick={(e) => { e.stopPropagation(); setDeletingOrderId(order.id); }}>
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                    <div className="ml-1 text-gray-400">
-                                                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </button>
-
-                                        {/* Expanded Detail */}
-                                        {isExpanded && (
-                                            <div className="px-6 pb-4 pt-0">
-                                                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-                                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-                                                        Order Details
-                                                    </h4>
-                                                    <div className="space-y-2">
-                                                        {order.items.map((item, idx) => (
-                                                            <div key={idx} className="flex items-center justify-between text-sm">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="bg-purple-100 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">
-                                                                        ×{item.quantity}
-                                                                    </span>
-                                                                    <span className="text-gray-700 font-medium">{item.name}</span>
-                                                                </div>
-                                                                <span className="text-gray-600 font-semibold">
-                                                                    Nrs. {(item.price * item.quantity).toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="border-t border-gray-200 mt-4 pt-4 space-y-2">
-                                                        <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
-                                                            <span>Subtotal</span>
-                                                            <span>Nrs. {order.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                        </div>
-                                                        {order.discount > 0 && (
-                                                            <div className="flex justify-between items-center text-xs font-semibold text-amber-600">
-                                                                <span>Discount Applied</span>
-                                                                <span>- Nrs. {order.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                            </div>
-                                                        )}
-                                                        {order.loyalty > 0 && (
-                                                            <div className="flex justify-between items-center text-xs font-semibold text-rose-500">
-                                                                <span>Loyalty Points Burned</span>
-                                                                <span>- Nrs. {order.loyalty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                            </div>
-                                                        )}
-                                                        {order.vat > 0 && (
-                                                            <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
-                                                                <span>VAT</span>
-                                                                <span>+ Nrs. {order.vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                            </div>
-                                                        )}
-                                                        {(order.complimentaryAmount ?? 0) > 0 && (
-                                                            <div className="flex justify-between items-center text-xs font-semibold text-purple-600">
-                                                                <span className="flex items-center gap-1">
-                                                                    <Gift className="w-3 h-3" />
-                                                                    Complimentary
-                                                                </span>
-                                                                <span>- Nrs. {(order.complimentaryAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                            </div>
-                                                        )}
-                                                        {(order.offerAmount ?? 0) > 0 && (
-                                                            <div className="flex justify-between items-center text-xs font-semibold text-purple-600 bg-purple-50 p-1.5 rounded border border-purple-100 mt-1">
-                                                                <span className="flex items-center gap-1.5 font-black uppercase tracking-tighter">
-                                                                    <Tag className="w-3 h-3" />
-                                                                    Offer: {order.offerTitle || 'Store Offer'}
-                                                                </span>
-                                                                <span className="font-black">- Nrs. {(order.offerAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                            </div>
-                                                        )}
-                                                        <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-200 border-dashed">
-                                                            <span className="text-sm font-black uppercase tracking-wider text-purple-700">Grand Total</span>
-                                                            <span className="text-xl font-black text-purple-700">
-                                                                Nrs. {order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mt-4 pt-3 border-t-2 border-slate-200 flex flex-col items-end gap-1">
-                                                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Payment Breakdown ({order.paymentMethod})</span>
-                                                        <div className="flex gap-4 text-xs font-bold mt-1">
-                                                            {order.paymentMethod === 'Split' ? (
-                                                                <>
-                                                                    <span className="text-emerald-600">Cash: Nrs. {order.cashAmount.toLocaleString()}</span>
-                                                                    <span className="text-blue-600">Card: Nrs. {order.cardAmount.toLocaleString()}</span>
-                                                                </>
-                                                            ) : order.paymentMethod === 'Card' ? (
-                                                                <span className="text-blue-600">Card: Nrs. {order.totalAmount.toLocaleString()}</span>
-                                                            ) : (
-                                                                <span className="text-emerald-600">Cash: Nrs. {order.totalAmount.toLocaleString()}</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+                        <div className="space-y-6 bg-gray-50/50 p-2 sm:p-4 rounded-b-xl">
+                            {Object.entries(groupedOrders).map(([dateStr, ordersForDay]) => (
+                                <div key={dateStr} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                                    <div className="bg-gray-100/80 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                                        <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                            <Calendar className="w-4 h-4 text-purple-600" />
+                                            {dateStr}
+                                        </h3>
+                                        <Badge variant="secondary" className="text-[10px] bg-white text-gray-600 border border-gray-200 shadow-sm font-bold">
+                                            {ordersForDay.length} {ordersForDay.length === 1 ? 'Order' : 'Orders'}
+                                        </Badge>
                                     </div>
-                                );
-                            })}
+                                    <div className="divide-y divide-gray-100">
+                                        {ordersForDay.map((order, idx) => {
+                                            // The list is newest-first. Oldest order of the day gets #1.
+                                            const dailyOrderNumber = ordersForDay.length - idx;
+                                            const isExpanded = expandedOrderId === order.id;
+                                            const orderDate = new Date(order.createdAt);
+
+                                            return (
+                                                <div key={order.id} className="transition-colors hover:bg-gray-50/50">
+                                                    {/* Order Row */}
+                                                    <button
+                                                        onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                                                        className="w-full flex items-center justify-between px-4 sm:px-6 py-4 text-left"
+                                                    >
+                                                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                                                            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-purple-50 border border-purple-100 shadow-sm text-purple-700 font-black text-xl">
+                                                                #{dailyOrderNumber}
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider h-5 border-none text-white ${order.paymentMethod === 'Cash' ? 'bg-emerald-500' : order.paymentMethod === 'Card' ? 'bg-blue-500' : order.paymentMethod === 'Split' ? 'bg-purple-500' : 'bg-gray-500'}`}>
+                                                                        {order.paymentMethod || 'Cash'}
+                                                                    </Badge>
+                                                                    {order.isComplimentary && (
+                                                                        <Badge variant="outline" className="text-[10px] h-5 border-none bg-purple-700 text-white font-black uppercase tracking-widest">
+                                                                            Complimentary
+                                                                        </Badge>
+                                                                    )}
+                                                                    <Badge variant="outline" className={`text-[10px] h-5 border-none text-white ${order.status === 'completed' ? 'bg-gray-400' : order.status === 'cancelled' ? 'bg-rose-500' : 'bg-amber-500'}`}>
+                                                                        {order.status}
+                                                                    </Badge>
+                                                                </div>
+                                                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Clock className="w-3 h-3" />
+                                                                        {format(orderDate, 'MMM d, yyyy · h:mm a')}
+                                                                    </span>
+                                                                    <span className="flex items-center gap-1">
+                                                                        <User className="w-3 h-3" />
+                                                                        {order.cashierName || order.cashierId?.split('@')[0] || 'System'}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-400 mt-1 truncate">
+                                                                    {order.items.map(i => `${i.quantity}× ${i.name}`).join(', ')}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                                                            <div className="text-right">
+                                                                <p className={`text-sm font-black ${order.status === 'cancelled' ? 'text-gray-400 line-through' : 'text-purple-700'}`}>
+                                                                    Nrs. {order.totalAmount.toLocaleString()}
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-400 font-medium">
+                                                                    {order.items.reduce((s, i) => s + i.quantity, 0)} items
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 border-l border-gray-100 pl-3">
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-purple-600 rounded-full" onClick={(e) => openEditModal(order, e)}>
+                                                                    <Pencil className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-full" onClick={(e) => { e.stopPropagation(); setDeletingOrderId(order.id); }}>
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                                <div className="ml-1 text-gray-400">
+                                                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+
+                                                    {/* Expanded Detail */}
+                                                    {isExpanded && (
+                                                        <div className="px-6 pb-4 pt-0">
+                                                            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                                                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
+                                                                    Order Details
+                                                                </h4>
+                                                                <div className="space-y-2">
+                                                                    {order.items.map((item, idx) => (
+                                                                        <div key={idx} className="flex items-center justify-between text-sm">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="bg-purple-100 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">
+                                                                                    ×{item.quantity}
+                                                                                </span>
+                                                                                <span className="text-gray-700 font-medium">{item.name}</span>
+                                                                            </div>
+                                                                            <span className="text-gray-600 font-semibold">
+                                                                                Nrs. {(item.price * item.quantity).toLocaleString()}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                <div className="border-t border-gray-200 mt-4 pt-4 space-y-2">
+                                                                    <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+                                                                        <span>Subtotal</span>
+                                                                        <span>Nrs. {order.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                    </div>
+                                                                    {order.discount > 0 && (
+                                                                        <div className="flex justify-between items-center text-xs font-semibold text-amber-600">
+                                                                            <span>Discount Applied</span>
+                                                                            <span>- Nrs. {order.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {order.loyalty > 0 && (
+                                                                        <div className="flex justify-between items-center text-xs font-semibold text-rose-500">
+                                                                            <span>Loyalty Points Burned</span>
+                                                                            <span>- Nrs. {order.loyalty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {order.vat > 0 && (
+                                                                        <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+                                                                            <span>VAT</span>
+                                                                            <span>+ Nrs. {order.vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {(order.complimentaryAmount ?? 0) > 0 && (
+                                                                        <div className="flex justify-between items-center text-xs font-semibold text-purple-600">
+                                                                            <span className="flex items-center gap-1">
+                                                                                <Gift className="w-3 h-3" />
+                                                                                Complimentary
+                                                                            </span>
+                                                                            <span>- Nrs. {(order.complimentaryAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {(order.offerAmount ?? 0) > 0 && (
+                                                                        <div className="flex justify-between items-center text-xs font-semibold text-purple-600 bg-purple-50 p-1.5 rounded border border-purple-100 mt-1">
+                                                                            <span className="flex items-center gap-1.5 font-black uppercase tracking-tighter">
+                                                                                <Tag className="w-3 h-3" />
+                                                                                Offer: {order.offerTitle || 'Store Offer'}
+                                                                            </span>
+                                                                            <span className="font-black">- Nrs. {(order.offerAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-200 border-dashed">
+                                                                        <span className="text-sm font-black uppercase tracking-wider text-purple-700">Grand Total</span>
+                                                                        <span className="text-xl font-black text-purple-700">
+                                                                            Nrs. {order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="mt-4 pt-3 border-t-2 border-slate-200 flex flex-col items-end gap-1">
+                                                                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Payment Breakdown ({order.paymentMethod})</span>
+                                                                    <div className="flex gap-4 text-xs font-bold mt-1">
+                                                                        {order.paymentMethod === 'Split' ? (
+                                                                            <>
+                                                                                <span className="text-emerald-600">Cash: Nrs. {order.cashAmount.toLocaleString()}</span>
+                                                                                <span className="text-blue-600">Card: Nrs. {order.cardAmount.toLocaleString()}</span>
+                                                                            </>
+                                                                        ) : order.paymentMethod === 'Card' ? (
+                                                                            <span className="text-blue-600">Card: Nrs. {order.totalAmount.toLocaleString()}</span>
+                                                                        ) : (
+                                                                            <span className="text-emerald-600">Cash: Nrs. {order.totalAmount.toLocaleString()}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </CardContent>
@@ -445,7 +485,7 @@ export function OrdersPage() {
                     <DialogHeader>
                         <DialogTitle>Edit Order Metadata</DialogTitle>
                         <DialogDescription>
-                            Adjust the status or payment method. Financial totals cannot be arbitrary changed; void/refund instead.
+                            Adjust the status or payment method. Financial totals cannot be arbitrary changed; mark as 'Cancelled' instead.
                         </DialogDescription>
                     </DialogHeader>
                     {editingOrder && (
@@ -458,7 +498,6 @@ export function OrdersPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="completed">Completed</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
                                         <SelectItem value="cancelled">Cancelled</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -510,6 +549,30 @@ export function OrdersPage() {
                             onClick={() => deletingOrderId && deleteMutation.mutate(deletingOrderId)}
                         >
                             Yes, permanently delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Status Change Confirmation (Cancellation) Modal */}
+            <AlertDialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
+                <AlertDialogContent className="border-amber-100">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
+                            <AlertTriangle className="w-5 h-5" />
+                            Confirm Order Cancellation
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You are about to mark this order as **Cancelled**. This will reverse the revenue calculations but keep the record for audit purposes.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Go Back</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            onClick={executeStatusUpdate}
+                        >
+                            Confirm Cancellation
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

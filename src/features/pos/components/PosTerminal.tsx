@@ -6,6 +6,7 @@ import { Separator } from '../../../components/ui/separator';
 import { Plus, Minus, Trash2, ShoppingBag, Loader2, Gift, Tag } from 'lucide-react';
 import { api } from '../../../services/api';
 import type { OrderItemPayload } from '../../../services/api';
+import type { Product } from '../../../types';
 import { usePosStore } from '../../../store/usePosStore';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -19,6 +20,7 @@ export function PosTerminal() {
     const { cart, addToCart, updateQuantity, setQuantity, removeFromCart, clearCart } = usePosStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [isCheckingOut, setIsCheckingOut] = useState(false);
+    const [selectedParent, setSelectedParent] = useState<Product | null>(null);
 
     // 1. Robust Data Fetching with TanStack Query
     const { data: products = [], isLoading: productsLoading } = useQuery({
@@ -127,15 +129,40 @@ export function PosTerminal() {
     const handleCheckoutInit = () => {
         if (cart.length === 0) return;
 
-        // Stock validation: prevent overselling
-        const outOfStockItems = cart.filter(cartItem => {
-            const product = products.find(p => p.id === cartItem.id);
-            return !product || product.stock < cartItem.quantity;
+        // 1. Group cart by ParentId to check total pool sufficiency
+        const parentStockClaims: Record<string, number> = {};
+        const standaloneStockClaims: Record<string, number> = {};
+
+        cart.forEach(item => {
+            const product = products.find(p => p.id === item.id);
+            if (!product || product.trackInventory === false) return;
+
+            if (product.parentId) {
+                const consumption = item.quantity * (product.stockMultiplier || 1);
+                parentStockClaims[product.parentId] = (parentStockClaims[product.parentId] || 0) + consumption;
+            } else {
+                standaloneStockClaims[item.id] = (standaloneStockClaims[item.id] || 0) + item.quantity;
+            }
+        });
+
+        // 2. Validate Claims
+        const outOfStockItems: string[] = [];
+
+        // Check Standalone
+        Object.entries(standaloneStockClaims).forEach(([id, qty]) => {
+            const product = products.find(p => p.id === id);
+            if (product && product.stock < qty) outOfStockItems.push(product.name);
+        });
+
+        // Check Parent Pools
+        Object.entries(parentStockClaims).forEach(([parentId, qty]) => {
+            const parent = products.find(p => p.id === parentId);
+            if (parent && parent.stock < qty) outOfStockItems.push(parent.name);
         });
 
         if (outOfStockItems.length > 0) {
             toast.error('Stock Insufficient', {
-                description: `${outOfStockItems.map(i => i.name).join(', ')} — not enough stock.`
+                description: `${outOfStockItems.join(', ')} — not enough stock available.`
             });
             return;
         }
@@ -150,12 +177,26 @@ export function PosTerminal() {
 
         checkoutMutation.mutate({
             id: crypto.randomUUID(),
-            items: cart.map(item => ({
-                product_id: item.id,
-                quantity: item.quantity,
-                name: item.name,
-                price: item.price
-            })),
+            items: cart.map(item => {
+                const product = products.find(p => p.id === item.id);
+                let finalCost = item.costPrice || 0;
+
+                // If it's a variant, use Parent's WACC * Multiplier for maximum accuracy
+                if (product?.parentId) {
+                    const parent = products.find(p => p.id === product.parentId);
+                    if (parent) {
+                        finalCost = (parent.costPrice || 0) * (product.stockMultiplier || 1);
+                    }
+                }
+
+                return {
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    name: item.name,
+                    price: item.price,
+                    cost_price: finalCost
+                };
+            }),
             totalAmount: grandTotal,
             subtotal: subtotal,
             discount: discountAmount,
@@ -174,7 +215,11 @@ export function PosTerminal() {
     };
 
     const filteredItems = useMemo(() =>
-        products.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase())),
+        products.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const isChild = !!item.parentId;
+            return matchesSearch && !isChild;
+        }),
         [products, searchQuery]
     );
 
@@ -218,8 +263,6 @@ export function PosTerminal() {
                             const categoryItems = filteredItems.filter(item => item.category === category);
                             if (categoryItems.length === 0) return null;
 
-                            const subcategories = Array.from(new Set(categoryItems.map(i => i.subcategory || 'General')));
-
                             return (
                                 <div key={category} className="mb-8 last:mb-0">
                                     <div className="flex items-center gap-2 mb-4">
@@ -228,50 +271,54 @@ export function PosTerminal() {
                                             {categoryItems.length}
                                         </Badge>
                                     </div>
-                                    {subcategories.map(subcat => {
-                                        const subcatItems = categoryItems.filter(i => (i.subcategory || 'General') === subcat);
-                                        return (
-                                            <div key={`${category}-${subcat}`} className="mb-6 last:mb-0">
-                                                {subcat !== 'General' && <h3 className="text-sm font-bold mb-3 text-slate-400 uppercase tracking-widest">{subcat}</h3>}
-                                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
-                                                    {subcatItems.map(item => {
-                                                        const isOutOfStock = item.stock <= 0;
-                                                        const isLowStock = item.stock > 0 && item.stock <= 5;
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
+                                        {categoryItems.map(item => {
+                                            const isParent = products.some(p => p.parentId === item.id);
+                                            const isOutOfStock = item.trackInventory !== false && item.stock <= 0;
+                                            const isLowStock = item.trackInventory !== false && item.stock > 0 && item.stock <= 5;
 
-                                                        return (
-                                                            <Button
-                                                                key={item.id}
-                                                                variant="outline"
-                                                                disabled={isOutOfStock}
-                                                                className={`h-auto flex-col items-start p-3 md:p-4 transition-all active:scale-[0.98] shadow-sm text-left border-slate-200 group relative ${isOutOfStock
-                                                                    ? 'bg-slate-50 opacity-60 cursor-not-allowed border-slate-100'
-                                                                    : isLowStock
-                                                                        ? 'bg-amber-50/30 hover:bg-amber-50 border-amber-200 hover:border-amber-300'
-                                                                        : 'bg-white hover:bg-purple-50 hover:border-purple-300'
-                                                                    }`}
-                                                                onClick={() => !isOutOfStock && addToCart(item)}
-                                                            >
-                                                                {isOutOfStock && (
-                                                                    <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Sold Out</span>
-                                                                )}
-                                                                {isLowStock && (
-                                                                    <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">{item.stock} left</span>
-                                                                )}
-                                                                <span className={`text-xs md:text-sm font-semibold leading-tight mb-1.5 md:mb-2 transition-colors text-wrap h-auto min-h-[1.5rem] md:min-h-[2.5rem] ${isOutOfStock ? 'text-slate-400' : 'text-slate-700 group-hover:text-purple-700'
-                                                                    }`}>{item.name}</span>
-                                                                <div className="flex items-center justify-between w-full mt-auto">
-                                                                    <span className={`font-bold px-1.5 md:px-2 py-0.5 rounded text-[11px] md:text-xs transition-colors ${isOutOfStock
-                                                                        ? 'bg-slate-100 text-slate-400'
-                                                                        : 'text-purple-600 bg-purple-50 group-hover:bg-purple-100'
-                                                                        }`}>Nrs. {item.price.toLocaleString()}</span>
-                                                                </div>
-                                                            </Button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                            const handleClick = () => {
+                                                if (isOutOfStock) return;
+                                                if (isParent) {
+                                                    setSelectedParent(item);
+                                                } else {
+                                                    addToCart(item);
+                                                }
+                                            };
+
+                                            return (
+                                                <Button
+                                                    key={item.id}
+                                                    variant="outline"
+                                                    disabled={isOutOfStock}
+                                                    className={`h-auto flex-col items-start p-3 md:p-4 transition-all active:scale-[0.98] shadow-sm text-left border-slate-200 group relative ${isOutOfStock
+                                                        ? 'bg-slate-50 opacity-60 cursor-not-allowed border-slate-100'
+                                                        : isLowStock
+                                                            ? 'bg-amber-50/30 hover:bg-amber-50 border-amber-200 hover:border-amber-300'
+                                                            : 'bg-white hover:bg-purple-50 hover:border-purple-300'
+                                                        }`}
+                                                    onClick={handleClick}
+                                                >
+                                                    {isOutOfStock && (
+                                                        <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Sold Out</span>
+                                                    )}
+                                                    {isLowStock && (
+                                                        <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">{item.stock} left</span>
+                                                    )}
+                                                    <span className={`text-xs md:text-sm font-semibold leading-tight mb-1.5 md:mb-2 transition-colors text-wrap h-auto min-h-[1.5rem] md:min-h-[2.5rem] ${isOutOfStock ? 'text-slate-400' : 'text-slate-700 group-hover:text-purple-700'
+                                                        }`}>{item.name.replace(' (STOCK)', '')}</span>
+                                                    <div className="flex items-center justify-between w-full mt-auto">
+                                                        <span className={`font-bold px-1.5 md:px-2 py-0.5 rounded text-[11px] md:text-xs transition-colors ${isOutOfStock
+                                                            ? 'bg-slate-100 text-slate-400'
+                                                            : 'text-purple-600 bg-purple-50 group-hover:bg-purple-100'
+                                                            }`}>
+                                                            {isParent ? 'View Options' : `Nrs. ${item.price.toLocaleString()}`}
+                                                        </span>
+                                                    </div>
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -591,6 +638,59 @@ export function PosTerminal() {
                             {isCheckingOut ? 'Processing...' : 'Complete Payment'}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!selectedParent} onOpenChange={(open) => !open && setSelectedParent(null)}>
+                <DialogContent className="max-w-md w-[95vw] rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-6 bg-gradient-to-br from-purple-600 to-indigo-700 text-white pb-8">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                                <Plus className="w-6 h-6" />
+                            </div>
+                            <DialogTitle className="text-2xl font-black tracking-tight">{selectedParent?.name}</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-purple-100 font-medium">Please select an option below</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 bg-slate-50 space-y-3 -mt-4 rounded-t-3xl relative z-10 border-t border-white/10 backdrop-blur-sm">
+                        {selectedParent && products
+                            .filter(p => p.parentId === selectedParent.id && !p.isDeleted)
+                            .map(variant => {
+                                const parentProduct = products.find(p => p.id === variant.parentId);
+                                const availableUnits = variant.parentId && parentProduct
+                                    ? Math.floor(parentProduct.stock / (variant.stockMultiplier || 1))
+                                    : variant.stock;
+                                const isOutOfStock = variant.trackInventory !== false && availableUnits <= 0;
+                                return (
+                                    <Button
+                                        key={variant.id}
+                                        variant="outline"
+                                        disabled={isOutOfStock}
+                                        onClick={() => {
+                                            addToCart(variant);
+                                            setSelectedParent(null);
+                                        }}
+                                        className="w-full h-16 justify-between px-6 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all border-slate-200 shadow-sm rounded-xl group"
+                                    >
+                                        <div className="text-left">
+                                            <span className="block font-bold text-slate-800 group-hover:text-purple-700 transition-colors uppercase tracking-tight">
+                                                {variant.name.replace(`${selectedParent.name} - `, '').replace(`${selectedParent.name} (`, '').replace(')', '')}
+                                            </span>
+                                            {variant.trackInventory !== false && (
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest ${availableUnits <= 5 ? 'text-amber-600' : 'text-slate-400'}`}>
+                                                    {availableUnits} portions left
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block font-black text-lg text-purple-600 group-hover:scale-110 transition-transform">Nrs. {variant.price.toLocaleString()}</span>
+                                        </div>
+                                    </Button>
+                                );
+                            })
+                        }
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

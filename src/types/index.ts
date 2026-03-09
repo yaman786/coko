@@ -4,13 +4,16 @@ export interface Product {
     price: number; // Selling Price (MRP)
     costPrice?: number;
     category: string;
-    subcategory?: string;
     image?: string;
     stock: number;
     lowStockThreshold?: number;
     isBulk?: boolean;
     yield?: number;
     tubCost?: number;
+    parentId?: string;
+    trackInventory?: boolean;
+    stockMultiplier?: number;
+    unit?: string;
     updatedAt: Date;
     isDeleted?: boolean;
     user_id?: string;
@@ -21,6 +24,7 @@ export interface OrderItem {
     name: string;
     price: number;
     quantity: number;
+    costPrice?: number;
 }
 
 export interface Order {
