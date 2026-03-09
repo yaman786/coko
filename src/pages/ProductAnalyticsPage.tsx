@@ -263,13 +263,6 @@ export function ProductAnalyticsPage() {
                                         />
                                     ))}
                                 </Bar>
-                                <Bar
-                                    name="Gross Revenue"
-                                    dataKey="revenue"
-                                    fill="#f472b6"
-                                    radius={[4, 4, 0, 0]}
-                                    opacity={0.3}
-                                />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -335,10 +328,9 @@ export function ProductAnalyticsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {products.map((product, index) => {
-                                        let marginColorBadge = 'bg-slate-100 text-slate-700';
-                                        if (product.marginPct >= 60) marginColorBadge = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-                                        else if (product.marginPct >= 30) marginColorBadge = 'bg-amber-100 text-amber-700 border-amber-200';
-                                        else if (product.marginPct > 0) marginColorBadge = 'bg-red-100 text-red-700 border-red-200';
+                                        let marginColorBadge = 'bg-slate-50 text-slate-500 border-slate-200'; // Neutral default
+                                        if (product.marginPct <= 0) marginColorBadge = 'bg-red-100 text-red-700 border-red-200 font-bold'; // Loss
+                                        else if (product.marginPct < 30) marginColorBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold'; // Warning (Low Margin)
 
                                         return (
                                             <tr key={index} className="hover:bg-slate-50/80 transition-colors group">
@@ -351,13 +343,13 @@ export function ProductAnalyticsPage() {
                                                         {product.quantity}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-slate-600">
+                                                <td className="px-6 py-4 text-right text-slate-400 font-normal">
                                                     Nrs. {product.revenue.toLocaleString()}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-slate-500">
+                                                <td className="px-6 py-4 text-right text-slate-400 font-normal">
                                                     Nrs. {product.cost.toLocaleString()}
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-semibold text-slate-900">
+                                                <td className="px-6 py-4 text-right font-black text-slate-900 text-[15px]">
                                                     Nrs. {product.profit.toLocaleString()}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
