@@ -29,6 +29,11 @@ export interface TopProduct {
     cost: number;
     profit: number;
     marginPct: number;
+    revenueDeltaPct?: number;
+    quantityDeltaPct?: number;
+    profitDeltaPct?: number;
+    category?: string;
+    parentId?: string;
 }
 
 export interface RecentOrder {
@@ -126,15 +131,27 @@ export async function getRevenueTrend(period: number | { start: Date; end: Date 
     });
 }
 
-/**
- * Top Products — now accepts a `days` parameter for period filtering.
- */
 export async function getTopProducts(limit: number = 5, period: number | { start: Date; end: Date } = 30): Promise<TopProduct[]> {
     const start = typeof period === 'number' ? startOfDay(subDays(new Date(), period - 1)) : startOfDay(period.start);
     const end = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
 
-    // Use the optimized Database RPC for aggregation
-    const rawData = await api.getProductAnalytics(start, end);
+    // Calculate previous period dates
+    const durationMs = end.getTime() - start.getTime();
+    const days = Math.round(durationMs / 86400000) + 1;
+    const prevEnd = endOfDay(subDays(start, 1));
+    const prevStart = startOfDay(subDays(start, days));
+
+    // Fetch both periods in parallel if possible, or sequentially
+    const [rawData, prevRawData] = await Promise.all([
+        api.getProductAnalytics(start, end),
+        api.getProductAnalytics(prevStart, prevEnd)
+    ]);
+
+    // Build a map of previous period data for quick lookup
+    const prevDataMap = new Map<string, any>();
+    for (const row of prevRawData) {
+        prevDataMap.set(row.product_id, row);
+    }
 
     return rawData
         .map((row: any) => {
@@ -144,6 +161,17 @@ export async function getTopProducts(limit: number = 5, period: number | { start
             const profit = revenue - cost;
             const marginPct = revenue > 0 ? (profit / revenue) * 100 : 0;
 
+            // Calculate Deltas
+            const prevRow = prevDataMap.get(row.product_id);
+            const prevRevenue = prevRow ? (Number(prevRow.net_revenue) || 0) : 0;
+            const prevQuantity = prevRow ? (Number(prevRow.quantity_sold) || 0) : 0;
+            const prevCost = prevRow ? (Number(prevRow.total_cost) || 0) : 0;
+            const prevProfit = prevRevenue - prevCost;
+
+            const revenueDeltaPct = prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : (revenue > 0 ? 100 : 0);
+            const quantityDeltaPct = prevQuantity > 0 ? ((quantity - prevQuantity) / prevQuantity) * 100 : (quantity > 0 ? 100 : 0);
+            const profitDeltaPct = prevProfit > 0 ? ((profit - prevProfit) / Math.abs(prevProfit)) * 100 : (profit > 0 ? 100 : 0); // Use absolute for previous profit to handle negative to positive swings
+
             return {
                 id: row.product_id,
                 name: row.product_name,
@@ -151,10 +179,15 @@ export async function getTopProducts(limit: number = 5, period: number | { start
                 quantity,
                 cost,
                 profit,
-                marginPct
+                marginPct,
+                revenueDeltaPct,
+                quantityDeltaPct,
+                profitDeltaPct,
+                category: row.category || 'Uncategorized',
+                parentId: row.parent_id || null
             };
         })
-        .sort((a: any, b: any) => b.revenue - a.revenue)
+        .sort((a: any, b: any) => b.profit - a.profit) // Default sort by profit to align with our new UI focus
         .slice(0, limit);
 }
 

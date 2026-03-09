@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp, ChevronRight, Layers, List } from 'lucide-react';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { getTopProducts } from '../utils/analytics';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -40,6 +40,10 @@ export function ProductAnalyticsPage() {
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     const [selectedProductForLedger, setSelectedProductForLedger] = useState<{ id: string; name: string } | null>(null);
+    const [viewMode, setViewMode] = useState<'item' | 'category'>('item');
+    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [marginFilter, setMarginFilter] = useState<'all' | 'low' | 'loss'>('all');
 
     // Date calculations
     const days = period === 'today' ? 1
@@ -69,6 +73,13 @@ export function ProductAnalyticsPage() {
         return `${format(new Date(customFrom || new Date()), 'MMM d')} - ${format(new Date(customTo || new Date()), 'MMM d, yyyy')}`;
     };
 
+    // Available categories from data
+    const availableCategories = useMemo(() => {
+        const cats = new Set<string>();
+        rawProducts.forEach(p => cats.add(p.category || 'Uncategorized'));
+        return Array.from(cats).sort();
+    }, [rawProducts]);
+
     // Filter and Sort Logic
     const products = useMemo(() => {
         let result = [...rawProducts];
@@ -76,6 +87,18 @@ export function ProductAnalyticsPage() {
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             result = result.filter(p => p.name.toLowerCase().includes(query));
+        }
+
+        // Category filter
+        if (selectedCategory !== 'all') {
+            result = result.filter(p => (p.category || 'Uncategorized') === selectedCategory);
+        }
+
+        // Margin filter
+        if (marginFilter === 'low') {
+            result = result.filter(p => p.marginPct > 0 && p.marginPct < 30);
+        } else if (marginFilter === 'loss') {
+            result = result.filter(p => p.marginPct <= 0);
         }
 
         result.sort((a, b) => {
@@ -92,7 +115,46 @@ export function ProductAnalyticsPage() {
         });
 
         return result;
-    }, [rawProducts, searchQuery, sortField, sortOrder]);
+    }, [rawProducts, searchQuery, sortField, sortOrder, selectedCategory, marginFilter]);
+
+    // Category Grouping Logic
+    interface CategoryGroup {
+        category: string;
+        items: typeof products;
+        revenue: number;
+        cost: number;
+        profit: number;
+        quantity: number;
+        marginPct: number;
+    }
+
+    const categoryGroups = useMemo((): CategoryGroup[] => {
+        const groupMap = new Map<string, typeof products>();
+        for (const p of products) {
+            const cat = p.category || 'Uncategorized';
+            if (!groupMap.has(cat)) groupMap.set(cat, []);
+            groupMap.get(cat)!.push(p);
+        }
+        return Array.from(groupMap.entries())
+            .map(([category, items]) => {
+                const revenue = items.reduce((s, i) => s + i.revenue, 0);
+                const cost = items.reduce((s, i) => s + i.cost, 0);
+                const profit = revenue - cost;
+                const quantity = items.reduce((s, i) => s + i.quantity, 0);
+                const marginPct = revenue > 0 ? (profit / revenue) * 100 : 0;
+                return { category, items, revenue, cost, profit, quantity, marginPct };
+            })
+            .sort((a, b) => b.profit - a.profit);
+    }, [products]);
+
+    const toggleCategory = (cat: string) => {
+        setExpandedCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(cat)) next.delete(cat);
+            else next.add(cat);
+            return next;
+        });
+    };
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -277,16 +339,79 @@ export function ProductAnalyticsPage() {
                         <CardDescription>Metrics for {getDateRangeLabel()}</CardDescription>
                     </div>
 
-                    <div className="relative w-full md:w-72">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                            placeholder="Search products..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-white"
-                        />
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        {/* View Mode Toggle */}
+                        <div className="flex items-center bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+                            <button
+                                onClick={() => setViewMode('item')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'item' ? 'bg-purple-100 text-purple-700' : 'text-slate-500 hover:bg-slate-50'
+                                    }`}
+                            >
+                                <List className="w-3.5 h-3.5" /> Items
+                            </button>
+                            <button
+                                onClick={() => setViewMode('category')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'category' ? 'bg-purple-100 text-purple-700' : 'text-slate-500 hover:bg-slate-50'
+                                    }`}
+                            >
+                                <Layers className="w-3.5 h-3.5" /> Categories
+                            </button>
+                        </div>
+
+                        <div className="relative flex-1 md:w-72 md:flex-none">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Search products..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 bg-white"
+                            />
+                        </div>
                     </div>
                 </CardHeader>
+
+                {/* Phase 3: Advanced Filter Bar */}
+                {!isLoading && rawProducts.length > 0 && (
+                    <div className="px-4 md:px-6 py-3 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Filter:</span>
+                        {/* Category Chips */}
+                        <button
+                            onClick={() => setSelectedCategory('all')}
+                            className={`px-2.5 py-1 text-xs rounded-full font-medium transition-colors ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                                }`}
+                        >
+                            All Categories
+                        </button>
+                        {availableCategories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat === selectedCategory ? 'all' : cat)}
+                                className={`px-2.5 py-1 text-xs rounded-full font-medium transition-colors ${selectedCategory === cat ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+
+                        <div className="w-px h-5 bg-slate-200 mx-1"></div>
+
+                        {/* Margin Threshold Filters */}
+                        <button
+                            onClick={() => setMarginFilter(marginFilter === 'low' ? 'all' : 'low')}
+                            className={`px-2.5 py-1 text-xs rounded-full font-medium transition-colors ${marginFilter === 'low' ? 'bg-amber-500 text-white' : 'bg-white text-amber-600 border border-amber-200 hover:bg-amber-50'
+                                }`}
+                        >
+                            ⚠ Low Margin (&lt;30%)
+                        </button>
+                        <button
+                            onClick={() => setMarginFilter(marginFilter === 'loss' ? 'all' : 'loss')}
+                            className={`px-2.5 py-1 text-xs rounded-full font-medium transition-colors ${marginFilter === 'loss' ? 'bg-red-500 text-white' : 'bg-white text-red-600 border border-red-200 hover:bg-red-50'
+                                }`}
+                        >
+                            🚨 Loss Makers
+                        </button>
+                    </div>
+                )}
 
                 <CardContent className="p-0">
                     <div className="overflow-x-auto min-h-[400px]">
@@ -327,48 +452,144 @@ export function ProductAnalyticsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {products.map((product, index) => {
-                                        let marginColorBadge = 'bg-slate-50 text-slate-500 border-slate-200'; // Neutral default
-                                        if (product.marginPct <= 0) marginColorBadge = 'bg-red-100 text-red-700 border-red-200 font-bold'; // Loss
-                                        else if (product.marginPct < 30) marginColorBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold'; // Warning (Low Margin)
+                                    {viewMode === 'item' ? (
+                                        <>
+                                            {products.map((product, index, arr) => {
+                                                let marginColorBadge = 'bg-slate-50 text-slate-500 border-slate-200';
+                                                if (product.marginPct <= 0) marginColorBadge = 'bg-red-100 text-red-700 border-red-200 font-bold';
+                                                else if (product.marginPct < 30) marginColorBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
 
-                                        return (
-                                            <tr key={index} className="hover:bg-slate-50/80 transition-colors group">
-                                                <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
-                                                    <div className="w-8 flex-none text-xs text-slate-400">#{index + 1}</div>
-                                                    {product.name}
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className="inline-flex items-center justify-center min-w-[2rem] h-6 rounded-full bg-slate-100 text-slate-800 font-semibold px-2">
-                                                        {product.quantity}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-slate-400 font-normal">
-                                                    Nrs. {product.revenue.toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-slate-400 font-normal">
-                                                    Nrs. {product.cost.toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-black text-slate-900 text-[15px]">
-                                                    Nrs. {product.profit.toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <Badge variant="outline" className={`${marginColorBadge} font-mono shadow-sm`}>
-                                                        {product.marginPct.toFixed(1)}%
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <button
-                                                        onClick={() => setSelectedProductForLedger({ id: product.id, name: product.name })}
-                                                        className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
-                                                    >
-                                                        <History className="w-3.5 h-3.5" />
-                                                        History
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                                const maxProfit = arr.length > 0 ? Math.max(...arr.map(p => p.profit)) : 1;
+                                                const profitPacing = maxProfit > 0 ? (Math.max(0, product.profit) / maxProfit) * 100 : 0;
+
+                                                const renderDelta = (deltaPct?: number) => {
+                                                    if (deltaPct === undefined || deltaPct === 0) return null;
+                                                    const isPositive = deltaPct > 0;
+                                                    return (
+                                                        <span className={`text-[10px] ml-2 px-1.5 py-0.5 rounded-md font-medium inline-block ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                                            {isPositive ? '↑' : '↓'} {Math.abs(deltaPct).toFixed(1)}%
+                                                        </span>
+                                                    );
+                                                };
+
+                                                return (
+                                                    <tr key={index} className="hover:bg-slate-50/80 transition-colors group relative">
+                                                        <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
+                                                            <div className="w-8 flex-none text-xs text-slate-400">#{index + 1}</div>
+                                                            {product.name}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <span className="inline-flex items-center justify-center min-w-[2rem] h-6 rounded-full bg-slate-100 text-slate-800 font-semibold px-2">
+                                                                {product.quantity}
+                                                            </span>
+                                                            {renderDelta(product.quantityDeltaPct)}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right text-slate-400 font-normal">
+                                                            Nrs. {product.revenue.toLocaleString()}
+                                                            {renderDelta(product.revenueDeltaPct)}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right text-slate-400 font-normal">
+                                                            Nrs. {product.cost.toLocaleString()}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right font-black text-slate-900 text-[15px] relative overflow-hidden">
+                                                            <div className="flex justify-end items-center relative z-10 w-full">
+                                                                <span>Nrs. {product.profit.toLocaleString()}</span>
+                                                                {renderDelta(product.profitDeltaPct)}
+                                                            </div>
+                                                            <div
+                                                                className="absolute top-1 right-1 bottom-1 bg-purple-100 rounded-md z-0 transition-all duration-500"
+                                                                style={{ width: `calc(${Math.max(0, profitPacing)}% - 8px)`, opacity: 0.6 }}
+                                                            />
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <Badge variant="outline" className={`${marginColorBadge} font-mono shadow-sm`}>
+                                                                {product.marginPct.toFixed(1)}%
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <button
+                                                                onClick={() => setSelectedProductForLedger({ id: product.id, name: product.name })}
+                                                                className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
+                                                            >
+                                                                <History className="w-3.5 h-3.5" />
+                                                                History
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {categoryGroups.map((group) => {
+                                                const isExpanded = expandedCategories.has(group.category);
+                                                let catMarginBadge = 'bg-slate-50 text-slate-500 border-slate-200';
+                                                if (group.marginPct <= 0) catMarginBadge = 'bg-red-100 text-red-700 border-red-200 font-bold';
+                                                else if (group.marginPct < 30) catMarginBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
+
+                                                return (
+                                                    <React.Fragment key={group.category}>
+                                                        {/* Category Header Row */}
+                                                        <tr
+                                                            className="bg-purple-50/60 hover:bg-purple-50 cursor-pointer transition-colors border-b border-purple-100"
+                                                            onClick={() => toggleCategory(group.category)}
+                                                        >
+                                                            <td className="px-6 py-4 font-bold text-purple-900 flex items-center gap-2">
+                                                                <ChevronRight className={`w-4 h-4 text-purple-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                                                                <Layers className="w-4 h-4 text-purple-400" />
+                                                                {group.category}
+                                                                <span className="text-xs text-purple-400 font-normal ml-1">({group.items.length} items)</span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right font-bold text-purple-800">{group.quantity}</td>
+                                                            <td className="px-6 py-4 text-right font-semibold text-purple-700">Nrs. {group.revenue.toLocaleString()}</td>
+                                                            <td className="px-6 py-4 text-right text-purple-600">Nrs. {group.cost.toLocaleString()}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-purple-900 text-[15px]">Nrs. {group.profit.toLocaleString()}</td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <Badge variant="outline" className={`${catMarginBadge} font-mono shadow-sm`}>
+                                                                    {group.marginPct.toFixed(1)}%
+                                                                </Badge>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right"></td>
+                                                        </tr>
+                                                        {/* Expanded Child Rows */}
+                                                        {isExpanded && group.items.map((product, idx) => {
+                                                            let marginColorBadge = 'bg-slate-50 text-slate-500 border-slate-200';
+                                                            if (product.marginPct <= 0) marginColorBadge = 'bg-red-100 text-red-700 border-red-200 font-bold';
+                                                            else if (product.marginPct < 30) marginColorBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
+
+                                                            return (
+                                                                <tr key={`${group.category}-${idx}`} className="bg-white hover:bg-slate-50/60 transition-colors border-b border-slate-50">
+                                                                    <td className="px-6 py-3 font-medium text-slate-700 flex items-center gap-3">
+                                                                        <div className="w-8 flex-none"></div>
+                                                                        <div className="w-4 flex-none border-l-2 border-purple-200 h-4"></div>
+                                                                        {product.name}
+                                                                    </td>
+                                                                    <td className="px-6 py-3 text-right text-slate-600">{product.quantity}</td>
+                                                                    <td className="px-6 py-3 text-right text-slate-400">Nrs. {product.revenue.toLocaleString()}</td>
+                                                                    <td className="px-6 py-3 text-right text-slate-400">Nrs. {product.cost.toLocaleString()}</td>
+                                                                    <td className="px-6 py-3 text-right font-semibold text-slate-800">Nrs. {product.profit.toLocaleString()}</td>
+                                                                    <td className="px-6 py-3 text-right">
+                                                                        <Badge variant="outline" className={`${marginColorBadge} font-mono shadow-sm text-[11px]`}>
+                                                                            {product.marginPct.toFixed(1)}%
+                                                                        </Badge>
+                                                                    </td>
+                                                                    <td className="px-6 py-3 text-right">
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); setSelectedProductForLedger({ id: product.id, name: product.name }); }}
+                                                                            className="inline-flex items-center justify-center gap-1 px-2 py-1 text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md transition-colors"
+                                                                        >
+                                                                            <History className="w-3 h-3" />
+                                                                            History
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </>
+                                    )}
 
                                     {/* Grand Totals Footer */}
                                     <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
