@@ -174,7 +174,7 @@ export async function getTopProducts(limit: number = 5, period: number | { start
 
             const revenueDeltaPct = prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : (revenue > 0 ? 100 : 0);
             const quantityDeltaPct = prevQuantity > 0 ? ((quantity - prevQuantity) / prevQuantity) * 100 : (quantity > 0 ? 100 : 0);
-            const profitDeltaPct = prevProfit > 0 ? ((profit - prevProfit) / Math.abs(prevProfit)) * 100 : (profit > 0 ? 100 : 0); // Use absolute for previous profit to handle negative to positive swings
+            const profitDeltaPct = prevProfit !== 0 ? ((profit - prevProfit) / Math.abs(prevProfit)) * 100 : (profit > 0 ? 100 : 0); // Handle loss to profit swings
 
             return {
                 id: row.product_id,

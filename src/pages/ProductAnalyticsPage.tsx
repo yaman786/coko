@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp, ChevronRight, Layers, List, AlertTriangle } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp, ChevronRight, Layers, List, AlertTriangle, Flame, AlertCircle, TrendingDown, CheckCircle2 } from 'lucide-react';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { getTopProducts } from '../utils/analytics';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -205,6 +205,14 @@ export function ProductAnalyticsPage() {
     const SortIcon = ({ field }: { field: SortField }) => {
         if (sortField !== field) return null;
         return sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />;
+    };
+
+    const getInsightTag = (p: { marginPct: number, quantityDeltaPct?: number }, isTopEarner: boolean) => {
+        if (p.marginPct < 0) return { label: 'Loss Maker', color: 'bg-red-100 text-red-700 border-red-200', icon: AlertCircle };
+        if (p.marginPct > 50 && (p.quantityDeltaPct || 0) > 20) return { label: 'Hot Seller', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: Flame };
+        if (isTopEarner) return { label: 'Cash Cow', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle2 };
+        if ((p.quantityDeltaPct || 0) < -10) return { label: 'Slipping', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: TrendingDown };
+        return { label: 'Stable', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: null };
     };
 
     return (
@@ -439,28 +447,25 @@ export function ProductAnalyticsPage() {
                                 <p>No performance data found for this period.</p>
                             </div>
                         ) : (
-                            <table className="w-full text-sm text-left whitespace-nowrap">
+                            <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-slate-500 uppercase bg-slate-50/80 border-b border-slate-200 sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-6 py-4 font-bold tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
+                                        <th className="px-4 py-4 font-bold tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
                                             <div className="flex items-center gap-1">Product <SortIcon field="name" /></div>
                                         </th>
-                                        <th className="px-6 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('quantity')}>
+                                        <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('quantity')}>
                                             <div className="flex items-center justify-end gap-1"><SortIcon field="quantity" /> Qty Sold</div>
                                         </th>
-                                        <th className="px-6 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('revenue')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="revenue" /> Gross Rev</div>
+                                        <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('revenue')}>
+                                            <div className="flex items-center justify-end gap-1"><SortIcon field="revenue" /> Financials</div>
                                         </th>
-                                        <th className="px-6 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('cost')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="cost" /> Total Cost</div>
-                                        </th>
-                                        <th className="px-6 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('profit')}>
+                                        <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('profit')}>
                                             <div className="flex items-center justify-end gap-1"><SortIcon field="profit" /> Gross Profit</div>
                                         </th>
-                                        <th className="px-6 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('marginPct')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="marginPct" /> Margin %</div>
+                                        <th className="px-4 py-4 font-bold tracking-wider text-left cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('marginPct')}>
+                                            <div className="flex items-center gap-1"><SortIcon field="marginPct" /> Insight</div>
                                         </th>
-                                        <th className="px-6 py-4 font-bold tracking-wider text-right">
+                                        <th className="px-4 py-4 font-bold tracking-wider text-right">
                                             Actions
                                         </th>
                                     </tr>
@@ -469,58 +474,64 @@ export function ProductAnalyticsPage() {
                                     {viewMode === 'item' ? (
                                         <>
                                             {products.map((product, index, arr) => {
-                                                let marginColorBadge = 'bg-slate-50 text-slate-500 border-slate-200';
-                                                if (product.marginPct <= 0) marginColorBadge = 'bg-red-100 text-red-700 border-red-200 font-bold';
-                                                else if (product.marginPct < 30) marginColorBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
-
                                                 const maxProfit = arr.length > 0 ? Math.max(...arr.map(p => p.profit)) : 1;
                                                 const profitPacing = maxProfit > 0 ? (Math.max(0, product.profit) / maxProfit) * 100 : 0;
+
+                                                // Identify top 20% earners for Cash Cow
+                                                const topEarnersCount = Math.max(1, Math.ceil(arr.length * 0.2));
+                                                const isTopEarner = index < topEarnersCount;
+                                                const insight = getInsightTag(product, isTopEarner);
+                                                const InsightIcon = insight.icon;
 
                                                 const renderDelta = (deltaPct?: number) => {
                                                     if (deltaPct === undefined || deltaPct === 0) return null;
                                                     const isPositive = deltaPct > 0;
                                                     return (
-                                                        <span className={`text-[10px] ml-2 px-1.5 py-0.5 rounded-md font-medium inline-block ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                                        <div className={`text-[10px] mt-1 px-1.5 py-0.5 rounded-md font-medium inline-block flex-shrink-0 whitespace-nowrap ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                                             {isPositive ? '↑' : '↓'} {Math.abs(deltaPct).toFixed(1)}%
-                                                        </span>
+                                                        </div>
                                                     );
                                                 };
 
                                                 return (
                                                     <tr key={index} className="hover:bg-slate-50/80 transition-colors group relative">
-                                                        <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
-                                                            <div className="w-8 flex-none text-xs text-slate-400">#{index + 1}</div>
-                                                            {product.name}
+                                                        <td className="px-4 py-3 font-medium text-slate-900 w-1/4">
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="w-6 flex-none text-xs text-slate-400 mt-0.5">#{index + 1}</span>
+                                                                <span className="whitespace-normal leading-tight">{product.name}</span>
+                                                            </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <span className="inline-flex items-center justify-center min-w-[2rem] h-6 rounded-full bg-slate-100 text-slate-800 font-semibold px-2">
+                                                        <td className="px-4 py-3 text-right align-top">
+                                                            <div className="inline-flex items-center justify-center min-w-[2rem] h-6 rounded-full bg-slate-100 text-slate-800 font-semibold px-2">
                                                                 {product.quantity}
-                                                            </span>
-                                                            {renderDelta(product.quantityDeltaPct)}
+                                                            </div>
+                                                            <div>{renderDelta(product.quantityDeltaPct)}</div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right text-slate-400 font-normal">
-                                                            Nrs. {product.revenue.toLocaleString()}
-                                                            {renderDelta(product.revenueDeltaPct)}
+                                                        <td className="px-4 py-3 text-right align-top">
+                                                            <div className="font-semibold text-slate-700">Nrs. {product.revenue.toLocaleString()}</div>
+                                                            <div className="text-xs text-slate-400 mt-0.5">Cost: Nrs. {product.cost.toLocaleString()}</div>
+                                                            <div>{renderDelta(product.revenueDeltaPct)}</div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right text-slate-400 font-normal">
-                                                            Nrs. {product.cost.toLocaleString()}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right font-black text-slate-900 text-[15px] relative overflow-hidden">
-                                                            <div className="flex justify-end items-center relative z-10 w-full">
-                                                                <span>Nrs. {product.profit.toLocaleString()}</span>
-                                                                {renderDelta(product.profitDeltaPct)}
+                                                        <td className="px-4 py-3 text-right align-top relative overflow-hidden">
+                                                            <div className="flex flex-col justify-end items-end relative z-10 w-full mb-1">
+                                                                <span className="font-black text-slate-900 text-[15px]">Nrs. {product.profit.toLocaleString()}</span>
+                                                                <div>{renderDelta(product.profitDeltaPct)}</div>
                                                             </div>
                                                             <div
                                                                 className="absolute top-1 right-1 bottom-1 bg-purple-100 rounded-md z-0 transition-all duration-500"
                                                                 style={{ width: `calc(${Math.max(0, profitPacing)}% - 8px)`, opacity: 0.6 }}
                                                             />
                                                         </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <Badge variant="outline" className={`${marginColorBadge} font-mono shadow-sm`}>
-                                                                {product.marginPct.toFixed(1)}%
-                                                            </Badge>
+                                                        <td className="px-4 py-3 text-left align-top">
+                                                            <div className="flex flex-col items-start gap-1">
+                                                                <span className="text-xs font-mono font-semibold text-slate-600">{product.marginPct.toFixed(1)}% Margin</span>
+                                                                <Badge variant="outline" className={`${insight.color} shadow-sm border text-[10px] px-1.5 py-0 flex items-center gap-1 whitespace-nowrap`}>
+                                                                    {InsightIcon && <InsightIcon className="w-3 h-3" />}
+                                                                    {insight.label}
+                                                                </Badge>
+                                                            </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right">
+                                                        <td className="px-4 py-3 text-right align-top">
                                                             <button
                                                                 onClick={() => setSelectedProductForLedger({ id: product.id, name: product.name })}
                                                                 className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
@@ -535,11 +546,12 @@ export function ProductAnalyticsPage() {
                                         </>
                                     ) : (
                                         <>
-                                            {categoryGroups.map((group) => {
+                                            {categoryGroups.map((group, groupIdx) => {
                                                 const isExpanded = expandedCategories.has(group.category);
-                                                let catMarginBadge = 'bg-slate-50 text-slate-500 border-slate-200';
-                                                if (group.marginPct <= 0) catMarginBadge = 'bg-red-100 text-red-700 border-red-200 font-bold';
-                                                else if (group.marginPct < 30) catMarginBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
+                                                const topEarnersCount = Math.max(1, Math.ceil(categoryGroups.length * 0.2));
+                                                const isTopEarner = groupIdx < topEarnersCount;
+                                                const insight = getInsightTag({ marginPct: group.marginPct, quantityDeltaPct: 0 }, isTopEarner); // Simplified for group
+                                                const InsightIcon = insight.icon;
 
                                                 return (
                                                     <React.Fragment key={group.category}>
@@ -548,46 +560,62 @@ export function ProductAnalyticsPage() {
                                                             className="bg-purple-50/60 hover:bg-purple-50 cursor-pointer transition-colors border-b border-purple-100"
                                                             onClick={() => toggleCategory(group.category)}
                                                         >
-                                                            <td className="px-6 py-4 font-bold text-purple-900 flex items-center gap-2">
-                                                                <ChevronRight className={`w-4 h-4 text-purple-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
-                                                                <Layers className="w-4 h-4 text-purple-400" />
-                                                                {group.category}
-                                                                <span className="text-xs text-purple-400 font-normal ml-1">({group.items.length} items)</span>
+                                                            <td className="px-4 py-4 font-bold text-purple-900 w-1/4">
+                                                                <div className="flex items-start gap-2">
+                                                                    <ChevronRight className={`w-4 h-4 text-purple-500 transition-transform duration-200 shrink-0 mt-0.5 ${isExpanded ? 'rotate-90' : ''}`} />
+                                                                    <Layers className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                                                                    <span className="whitespace-normal leading-tight">{group.category}</span>
+                                                                    <span className="text-xs text-purple-400 font-normal ml-1 shrink-0">({group.items.length})</span>
+                                                                </div>
                                                             </td>
-                                                            <td className="px-6 py-4 text-right font-bold text-purple-800">{group.quantity}</td>
-                                                            <td className="px-6 py-4 text-right font-semibold text-purple-700">Nrs. {group.revenue.toLocaleString()}</td>
-                                                            <td className="px-6 py-4 text-right text-purple-600">Nrs. {group.cost.toLocaleString()}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-purple-900 text-[15px]">Nrs. {group.profit.toLocaleString()}</td>
-                                                            <td className="px-6 py-4 text-right">
-                                                                <Badge variant="outline" className={`${catMarginBadge} font-mono shadow-sm`}>
-                                                                    {group.marginPct.toFixed(1)}%
-                                                                </Badge>
+                                                            <td className="px-4 py-4 text-right font-bold text-purple-800 align-top">{group.quantity}</td>
+                                                            <td className="px-4 py-4 text-right align-top">
+                                                                <div className="font-semibold text-purple-700">Nrs. {group.revenue.toLocaleString()}</div>
+                                                                <div className="text-xs text-purple-500 mt-0.5">Cost: Nrs. {group.cost.toLocaleString()}</div>
                                                             </td>
-                                                            <td className="px-6 py-4 text-right"></td>
+                                                            <td className="px-4 py-4 text-right font-black text-purple-900 text-[15px] align-top">Nrs. {group.profit.toLocaleString()}</td>
+                                                            <td className="px-4 py-4 text-left align-top">
+                                                                <div className="flex flex-col items-start gap-1">
+                                                                    <span className="text-xs font-mono font-semibold text-purple-700">{group.marginPct.toFixed(1)}% Margin</span>
+                                                                    <Badge variant="outline" className={`${insight.color} shadow-sm border text-[10px] px-1.5 py-0 flex items-center gap-1 whitespace-nowrap`}>
+                                                                        {InsightIcon && <InsightIcon className="w-3 h-3" />}
+                                                                        {insight.label}
+                                                                    </Badge>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right"></td>
                                                         </tr>
                                                         {/* Expanded Child Rows */}
                                                         {isExpanded && group.items.map((product, idx) => {
-                                                            let marginColorBadge = 'bg-slate-50 text-slate-500 border-slate-200';
-                                                            if (product.marginPct <= 0) marginColorBadge = 'bg-red-100 text-red-700 border-red-200 font-bold';
-                                                            else if (product.marginPct < 30) marginColorBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
+                                                            const pTopEarnersCount = Math.max(1, Math.ceil(group.items.length * 0.2));
+                                                            const pIsTopEarner = idx < pTopEarnersCount;
+                                                            const pInsight = getInsightTag(product, pIsTopEarner);
+                                                            const PInsightIcon = pInsight.icon;
 
                                                             return (
                                                                 <tr key={`${group.category}-${idx}`} className="bg-white hover:bg-slate-50/60 transition-colors border-b border-slate-50">
-                                                                    <td className="px-6 py-3 font-medium text-slate-700 flex items-center gap-3">
-                                                                        <div className="w-8 flex-none"></div>
-                                                                        <div className="w-4 flex-none border-l-2 border-purple-200 h-4"></div>
-                                                                        {product.name}
+                                                                    <td className="px-4 py-3 font-medium text-slate-700 w-1/4">
+                                                                        <div className="flex items-start gap-2 pl-3">
+                                                                            <div className="w-4 flex-none border-l-2 border-purple-200 h-4 mt-1"></div>
+                                                                            <span className="whitespace-normal leading-tight">{product.name}</span>
+                                                                        </div>
                                                                     </td>
-                                                                    <td className="px-6 py-3 text-right text-slate-600">{product.quantity}</td>
-                                                                    <td className="px-6 py-3 text-right text-slate-400">Nrs. {product.revenue.toLocaleString()}</td>
-                                                                    <td className="px-6 py-3 text-right text-slate-400">Nrs. {product.cost.toLocaleString()}</td>
-                                                                    <td className="px-6 py-3 text-right font-semibold text-slate-800">Nrs. {product.profit.toLocaleString()}</td>
-                                                                    <td className="px-6 py-3 text-right">
-                                                                        <Badge variant="outline" className={`${marginColorBadge} font-mono shadow-sm text-[11px]`}>
-                                                                            {product.marginPct.toFixed(1)}%
-                                                                        </Badge>
+                                                                    <td className="px-4 py-3 text-right text-slate-600 align-top">{product.quantity}</td>
+                                                                    <td className="px-4 py-3 text-right align-top">
+                                                                        <div className="text-slate-700">Nrs. {product.revenue.toLocaleString()}</div>
+                                                                        <div className="text-xs text-slate-400 mt-0.5">Cost: Nrs. {product.cost.toLocaleString()}</div>
                                                                     </td>
-                                                                    <td className="px-6 py-3 text-right">
+                                                                    <td className="px-4 py-3 text-right font-semibold text-slate-800 align-top">Nrs. {product.profit.toLocaleString()}</td>
+                                                                    <td className="px-4 py-3 text-left align-top">
+                                                                        <div className="flex flex-col items-start gap-1">
+                                                                            <span className="text-xs font-mono text-slate-500">{product.marginPct.toFixed(1)}% Margin</span>
+                                                                            <Badge variant="outline" className={`${pInsight.color} shadow-sm border text-[10px] px-1.5 py-0 flex items-center gap-1 whitespace-nowrap`}>
+                                                                                {PInsightIcon && <PInsightIcon className="w-3 h-3" />}
+                                                                                {pInsight.label}
+                                                                            </Badge>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right align-top">
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); setSelectedProductForLedger({ id: product.id, name: product.name }); }}
                                                                             className="inline-flex items-center justify-center gap-1 px-2 py-1 text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md transition-colors"
@@ -607,23 +635,21 @@ export function ProductAnalyticsPage() {
 
                                     {/* Grand Totals Footer */}
                                     <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
-                                        <td className="px-6 py-4 text-slate-800">Grand Total</td>
-                                        <td className="px-6 py-4 text-right text-slate-800">
+                                        <td className="px-4 py-4 text-slate-800">Grand Total</td>
+                                        <td className="px-4 py-4 text-right text-slate-800 align-top">
                                             {products.reduce((acc, p) => acc + p.quantity, 0).toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right text-slate-800">
-                                            Nrs. {products.reduce((acc, p) => acc + p.revenue, 0).toLocaleString()}
+                                        <td className="px-4 py-4 text-right align-top">
+                                            <div className="text-slate-800">Nrs. {products.reduce((acc, p) => acc + p.revenue, 0).toLocaleString()}</div>
+                                            <div className="text-xs text-slate-500 mt-0.5">Cost: Nrs. {products.reduce((acc, p) => acc + p.cost, 0).toLocaleString()}</div>
                                         </td>
-                                        <td className="px-6 py-4 text-right text-slate-800">
-                                            Nrs. {products.reduce((acc, p) => acc + p.cost, 0).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-slate-800">
+                                        <td className="px-4 py-4 text-right text-slate-800 align-top">
                                             Nrs. {products.reduce((acc, p) => acc + p.profit, 0).toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right text-slate-800">
+                                        <td className="px-4 py-4 text-slate-800 align-top">
                                             -
                                         </td>
-                                        <td className="px-6 py-4 text-right text-slate-800">
+                                        <td className="px-4 py-4 text-right text-slate-800">
                                         </td>
                                     </tr>
                                 </tbody>
