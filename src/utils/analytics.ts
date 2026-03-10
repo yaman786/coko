@@ -34,6 +34,7 @@ export interface TopProduct {
     profitDeltaPct?: number;
     category?: string;
     parentId?: string;
+    discounts?: number;
 }
 
 export interface RecentOrder {
@@ -162,6 +163,7 @@ export async function getTopProducts(limit: number = 5, period: number | { start
             const revenue = Number(row.net_revenue) || 0;
             const cost = Number(row.total_cost) || 0;
             const quantity = Number(row.quantity_sold) || 0;
+            const discounts = Number(row.total_discounts) || 0;
             const profit = revenue - cost;
             const marginPct = revenue > 0 ? (profit / revenue) * 100 : 0;
 
@@ -188,7 +190,8 @@ export async function getTopProducts(limit: number = 5, period: number | { start
                 quantityDeltaPct,
                 profitDeltaPct,
                 category: row.category || 'Uncategorized',
-                parentId: row.parent_id || null
+                parentId: row.parent_id || null,
+                discounts
             };
         })
         .sort((a: any, b: any) => b.profit - a.profit) // Default sort by profit to align with our new UI focus

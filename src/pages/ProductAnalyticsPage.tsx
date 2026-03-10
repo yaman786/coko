@@ -126,6 +126,7 @@ export function ProductAnalyticsPage() {
         profit: number;
         quantity: number;
         marginPct: number;
+        discounts: number;
     }
 
     const categoryGroups = useMemo((): CategoryGroup[] => {
@@ -141,8 +142,9 @@ export function ProductAnalyticsPage() {
                 const cost = items.reduce((s, i) => s + i.cost, 0);
                 const profit = revenue - cost;
                 const quantity = items.reduce((s, i) => s + i.quantity, 0);
+                const discounts = items.reduce((s, i) => s + (i.discounts || 0), 0);
                 const marginPct = revenue > 0 ? (profit / revenue) * 100 : 0;
-                return { category, items, revenue, cost, profit, quantity, marginPct };
+                return { category, items, revenue, cost, profit, quantity, marginPct, discounts };
             })
             .sort((a, b) => b.profit - a.profit);
     }, [products]);
@@ -181,19 +183,24 @@ export function ProductAnalyticsPage() {
         doc.text(`Period: ${getDateRangeLabel()}`, 14, 30);
         doc.text(`Generated: ${format(new Date(), 'PPpp')}`, 14, 36);
 
-        const tableData = products.map((p, index) => [
-            index + 1,
-            p.name,
-            p.quantity.toString(),
-            `Nrs. ${p.revenue.toLocaleString()}`,
-            `Nrs. ${p.cost.toLocaleString()}`,
-            `Nrs. ${p.profit.toLocaleString()}`,
-            `${p.marginPct.toFixed(1)}%`
-        ]);
+        const tableData = products.map((p, index) => {
+            const asp = p.quantity > 0 ? p.revenue / p.quantity : 0;
+            return [
+                index + 1,
+                p.name,
+                p.quantity.toString(),
+                `Nrs. ${asp.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                `Nrs. ${p.revenue.toLocaleString()}`,
+                `Nrs. ${(p.discounts || 0).toLocaleString()}`,
+                `Nrs. ${p.cost.toLocaleString()}`,
+                `Nrs. ${p.profit.toLocaleString()}`,
+                `${p.marginPct.toFixed(1)}%`
+            ]
+        });
 
         autoTable(doc, {
             startY: 45,
-            head: [['#', 'Product', 'Sold', 'Gross Rev', 'Total Cost', 'Gross Profit', 'Margin']],
+            head: [['#', 'Product', 'Sold', 'ASP', 'Gross Rev', 'Discounts', 'Total Cost', 'Gross Profit', 'Margin']],
             body: tableData,
             styles: { fontSize: 9 },
             headStyles: { fillColor: [147, 51, 234] }, // purple-600
@@ -456,11 +463,14 @@ export function ProductAnalyticsPage() {
                                         <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('quantity')}>
                                             <div className="flex items-center justify-end gap-1"><SortIcon field="quantity" /> Qty Sold</div>
                                         </th>
-                                        <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('revenue')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="revenue" /> Financials</div>
+                                        <th className="px-4 py-4 font-bold tracking-wider text-right" title="Average Selling Price">ASP</th>
+                                        <th className="px-4 py-4 font-bold text-emerald-600 tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('revenue')}>
+                                            <div className="flex items-center justify-end gap-1"><SortIcon field="revenue" /> Gross Rev</div>
                                         </th>
+                                        <th className="px-4 py-4 font-bold text-red-500 tracking-wider text-right">Given Away</th>
+                                        <th className="px-4 py-4 font-bold tracking-wider text-right">COGS</th>
                                         <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('profit')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="profit" /> Gross Profit</div>
+                                            <div className="flex items-center justify-end gap-1"><SortIcon field="profit" /> Net Profit</div>
                                         </th>
                                         <th className="px-4 py-4 font-bold tracking-wider text-left cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('marginPct')}>
                                             <div className="flex items-center gap-1"><SortIcon field="marginPct" /> Insight</div>
@@ -493,6 +503,9 @@ export function ProductAnalyticsPage() {
                                                     );
                                                 };
 
+                                                const asp = product.quantity > 0 ? product.revenue / product.quantity : 0;
+                                                const discounts = product.discounts || 0;
+
                                                 return (
                                                     <tr key={index} className="hover:bg-slate-50/80 transition-colors group relative">
                                                         <td className="px-4 py-3 font-medium text-slate-900 w-1/4">
@@ -507,10 +520,18 @@ export function ProductAnalyticsPage() {
                                                             </div>
                                                             <div>{renderDelta(product.quantityDeltaPct)}</div>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right align-top">
-                                                            <div className="font-semibold text-slate-700">Nrs. {product.revenue.toLocaleString()}</div>
-                                                            <div className="text-xs text-slate-400 mt-0.5">Cost: Nrs. {product.cost.toLocaleString()}</div>
+                                                        <td className="px-4 py-3 text-right font-medium text-slate-600 align-top">
+                                                            {asp > 0 ? `Nrs. ${asp.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right align-top font-bold text-slate-800">
+                                                            Nrs. {product.revenue.toLocaleString()}
                                                             <div>{renderDelta(product.revenueDeltaPct)}</div>
+                                                        </td>
+                                                        <td className={`px-4 py-3 text-right align-top font-medium ${discounts > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                                                            {discounts > 0 ? `Nrs. ${discounts.toLocaleString()}` : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right align-top text-slate-600">
+                                                            Nrs. {product.cost.toLocaleString()}
                                                         </td>
                                                         <td className="px-4 py-3 text-right align-top relative overflow-hidden">
                                                             <div className="flex flex-col justify-end items-end relative z-10 w-full mb-1">
@@ -553,6 +574,7 @@ export function ProductAnalyticsPage() {
                                                 const insight = getInsightTag({ marginPct: group.marginPct, quantityDeltaPct: 0 }, isTopEarner); // Simplified for group
                                                 const InsightIcon = insight.icon;
 
+                                                const groupAsp = group.quantity > 0 ? group.revenue / group.quantity : 0;
                                                 return (
                                                     <React.Fragment key={group.category}>
                                                         {/* Category Header Row */}
@@ -569,9 +591,17 @@ export function ProductAnalyticsPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-4 text-right font-bold text-purple-800 align-top">{group.quantity}</td>
-                                                            <td className="px-4 py-4 text-right align-top">
-                                                                <div className="font-semibold text-purple-700">Nrs. {group.revenue.toLocaleString()}</div>
-                                                                <div className="text-xs text-purple-500 mt-0.5">Cost: Nrs. {group.cost.toLocaleString()}</div>
+                                                            <td className="px-4 py-4 text-right align-top font-medium text-purple-600">
+                                                                Nrs. {groupAsp.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right align-top font-bold text-purple-800">
+                                                                Nrs. {group.revenue.toLocaleString()}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right align-top font-bold text-red-500">
+                                                                {group.discounts > 0 ? `Nrs. ${group.discounts.toLocaleString()}` : '-'}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right align-top text-purple-500">
+                                                                Nrs. {group.cost.toLocaleString()}
                                                             </td>
                                                             <td className="px-4 py-4 text-right font-black text-purple-900 text-[15px] align-top">Nrs. {group.profit.toLocaleString()}</td>
                                                             <td className="px-4 py-4 text-left align-top">
@@ -592,6 +622,7 @@ export function ProductAnalyticsPage() {
                                                             const pInsight = getInsightTag(product, pIsTopEarner);
                                                             const PInsightIcon = pInsight.icon;
 
+                                                            const pAsp = product.quantity > 0 ? product.revenue / product.quantity : 0;
                                                             return (
                                                                 <tr key={`${group.category}-${idx}`} className="bg-white hover:bg-slate-50/60 transition-colors border-b border-slate-50">
                                                                     <td className="px-4 py-3 font-medium text-slate-700 w-1/4">
@@ -601,9 +632,17 @@ export function ProductAnalyticsPage() {
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-4 py-3 text-right text-slate-600 align-top">{product.quantity}</td>
-                                                                    <td className="px-4 py-3 text-right align-top">
-                                                                        <div className="text-slate-700">Nrs. {product.revenue.toLocaleString()}</div>
-                                                                        <div className="text-xs text-slate-400 mt-0.5">Cost: Nrs. {product.cost.toLocaleString()}</div>
+                                                                    <td className="px-4 py-3 text-right align-top text-slate-500">
+                                                                        {pAsp > 0 ? `Nrs. ${pAsp.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right align-top font-medium text-slate-700">
+                                                                        Nrs. {product.revenue.toLocaleString()}
+                                                                    </td>
+                                                                    <td className={`px-4 py-3 text-right align-top font-medium ${product.discounts && product.discounts > 0 ? 'text-red-400' : 'text-slate-300'}`}>
+                                                                        {product.discounts && product.discounts > 0 ? `Nrs. ${product.discounts.toLocaleString()}` : '-'}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right align-top text-slate-500">
+                                                                        Nrs. {product.cost.toLocaleString()}
                                                                     </td>
                                                                     <td className="px-4 py-3 text-right font-semibold text-slate-800 align-top">Nrs. {product.profit.toLocaleString()}</td>
                                                                     <td className="px-4 py-3 text-left align-top">
@@ -639,18 +678,27 @@ export function ProductAnalyticsPage() {
                                         <td className="px-4 py-4 text-right text-slate-800 align-top">
                                             {products.reduce((acc, p) => acc + p.quantity, 0).toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-4 text-right align-top">
-                                            <div className="text-slate-800">Nrs. {products.reduce((acc, p) => acc + p.revenue, 0).toLocaleString()}</div>
-                                            <div className="text-xs text-slate-500 mt-0.5">Cost: Nrs. {products.reduce((acc, p) => acc + p.cost, 0).toLocaleString()}</div>
+                                        <td className="px-4 py-4 text-right text-slate-600 align-top">
+                                            {(() => {
+                                                const totalQ = products.reduce((acc, p) => acc + p.quantity, 0);
+                                                const totalR = products.reduce((acc, p) => acc + p.revenue, 0);
+                                                return totalQ > 0 ? `Nrs. ${(totalR / totalQ).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-';
+                                            })()}
                                         </td>
                                         <td className="px-4 py-4 text-right text-slate-800 align-top">
+                                            Nrs. {products.reduce((acc, p) => acc + p.revenue, 0).toLocaleString()}
+                                        </td>
+                                        <td className="px-4 py-4 text-right text-red-600 align-top">
+                                            Nrs. {products.reduce((acc, p) => acc + (p.discounts || 0), 0).toLocaleString()}
+                                        </td>
+                                        <td className="px-4 py-4 text-right text-slate-600 align-top">
+                                            Nrs. {products.reduce((acc, p) => acc + p.cost, 0).toLocaleString()}
+                                        </td>
+                                        <td className="px-4 py-4 text-right text-slate-900 align-top">
                                             Nrs. {products.reduce((acc, p) => acc + p.profit, 0).toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-4 text-slate-800 align-top">
-                                            -
-                                        </td>
-                                        <td className="px-4 py-4 text-right text-slate-800">
-                                        </td>
+                                        <td className="px-4 py-4"></td>
+                                        <td className="px-4 py-4"></td>
                                     </tr>
                                 </tbody>
                             </table>
