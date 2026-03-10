@@ -12,6 +12,7 @@ export interface DailyLedgerRow {
     dayRevenue: number;
     dayCost: number;
     dayProfit: number;
+    dayDiscounts: number;
 }
 
 export interface LedgerAnalytics {
@@ -22,6 +23,7 @@ export interface LedgerAnalytics {
     totalAdded: number;
     totalSold: number;
     stockVariance: number; // Difference between calculated end stock and live stock
+    totalDiscounts: number;
 }
 
 export async function generateProductLedger(
@@ -80,6 +82,7 @@ export async function generateProductLedger(
     let totalCost = 0;
     let totalAddedInRange = 0;
     let totalSoldInRange = 0;
+    let totalDiscountsInRange = 0;
 
     // Walk forward from startDate to endDate
     for (let i = 0; i < daysBack; i++) {
@@ -127,6 +130,7 @@ export async function generateProductLedger(
         let daySoldQty = 0;
         let dayRevenue = 0;
         let dayCost = 0;
+        let dayDiscounts = 0;
 
         dayOrders.forEach(order => {
             // FIX #2: Apply discount proportion & complimentary logic
@@ -141,9 +145,11 @@ export async function generateProductLedger(
                     const rawItemRev = item.price * item.quantity;
                     // Apply proportional discount; complimentary = 0 revenue
                     const itemRev = isComplimentary ? 0 : rawItemRev * discountRatio;
+                    const itemDiscounts = rawItemRev - itemRev; // Value given away
                     const itemCost = (item.cost_price || movingWacc) * item.quantity;
                     dayRevenue += itemRev;
                     dayCost += itemCost;
+                    dayDiscounts += itemDiscounts;
                 }
             });
         });
@@ -162,13 +168,15 @@ export async function generateProductLedger(
             wacc: movingWacc,
             dayRevenue,
             dayCost,
-            dayProfit
+            dayProfit,
+            dayDiscounts
         });
 
         totalRevenue += dayRevenue;
         totalCost += dayCost;
         totalAddedInRange += dayAddedQty;
         totalSoldInRange += daySoldQty;
+        totalDiscountsInRange += dayDiscounts;
     }
 
     const profit = totalRevenue - totalCost;
@@ -187,7 +195,8 @@ export async function generateProductLedger(
             marginPct,
             totalAdded: totalAddedInRange,
             totalSold: totalSoldInRange,
-            stockVariance
+            stockVariance,
+            totalDiscounts: totalDiscountsInRange
         },
         // FIX #6: Only show logs within the selected date range
         rawLogs: logsInRange.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

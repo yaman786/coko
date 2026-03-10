@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
 import { Badge } from '../../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
-import { Loader2, TrendingUp, TrendingDown, Package, Calendar, AlertTriangle, DollarSign, BarChart3, Download } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Package, Calendar, AlertTriangle, BarChart3, Download } from 'lucide-react';
 import { generateProductLedger } from '../../../utils/inventoryLedger';
 import { api } from '../../../services/api';
 import { format } from 'date-fns';
@@ -165,75 +165,132 @@ export function ProductDailyLedgerDialog({ product: productRef, onClose }: Produ
                                     <TableHeader className="bg-slate-50">
                                         <TableRow>
                                             <TableHead className="font-bold text-xs p-2 min-w-[80px]">Date</TableHead>
-                                            <TableHead className="font-bold text-right text-xs p-2">Start</TableHead>
-                                            <TableHead className="font-bold text-right text-emerald-600 text-xs p-2">Added</TableHead>
-                                            <TableHead className="font-bold text-right text-red-500 text-xs p-2">Sold</TableHead>
-                                            <TableHead className="font-bold text-right bg-slate-100/80 text-xs p-2">End</TableHead>
-                                            <TableHead className="font-bold text-right text-xs p-2 border-l border-slate-200 min-w-[85px]">
-                                                <div className="flex items-center justify-end gap-1"><DollarSign className="w-3 h-3" /> Rev</div>
-                                            </TableHead>
-                                            <TableHead className="font-bold text-right text-xs p-2 min-w-[85px]">Cost</TableHead>
-                                            <TableHead className="font-bold text-right text-xs p-2 min-w-[85px]">Profit</TableHead>
-                                            <TableHead className="font-bold text-right text-xs p-2" title="Weighted Average Cost (Moving Average)">WACC</TableHead>
+                                            <TableHead className="font-bold text-center text-xs p-2 whitespace-nowrap">Inventory Flow</TableHead>
+                                            <TableHead className="font-bold text-right text-xs p-2" title="Average Selling Price">ASP</TableHead>
+                                            <TableHead className="font-bold text-right text-emerald-600 text-xs p-2">Gross Rev</TableHead>
+                                            <TableHead className="font-bold text-right text-red-500 text-xs p-2">Given Away</TableHead>
+                                            <TableHead className="font-bold text-right text-xs p-2 min-w-[85px]">COGS</TableHead>
+                                            <TableHead className="font-bold text-right text-xs p-2 min-w-[85px]">Net Profit</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {data.rows.map((row, i) => {
                                             const isToday = format(row.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                                            const asp = row.soldStock > 0 ? row.dayRevenue / row.soldStock : 0;
+                                            const marginPct = row.dayRevenue > 0 ? (row.dayProfit / row.dayRevenue) * 100 : 0;
+
+                                            // Ensure dayDiscounts is safe in case of older model
+                                            const dayDiscounts = (row as any).dayDiscounts || 0;
+
                                             return (
                                                 <TableRow key={i} className={`hover:bg-slate-50/50 ${isToday ? 'bg-purple-50/30' : ''}`}>
-                                                    <TableCell className="text-xs text-slate-700 py-2 font-medium">
+                                                    <TableCell className="text-xs text-slate-700 py-2 font-medium align-top">
                                                         {format(row.date, 'MMM d, yy')}
-                                                        {isToday && <span className="ml-1 text-[9px] text-purple-500 font-bold">TODAY</span>}
+                                                        {isToday && <span className="ml-1 text-[9px] text-purple-500 font-bold block">TODAY</span>}
                                                     </TableCell>
-                                                    <TableCell className="text-right text-slate-600 text-xs py-2">
-                                                        {row.startStock}
+
+                                                    {/* Inventory Flow */}
+                                                    <TableCell className="text-center py-2 align-middle">
+                                                        <div className="inline-flex items-center justify-center gap-1.5 bg-slate-50 border border-slate-100 rounded-md px-2 py-1 text-[11px]">
+                                                            <span className="text-slate-500 font-medium" title="Start">{row.startStock}</span>
+                                                            <span className="text-slate-300">→</span>
+                                                            <span className={`font-bold ${row.addedStock > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                                                {row.addedStock > 0 ? `+${row.addedStock}` : '-'}
+                                                            </span>
+                                                            <span className="text-slate-300">/</span>
+                                                            <span className={`font-bold ${row.soldStock > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                                                                {row.soldStock > 0 ? `-${row.soldStock}` : '-'}
+                                                            </span>
+                                                            <span className="text-slate-300">→</span>
+                                                            <span className="text-slate-800 font-bold" title="End">{row.endStock}</span>
+                                                        </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-bold text-emerald-600 text-xs py-2">
-                                                        {row.addedStock > 0 ? `+${row.addedStock}` : '-'}
+
+                                                    {/* ASP */}
+                                                    <TableCell className="text-right text-xs py-2 text-slate-600 align-top">
+                                                        {asp > 0 ? `Nrs. ${asp.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
                                                     </TableCell>
-                                                    <TableCell className="text-right font-bold text-red-500 text-xs py-2">
-                                                        {row.soldStock > 0 ? `-${row.soldStock}` : '-'}
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-bold text-slate-800 bg-slate-50/50 border-x border-slate-100 text-xs py-2">
-                                                        {row.endStock}
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-xs py-2 border-l border-slate-100 text-slate-700 font-medium">
+
+                                                    {/* Gross Rev */}
+                                                    <TableCell className="text-right text-xs py-2 font-bold text-slate-800 align-top">
                                                         {row.dayRevenue > 0 ? `Nrs. ${row.dayRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
                                                     </TableCell>
-                                                    <TableCell className="text-right text-xs py-2 text-slate-400">
-                                                        {row.dayCost > 0 ? `Nrs. ${row.dayCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
+
+                                                    {/* Given Away (Discounts) */}
+                                                    <TableCell className={`text-right text-xs py-2 font-medium align-top ${dayDiscounts > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                                                        {dayDiscounts > 0 ? `Nrs. ${dayDiscounts.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
                                                     </TableCell>
-                                                    <TableCell className={`text-right text-xs py-2 font-bold ${row.dayProfit > 0 ? 'text-purple-700' : row.dayProfit < 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                                                        {row.dayProfit !== 0 ? `Nrs. ${row.dayProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
+
+                                                    {/* COGS & WACC */}
+                                                    <TableCell className="text-right py-2 align-top">
+                                                        <div className="text-xs text-slate-600">
+                                                            {row.dayCost > 0 ? `Nrs. ${row.dayCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
+                                                        </div>
+                                                        <div className="text-[9px] text-slate-400 mt-0.5">
+                                                            @ Nrs. {row.wacc.toFixed(0)}/u
+                                                        </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right text-slate-500 font-medium text-xs py-2">
-                                                        {row.wacc.toFixed(2)}
+
+                                                    {/* Net Profit & Margin */}
+                                                    <TableCell className="text-right py-2 align-top">
+                                                        <div className={`text-xs font-bold ${row.dayProfit > 0 ? 'text-purple-700' : row.dayProfit < 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                                            {row.dayProfit !== 0 ? `Nrs. ${row.dayProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
+                                                        </div>
+                                                        {row.dayRevenue > 0 && (
+                                                            <div className={`inline-block mt-0.5 px-1 rounded text-[10px] font-mono ${marginPct <= 0 ? 'bg-red-50 text-red-600' : marginPct < 30 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'}`}>
+                                                                {marginPct.toFixed(1)}% M
+                                                            </div>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                             );
                                         })}
                                         {/* Totals Row */}
                                         <TableRow className="bg-slate-50 border-t-2 border-slate-200 font-bold">
-                                            <TableCell className="text-xs py-2 text-slate-800">Total</TableCell>
-                                            <TableCell className="text-right text-xs py-2"></TableCell>
-                                            <TableCell className="text-right text-xs py-2 text-emerald-700">
-                                                +{data.rows.reduce((s, r) => s + r.addedStock, 0)}
+                                            <TableCell className="text-xs py-2 text-slate-800 align-top">Total</TableCell>
+
+                                            {/* Inventory Flow Totals */}
+                                            <TableCell className="text-center py-2 align-middle">
+                                                <div className="inline-flex items-center justify-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-md px-2 py-1 text-[11px]">
+                                                    <span className="text-emerald-700 font-bold" title="Total Added">
+                                                        +{data.analytics.totalAdded}
+                                                    </span>
+                                                    <span className="text-slate-300">/</span>
+                                                    <span className="text-red-600 font-bold" title="Total Sold">
+                                                        -{data.analytics.totalSold}
+                                                    </span>
+                                                </div>
                                             </TableCell>
-                                            <TableCell className="text-right text-xs py-2 text-red-600">
-                                                -{data.rows.reduce((s, r) => s + r.soldStock, 0)}
+
+                                            {/* ASP Total (Avg) */}
+                                            <TableCell className="text-right text-xs py-2 text-slate-600 align-top">
+                                                {data.analytics.totalSold > 0 ? `Nrs. ${(data.analytics.revenue / data.analytics.totalSold).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-'}
                                             </TableCell>
-                                            <TableCell className="text-right text-xs py-2"></TableCell>
-                                            <TableCell className="text-right text-xs py-2 text-slate-800 border-l border-slate-100">
+
+                                            {/* Rev Total */}
+                                            <TableCell className="text-right text-xs py-2 text-slate-800 align-top">
                                                 Nrs. {data.analytics.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                             </TableCell>
-                                            <TableCell className="text-right text-xs py-2 text-slate-600">
+
+                                            {/* Given Away Total */}
+                                            <TableCell className={`text-right text-xs py-2 align-top ${((data.analytics as any).totalDiscounts || 0) > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                                Nrs. {((data.analytics as any).totalDiscounts || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            </TableCell>
+
+                                            {/* COGS Total */}
+                                            <TableCell className="text-right py-2 align-top text-slate-700 text-xs">
                                                 Nrs. {data.analytics.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                             </TableCell>
-                                            <TableCell className={`text-right text-xs py-2 font-black ${data.analytics.profit >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
-                                                Nrs. {data.analytics.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+
+                                            {/* Profit & Margin Total */}
+                                            <TableCell className="text-right py-2 align-top">
+                                                <div className={`text-xs font-black ${data.analytics.profit >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
+                                                    Nrs. {data.analytics.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                </div>
+                                                <div className={`inline-block mt-0.5 px-1 rounded text-[10px] font-mono ${data.analytics.marginPct <= 0 ? 'bg-red-50 text-red-600' : data.analytics.marginPct < 30 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'}`}>
+                                                    {data.analytics.marginPct.toFixed(1)}% Avg
+                                                </div>
                                             </TableCell>
-                                            <TableCell className="text-right text-xs py-2"></TableCell>
                                         </TableRow>
                                     </TableBody>
                                 </Table>
