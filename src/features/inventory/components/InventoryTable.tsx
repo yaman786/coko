@@ -48,6 +48,7 @@ export function InventoryTable() {
     const [formData, setFormData] = useState({
         name: '',
         category: 'Bio-products',
+        subcategory: '',
         price: '',
         costPrice: '',
         stock: '',
@@ -102,7 +103,7 @@ export function InventoryTable() {
 
     const resetForm = () => {
         setFormData({
-            name: '', category: 'Bio-products',
+            name: '', category: 'Bio-products', subcategory: '',
             price: '', costPrice: '', stock: '', lowStockThreshold: '10',
             tubsReceived: '', tubCost: '', tubYield: '24',
             trackInventory: true, parentId: '', stockMultiplier: '1', unit: 'pcs',
@@ -132,6 +133,7 @@ export function InventoryTable() {
             setFormData({
                 name: (master?.name || item.name).replace(' (STOCK)', ''),
                 category: 'Popcorn',
+                subcategory: '',
                 price: item.price.toString(),
                 costPrice: item.costPrice?.toString() || '0',
                 stock: (master?.stock || 0).toString(),
@@ -153,6 +155,7 @@ export function InventoryTable() {
             setFormData({
                 name: item.name,
                 category: item.category,
+                subcategory: item.subcategory || '',
                 price: item.price.toString(),
                 costPrice: item.costPrice?.toString() || '0',
                 stock: item.stock.toString(),
@@ -182,11 +185,13 @@ export function InventoryTable() {
             hasError = true;
         }
 
-        const price = parseFloat(formData.price);
-        if (isNaN(price) || price <= 0) {
-            if (!hasError) toast.error('Validation Error', { description: 'Price must be a positive number.' });
-            newErrors.price = true;
-            hasError = true;
+        if (formData.category !== 'Popcorn') {
+            const price = parseFloat(formData.price);
+            if (isNaN(price) || price <= 0) {
+                if (!hasError) toast.error('Validation Error', { description: 'Price must be a positive number.' });
+                newErrors.price = true;
+                hasError = true;
+            }
         }
 
         const stockVal = parseInt(formData.stock);
@@ -296,6 +301,7 @@ export function InventoryTable() {
             id: editingItem?.id || crypto.randomUUID(),
             name: formData.name,
             category: formData.category || 'Other',
+            subcategory: formData.subcategory || undefined,
             price: parseFloat(formData.price) || 0,
             costPrice: isBulk ? ((parseFloat(formData.tubCost) || 0) / (parseInt(formData.tubYield) || 24)) : (parseFloat(formData.costPrice) || 0),
             isBulk: isBulk,
@@ -427,7 +433,8 @@ export function InventoryTable() {
 
         return filtered.filter(item =>
             item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchQuery.toLowerCase())
+            item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.subcategory && item.subcategory.toLowerCase().includes(searchQuery.toLowerCase()))
         );
     }, [products, showArchived, searchQuery]);
 
@@ -532,7 +539,6 @@ export function InventoryTable() {
                                             <Input
                                                 id="name"
                                                 value={formData.name}
-                                                placeholder="e.g. Popcorn (Large)"
                                                 className={formErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''}
                                                 onChange={(e) => {
                                                     setFormData({ ...formData, name: e.target.value });
@@ -540,6 +546,17 @@ export function InventoryTable() {
                                                 }}
                                             />
                                         </div>
+
+                                        {(formData.category === 'Bio-products' || formData.category === 'Scoops') && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="subcategory">Subcategory</Label>
+                                                <Input
+                                                    id="subcategory"
+                                                    value={formData.subcategory || ''}
+                                                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
 
                                         <Separator />
 

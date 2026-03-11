@@ -4,6 +4,7 @@ export interface Product {
     price: number; // Selling Price (MRP)
     costPrice?: number;
     category: string;
+    subcategory?: string;
     image?: string;
     stock: number;
     lowStockThreshold?: number;
