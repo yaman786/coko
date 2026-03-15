@@ -54,6 +54,11 @@ export interface SupplierTransaction {
     payment_method?: string;
     description?: string;
     reference_number?: string;
+    attachment_url?: string;
+    created_by?: string;
+    due_date?: Date;
+    is_deleted: boolean;
+    deleted_at?: Date;
     createdAt: Date;
     updatedAt: Date;
 }

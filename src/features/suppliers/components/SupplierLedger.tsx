@@ -9,6 +9,9 @@ import type { Supplier, SupplierTransaction } from '../../../types';
 import { RecordTransactionDialog } from './RecordTransactionDialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../../components/ui/alert-dialog';
+import { exportSupplierLedgerToPDF } from '../../../utils/export';
+import { useAuth } from '../../../contexts/AuthContext';
+import { Download } from 'lucide-react';
 
 interface SupplierLedgerProps {
     supplier: Supplier;
@@ -17,15 +20,18 @@ interface SupplierLedgerProps {
 }
 
 export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: SupplierLedgerProps) {
+    const { user } = useAuth();
     const [transactions, setTransactions] = useState<SupplierTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isRecordOpen, setIsRecordOpen] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState<SupplierTransaction | null>(null);
     const [txToDelete, setTxToDelete] = useState<SupplierTransaction | null>(null);
+    const [showDeleted, setShowDeleted] = useState(false);
 
     const fetchTransactions = async () => {
         try {
-            const data = await api.getSupplierTransactions(supplier.id);
+            const data = await api.getSupplierTransactions(supplier.id, showDeleted);
             setTransactions(data);
         } catch (error) {
             console.error('Failed to fetch transactions:', error);
@@ -37,20 +43,52 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
 
     useEffect(() => {
         fetchTransactions();
-    }, [supplier.id]);
+    }, [supplier.id, showDeleted]);
 
     const handleDelete = async () => {
         if (!txToDelete) return;
         try {
-            await api.deleteSupplierTransaction(txToDelete.id);
-            toast.success('Transaction removed');
+            await api.softDeleteSupplierTransaction(txToDelete.id);
+            toast.success('Transaction archived');
             fetchTransactions();
-            onRefreshSupplier(); // Important to update the main balance
+            onRefreshSupplier();
         } catch (error) {
-            toast.error('Failed to delete transaction');
+            toast.error('Failed to archive transaction');
         } finally {
             setTxToDelete(null);
         }
+    };
+
+    const handleRestore = async (id: string) => {
+        try {
+            await api.restoreSupplierTransaction(id);
+            toast.success('Transaction restored');
+            fetchTransactions();
+            onRefreshSupplier();
+        } catch (error) {
+            toast.error('Failed to restore');
+        }
+    };
+
+    const handleExport = () => {
+        const exportData = {
+            supplier: {
+                name: supplier.name,
+                phone: supplier.phone,
+                address: supplier.address,
+                current_balance: supplier.current_balance
+            },
+            transactions: transactions.map(t => ({
+                date: t.date.toString(),
+                type: t.type,
+                amount: t.amount,
+                reference: t.reference_number,
+                author: t.created_by,
+                is_deleted: t.is_deleted
+            })),
+            adminName: user?.email?.split('@')[0] || 'Admin'
+        };
+        exportSupplierLedgerToPDF(exportData);
     };
 
     const filteredTransactions = transactions.filter(t => 
@@ -84,13 +122,26 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                             Nrs. {supplier.current_balance.toLocaleString()}
                         </p>
                     </div>
-                    <Button 
-                        onClick={() => setIsRecordOpen(true)}
-                        className="bg-purple-600 hover:bg-purple-700 rounded-xl font-bold gap-2 px-6 h-11"
-                    >
-                        <PlusCircle className="w-5 h-5" />
-                        Record Flow
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={handleExport}
+                            className="bg-white rounded-xl border-slate-200 font-bold text-slate-700 hover:bg-slate-50 gap-2 shadow-sm h-11 px-4"
+                        >
+                            <Download className="h-4 w-4" />
+                            Statement
+                        </Button>
+                        <Button 
+                            onClick={() => {
+                                setEditingTransaction(null);
+                                setIsRecordOpen(true);
+                            }}
+                            className="bg-purple-600 hover:bg-purple-700 rounded-xl font-bold gap-2 px-6 h-11"
+                        >
+                            <PlusCircle className="w-5 h-5" />
+                            Record Flow
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -105,21 +156,30 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                         className="pl-10 h-11 bg-white border-slate-200 rounded-xl"
                     />
                 </div>
+                <Button 
+                    variant={showDeleted ? "secondary" : "outline"}
+                    onClick={() => setShowDeleted(!showDeleted)}
+                    className="rounded-xl font-bold gap-2 h-11"
+                >
+                    <Trash2 className="w-4 h-4" />
+                    {showDeleted ? "Hide Archived" : "Show Archived"}
+                </Button>
             </div>
 
             {/* Transaction List */}
             <Card className="border-slate-200/60 shadow-sm overflow-hidden bg-white rounded-3xl">
                 <Table>
-                    <TableHeader className="bg-slate-50/50">
-                        <TableRow className="hover:bg-transparent border-slate-100">
-                            <TableHead className="font-bold text-slate-500">Date</TableHead>
-                            <TableHead className="font-bold text-slate-500">Type</TableHead>
-                            <TableHead className="font-bold text-slate-500 text-right">Amount</TableHead>
-                            <TableHead className="font-bold text-slate-500">Method</TableHead>
-                            <TableHead className="font-bold text-slate-500">Note / Ref#</TableHead>
-                            <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                    </TableHeader>
+                        <TableHeader className="bg-slate-50/50">
+                            <TableRow className="hover:bg-transparent border-slate-100">
+                                <TableHead className="font-bold text-slate-500">Date</TableHead>
+                                <TableHead className="font-bold text-slate-500">Type</TableHead>
+                                <TableHead className="font-bold text-slate-500">Recorded By</TableHead>
+                                <TableHead className="font-bold text-slate-500 text-right">Amount</TableHead>
+                                <TableHead className="font-bold text-slate-500">Method</TableHead>
+                                <TableHead className="font-bold text-slate-500">Note / Ref#</TableHead>
+                                <TableHead className="w-12"></TableHead>
+                            </TableRow>
+                        </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
@@ -138,7 +198,7 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                             </TableRow>
                         ) : (
                             filteredTransactions.map((t) => (
-                                <TableRow key={t.id} className="hover:bg-slate-50/50 border-slate-50 group">
+                                <TableRow key={t.id} className={`hover:bg-slate-50/50 border-slate-50 group ${t.is_deleted ? 'opacity-50 bg-slate-50 italic' : ''}`}>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
                                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -146,17 +206,41 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase border ${
-                                            t.type === 'BILL' 
-                                                ? 'bg-orange-50 text-orange-700 border-orange-100/50' 
-                                                : 'bg-green-50 text-green-700 border-green-100/50'
-                                        }`}>
-                                            {t.type}
-                                        </span>
+                                        <div className="flex flex-col gap-1">
+                                            <span className={`px-2 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase border w-fit ${
+                                                t.type === 'BILL' 
+                                                    ? 'bg-orange-50 text-orange-700 border-orange-100/50' 
+                                                    : 'bg-green-50 text-green-700 border-green-100/50'
+                                            }`}>
+                                                {t.type}
+                                            </span>
+                                            {t.type === 'BILL' && t.due_date && !t.is_deleted && (
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                    {(() => {
+                                                        const dueDate = new Date(t.due_date);
+                                                        const today = new Date();
+                                                        today.setHours(0, 0, 0, 0);
+                                                        const diffTime = dueDate.getTime() - today.getTime();
+                                                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                        
+                                                        if (diffDays < 0) {
+                                                            return <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">OVERDUE ({Math.abs(diffDays)}d)</span>;
+                                                        } else if (diffDays <= 3) {
+                                                            return <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">DUE IN {diffDays}d</span>;
+                                                        } else {
+                                                            return <span className="text-[9px] font-bold text-slate-400">Due {new Date(t.due_date).toLocaleDateString()}</span>;
+                                                        }
+                                                    })()}
+                                                </div>
+                                            )}
+                                        </div>
                                     </TableCell>
-                                    <TableCell className={`text-right font-bold ${t.type === 'BILL' ? 'text-slate-900' : 'text-green-600'}`}>
+                                    <TableCell className="text-xs text-slate-400 font-medium">
+                                        {t.created_by || 'Unknown'}
+                                    </TableCell>
+                                    <td className={`p-4 text-right font-bold ${t.is_deleted ? 'text-slate-400' : (t.type === 'BILL' ? 'text-slate-900' : 'text-green-600')}`}>
                                         {t.type === 'BILL' ? '+' : '-'} Nrs. {t.amount.toLocaleString()}
-                                    </TableCell>
+                                    </td>
                                     <TableCell>
                                         {t.payment_method ? (
                                             <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
@@ -178,15 +262,42 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-8 w-8 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                            onClick={() => setTxToDelete(t)}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            {t.is_deleted ? (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                                    onClick={() => handleRestore(t.id)}
+                                                    title="Restore Transaction"
+                                                >
+                                                    <PlusCircle className="w-4 h-4" />
+                                                </Button>
+                                            ) : (
+                                                <>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                                        onClick={() => {
+                                                            setEditingTransaction(t);
+                                                            setIsRecordOpen(true);
+                                                        }}
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                        onClick={() => setTxToDelete(t)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -202,21 +313,23 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                 onSuccess={() => {
                     fetchTransactions();
                     onRefreshSupplier();
+                    setEditingTransaction(null);
                 }}
+                editingTransaction={editingTransaction}
             />
 
             <AlertDialog open={!!txToDelete} onOpenChange={() => setTxToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+                        <AlertDialogTitle>Archive Transaction?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will remove the record and re-calculate the supplier balance. This action cannot be undone.
+                            This will move the transaction to the archive and re-calculate the supplier balance. You can restore it later from the "Show Archived" view.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 font-bold">
-                            Delete Permanent
+                        <AlertDialogAction onClick={handleDelete} className="bg-orange-600 hover:bg-orange-700 font-bold">
+                            Archive Transaction
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

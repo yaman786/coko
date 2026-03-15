@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -6,26 +6,58 @@ import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
-import { Loader2, PlusCircle, ArrowUpCircle } from 'lucide-react';
-import type { Supplier } from '../../../types';
+import { Loader2, PlusCircle, ArrowUpCircle, Calendar } from 'lucide-react';
+import type { Supplier, SupplierTransaction } from '../../../types';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface RecordTransactionDialogProps {
     supplier: Supplier;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
+    editingTransaction?: SupplierTransaction | null;
 }
 
-export function RecordTransactionDialog({ supplier, open, onOpenChange, onSuccess }: RecordTransactionDialogProps) {
+export function RecordTransactionDialog({ supplier, open, onOpenChange, onSuccess, editingTransaction }: RecordTransactionDialogProps) {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [type, setType] = useState<'BILL' | 'PAYMENT'>('BILL');
     const [formData, setFormData] = useState({
         amount: '',
         date: new Date().toISOString().split('T')[0],
         payment_method: 'Cash',
         description: '',
-        reference_number: ''
+        reference_number: '',
+        attachment_url: '',
+        due_date: ''
     });
+
+    useEffect(() => {
+        if (editingTransaction) {
+            setType(editingTransaction.type);
+            setFormData({
+                amount: editingTransaction.amount.toString(),
+                date: new Date(editingTransaction.date).toISOString().split('T')[0],
+                payment_method: editingTransaction.payment_method || 'Cash',
+                description: editingTransaction.description || '',
+                reference_number: editingTransaction.reference_number || '',
+                attachment_url: editingTransaction.attachment_url || '',
+                due_date: editingTransaction.due_date ? new Date(editingTransaction.due_date).toISOString().split('T')[0] : ''
+            });
+        } else {
+            setType('BILL');
+            setFormData({
+                amount: '',
+                date: new Date().toISOString().split('T')[0],
+                payment_method: 'Cash',
+                description: '',
+                reference_number: '',
+                attachment_url: '',
+                due_date: ''
+            });
+        }
+    }, [editingTransaction, open]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,30 +68,44 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
 
         setLoading(true);
         try {
-            await api.addSupplierTransaction({
+            await api.upsertSupplierTransaction({
+                id: editingTransaction?.id,
                 supplier_id: supplier.id,
                 type,
                 amount: parseFloat(formData.amount),
                 date: new Date(formData.date),
                 payment_method: type === 'PAYMENT' ? formData.payment_method : undefined,
                 description: formData.description,
-                reference_number: formData.reference_number
+                reference_number: formData.reference_number,
+                attachment_url: formData.attachment_url,
+                due_date: type === 'BILL' && formData.due_date ? new Date(formData.due_date) : undefined,
+                created_by: editingTransaction?.created_by || user?.email || 'System'
             });
-            toast.success(type === 'BILL' ? 'Bill recorded' : 'Payment recorded');
+            toast.success(editingTransaction ? 'Transaction updated' : (type === 'BILL' ? 'Bill recorded' : 'Payment recorded'));
             onSuccess();
             onOpenChange(false);
-            setFormData({
-                amount: '',
-                date: new Date().toISOString().split('T')[0],
-                payment_method: 'Cash',
-                description: '',
-                reference_number: ''
-            });
         } catch (error) {
             console.error('Failed to record transaction:', error);
             toast.error('Failed to record transaction');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const url = await api.uploadSupplierAttachment(file);
+            setFormData(prev => ({ ...prev, attachment_url: url }));
+            toast.success('Document uploaded');
+        } catch (error) {
+            console.error('Upload failed:', error);
+            toast.error('Failed to upload document');
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -115,9 +161,26 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                                 value={formData.amount}
                                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                                 required
+                                className="rounded-xl font-bold"
                             />
                         </div>
                     </div>
+
+                    {type === 'BILL' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="due_date" className="flex items-center gap-2">
+                                <Calendar className="h-3 w-3 text-orange-500" />
+                                Due Date (Optional)
+                            </Label>
+                            <Input
+                                id="due_date"
+                                type="date"
+                                value={formData.due_date}
+                                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                                className="rounded-xl border-orange-100 focus:border-orange-500"
+                            />
+                        </div>
+                    )}
 
                     {type === 'PAYMENT' && (
                         <div className="space-y-2">
@@ -156,6 +219,23 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                             placeholder="Add a short note..."
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="rounded-xl"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="attachment" className="flex items-center gap-2">
+                            Attachment (Bill/Receipt)
+                            {uploading && <Loader2 className="h-3 w-3 animate-spin text-purple-600" />}
+                            {formData.attachment_url && <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter">✓ Attached</span>}
+                        </Label>
+                        <Input
+                            id="attachment"
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={handleFileUpload}
+                            className="rounded-xl cursor-pointer text-xs"
+                            disabled={uploading}
                         />
                     </div>
 
@@ -170,13 +250,13 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                         </Button>
                         <Button 
                             type="submit" 
-                            disabled={loading} 
+                            disabled={loading || uploading} 
                             className={`rounded-xl font-bold min-w-[120px] ${
                                 type === 'BILL' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'
                             }`}
                         >
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save {type === 'BILL' ? 'Bill' : 'Payment'}
+                            {editingTransaction ? 'Update Changes' : `Save ${type === 'BILL' ? 'Bill' : 'Payment'}`}
                         </Button>
                     </DialogFooter>
                 </form>

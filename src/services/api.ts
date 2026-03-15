@@ -334,31 +334,69 @@ export const api = {
         if (error) throw error;
     },
 
-    async getSupplierTransactions(supplierId: string): Promise<SupplierTransaction[]> {
-        const { data, error } = await supabase
+    async getSupplierTransactions(supplierId: string, showDeleted = false): Promise<SupplierTransaction[]> {
+        let query = supabase
             .from('supplier_transactions')
             .select('*')
-            .eq('supplier_id', supplierId)
-            .order('date', { ascending: false });
+            .eq('supplier_id', supplierId);
+        
+        if (!showDeleted) {
+            query = query.eq('is_deleted', false);
+        }
+
+        const { data, error } = await query.order('date', { ascending: false });
 
         if (error) throw error;
         return data || [];
     },
 
-    async addSupplierTransaction(transaction: Partial<SupplierTransaction>): Promise<void> {
+    async upsertSupplierTransaction(transaction: Partial<SupplierTransaction>): Promise<void> {
         const { error } = await supabase
             .from('supplier_transactions')
-            .insert(transaction);
+            .upsert(transaction);
 
         if (error) throw error;
     },
 
-    async deleteSupplierTransaction(id: string): Promise<void> {
+    async softDeleteSupplierTransaction(id: string): Promise<void> {
         const { error } = await supabase
             .from('supplier_transactions')
-            .delete()
+            .update({ 
+                is_deleted: true, 
+                deleted_at: new Date() 
+            })
             .eq('id', id);
 
         if (error) throw error;
+    },
+
+    async restoreSupplierTransaction(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('supplier_transactions')
+            .update({ 
+                is_deleted: false, 
+                deleted_at: null 
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    async uploadSupplierAttachment(file: File): Promise<string> {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `supplier-attachments/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('coko-assets')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+            .from('coko-assets')
+            .getPublicUrl(filePath);
+
+        return data.publicUrl;
     }
 };
