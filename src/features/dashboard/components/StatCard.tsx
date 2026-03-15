@@ -22,7 +22,7 @@ export function StatCard({ title, value, icon: Icon, description, trend, trendVa
                 <div className="text-2xl font-bold font-sans text-slate-800">{value}</div>
                 {(description || trend || trendValue) && (
                     <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                        {trend && (
+                        {trend && trend.value !== 0 && (
                             <span className={`font-medium ${trend.isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {trend.isPositive ? '↑' : '↓'} {trend.value}%
                             </span>

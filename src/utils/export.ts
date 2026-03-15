@@ -66,6 +66,7 @@ export interface DashboardExportData {
     discounts: number;
     totalOffers: number;
     totalComplimentary: number;
+    totalLoyalty: number;
     grossRevenue: number;
     ordersCount: number;
     aov: number;
@@ -115,6 +116,7 @@ export const exportDashboardToPDF = (data: DashboardExportData) => {
             ['Gross Sales', formatCurrency(data.grossRevenue)],
             ['Promo Offers (Gifts)', formatCurrency(data.totalOffers)],
             ['Complimentary Items', formatCurrency(data.totalComplimentary)],
+            ['Loyalty Redeemed', formatCurrency(data.totalLoyalty)],
             ['Discounts Provided', formatCurrency(data.discounts)],
             ['Net Revenue', formatCurrency(data.revenue)],
             ['---', '---'],

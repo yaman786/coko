@@ -13,6 +13,14 @@ export interface DashboardMetrics {
     grossRevenue: number;
     totalOffers: number;
     totalComplimentary: number;
+    totalLoyalty: number;
+    trends: {
+        revenueDeltaPct: number;
+        ordersDeltaPct: number;
+        aovDeltaPct: number;
+        productsDeltaPct: number;
+    };
+    totalExpenses: number;
 }
 
 export interface RevenueData {
@@ -68,16 +76,50 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     const start = typeof period === 'number' ? startOfDay(subDays(new Date(), period - 1)) : startOfDay(period.start);
     const end = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
 
-    console.log(`[Analytics] Fetching Metrics Range: ${format(start, 'yyyy-MM-dd HH:mm:ss')} to ${format(end, 'yyyy-MM-dd HH:mm:ss')}`);
-    const orders = await api.getOrdersByDateRange(start, end);
+    // Calculate previous period dates
+    const durationMs = end.getTime() - start.getTime();
+    const days = Math.round(durationMs / 86400000) + 1;
+    const prevEnd = endOfDay(subDays(start, 1));
+    const prevStart = startOfDay(subDays(start, days));
 
+    console.log(`[Analytics] Fetching Metrics Range: ${format(start, 'yyyy-MM-dd HH:mm:ss')} to ${format(end, 'yyyy-MM-dd HH:mm:ss')}`);
+    
+    const [orders, prevOrders, expenses] = await Promise.all([
+        api.getOrdersByDateRange(start, end),
+        api.getOrdersByDateRange(prevStart, prevEnd),
+        api.getExpenses(start, end)
+    ]);
+
+    // Current Period Metrics
     const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
     const totalOrders = orders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    // Previous Period Metrics
+    const prevTotalRevenue = prevOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const prevTotalOrders = prevOrders.length;
+    const prevAverageOrderValue = prevTotalOrders > 0 ? prevTotalRevenue / prevTotalOrders : 0;
 
     const totalProductsSold = orders.reduce((sum, order) => {
         return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0);
     }, 0);
+
+    const prevTotalProductsSold = prevOrders.reduce((sum, order) => {
+        return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0);
+    }, 0);
+
+    // Deltas (Safely handle 0 to 0 transitions, otherwise standard percentage diff)
+    const calculateDelta = (current: number, previous: number) => {
+        if (current === 0 && previous === 0) return 0; // Neutral 0%
+        if (previous === 0) return 100; // From 0 to something is immediately 100% up
+        return ((current - previous) / previous) * 100;
+    };
+
+    const revenueDeltaPct = calculateDelta(totalRevenue, prevTotalRevenue);
+    const ordersDeltaPct = calculateDelta(totalOrders, prevTotalOrders);
+    const aovDeltaPct = calculateDelta(averageOrderValue, prevAverageOrderValue);
+    const productsDeltaPct = calculateDelta(totalProductsSold, prevTotalProductsSold);
 
     const cashTotal = orders.reduce((sum, order) => {
         if (order.paymentMethod === 'Cash') return sum + order.totalAmount;
@@ -95,6 +137,7 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     const totalDiscounts = orders.reduce((sum, order) => sum + (order.discount || 0), 0);
     const totalOffers = orders.reduce((sum, order) => sum + (order.offerAmount || 0), 0);
     const totalComplimentary = orders.reduce((sum, order) => sum + (order.complimentaryAmount || 0), 0);
+    const totalLoyalty = orders.reduce((sum, order) => sum + (order.loyalty || 0), 0);
 
     return {
         totalRevenue,
@@ -106,7 +149,15 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         totalDiscounts,
         grossRevenue,
         totalOffers,
-        totalComplimentary
+        totalComplimentary,
+        totalLoyalty,
+        totalExpenses,
+        trends: {
+            revenueDeltaPct,
+            ordersDeltaPct,
+            aovDeltaPct,
+            productsDeltaPct
+        }
     };
 }
 

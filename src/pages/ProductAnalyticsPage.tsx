@@ -320,17 +320,20 @@ export function ProductAnalyticsPage() {
                                     textAnchor="end"
                                     height={80}
                                     interval={0}
-                                    tick={{ fontSize: 11, fill: '#64748b' }}
+                                    tick={{ fontSize: 11, fill: '#7c3aed' }}
                                 />
-                                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                                <YAxis tick={{ fontSize: 11, fill: '#7c3aed' }} />
                                 <Tooltip
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(value: any) => [`Nrs. ${Number(value).toLocaleString()}`, '']}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e9d5ff', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: '#faf5ff' }}
+                                    labelStyle={{ color: '#7c3aed', fontWeight: 'bold', marginBottom: '4px' }}
+                                    formatter={(value: any) => [`Nrs. ${Number(value).toLocaleString()}`, 'Gross Profit']}
+                                    cursor={{ fill: 'rgba(147, 51, 234, 0.08)' }}
                                 />
-                                <Legend verticalAlign="top" height={36} />
+                                <Legend verticalAlign="top" height={36} formatter={() => <span style={{ color: '#7c3aed', fontWeight: 600 }}>Gross Profit</span>} />
                                 <Bar
                                     name="Gross Profit"
                                     dataKey="profit"
+                                    fill="#9333ea"
                                     radius={[4, 4, 0, 0]}
                                 >
                                     {products.slice(0, 10).map((entry, index) => (

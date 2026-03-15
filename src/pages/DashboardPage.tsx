@@ -10,8 +10,7 @@ import {
     getTopProducts,
     getRecentOrders
 } from '../utils/analytics';
-import { Activity, DollarSign, Package, TrendingUp, ShieldAlert, RefreshCw, Globe, Loader2, AlertTriangle, Download, FileText, TableProperties, Gift, Heart, Percent, CreditCard, Wallet } from 'lucide-react';
-import { api } from '../services/api';
+import { Activity, DollarSign, Package, TrendingUp, ShieldAlert, RefreshCw, Globe, Loader2, Download, FileText, TableProperties, Gift, Heart, Percent, CreditCard, Wallet, Receipt } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { exportToCSV, exportDashboardToPDF } from '../utils/export';
@@ -105,19 +104,7 @@ function DashboardContent() {
         queryFn: () => getRecentOrders(10),
     });
 
-    // Stock Health Data
-    const { data: allProducts = [] } = useQuery({
-        queryKey: ['products'],
-        queryFn: api.getProducts,
-        select: (data) => data.filter(p => !p.isDeleted)
-    });
-
-    const stockHealth = {
-        healthy: allProducts.filter(p => p.stock > (p.lowStockThreshold ?? 10)).length,
-        low: allProducts.filter(p => p.stock > 0 && p.stock <= (p.lowStockThreshold ?? 10)).length,
-        outOfStock: allProducts.filter(p => p.stock <= 0).length,
-        criticalItems: allProducts.filter(p => p.stock <= Math.max(1, Math.floor((p.lowStockThreshold ?? 10) / 2)) && p.stock > 0).map(p => p.name)
-    };
+    // Stock Health Data (Optional - currently hidden for simplicity)
 
     // --- Export Logic ---
     const getDateRangeLabel = () => {
@@ -137,6 +124,7 @@ function DashboardContent() {
             discounts: metrics.totalDiscounts,
             totalOffers: metrics.totalOffers,
             totalComplimentary: metrics.totalComplimentary,
+            totalLoyalty: metrics.totalLoyalty,
             ordersCount: metrics.totalOrders,
             aov: metrics.averageOrderValue,
             topProducts: topProducts.slice(0, 10).map(p => ({ name: p.name, quantity: p.quantity })),
@@ -241,31 +229,37 @@ function DashboardContent() {
                     title="Total Revenue"
                     value={`Nrs. ${metrics.totalRevenue.toLocaleString()}`}
                     icon={DollarSign}
-                    trend={{ value: 12.5, isPositive: true }}
+                    trend={{ value: Math.abs(Number(metrics.trends.revenueDeltaPct.toFixed(1))), isPositive: metrics.trends.revenueDeltaPct >= 0 }}
                 />
                 <StatCard
                     title="Total Orders"
                     value={metrics.totalOrders.toString()}
                     icon={Activity}
-                    trend={{ value: 8.2, isPositive: true }}
+                    trend={{ value: Math.abs(Number(metrics.trends.ordersDeltaPct.toFixed(1))), isPositive: metrics.trends.ordersDeltaPct >= 0 }}
                 />
                 <StatCard
                     title="Avg. Order Value"
-                    value={`Nrs. ${metrics.averageOrderValue.toLocaleString()}`}
+                    value={`Nrs. ${metrics.averageOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                     icon={TrendingUp}
-                    trend={{ value: 2.1, isPositive: true }}
+                    trend={{ value: Math.abs(Number(metrics.trends.aovDeltaPct.toFixed(1))), isPositive: metrics.trends.aovDeltaPct >= 0 }}
                 />
                 <StatCard
                     title="Products Sold"
                     value={metrics.totalProductsSold.toString()}
                     icon={Package}
-                    trend={{ value: 0, isPositive: true }}
+                    trend={{ value: Math.abs(Number(metrics.trends.productsDeltaPct.toFixed(1))), isPositive: metrics.trends.productsDeltaPct >= 0 }}
                 />
                 <StatCard
-                    title="Stock Health"
-                    value={stockHealth.outOfStock > 0 ? `${stockHealth.outOfStock} Critical` : 'All Good'}
-                    icon={AlertTriangle}
-                    description={`🟢 ${stockHealth.healthy}  🟡 ${stockHealth.low}  🔴 ${stockHealth.outOfStock}`}
+                    title="Products Sold"
+                    value={metrics.totalProductsSold.toString()}
+                    icon={Package}
+                    trend={{ value: Math.abs(Number(metrics.trends.productsDeltaPct.toFixed(1))), isPositive: metrics.trends.productsDeltaPct >= 0 }}
+                />
+                <StatCard
+                    title="Net Profit"
+                    value={`Nrs. ${(metrics.totalRevenue - metrics.totalExpenses).toLocaleString()}`}
+                    icon={DollarSign}
+                    description={`Sales - Expenses`}
                 />
             </div>
 
@@ -303,6 +297,15 @@ function DashboardContent() {
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <div className="flex items-center gap-2 text-gray-600">
+                                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md">
+                                    <Gift className="w-4 h-4" />
+                                </div>
+                                Loyalty Redeemed
+                            </div>
+                            <span className="font-semibold text-emerald-600">- Nrs. {metrics.totalLoyalty.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2 text-gray-600">
                                 <div className="p-1.5 bg-purple-50 text-purple-600 rounded-md">
                                     <Percent className="w-4 h-4" />
                                 </div>
@@ -310,9 +313,18 @@ function DashboardContent() {
                             </div>
                             <span className="font-semibold text-purple-600">- Nrs. {metrics.totalDiscounts.toLocaleString()}</span>
                         </div>
+                        <div className="flex justify-between items-center text-sm pt-2 border-t border-slate-100">
+                            <div className="flex items-center gap-2 text-gray-600">
+                                <div className="p-1.5 bg-red-50 text-red-600 rounded-md">
+                                    <Receipt className="w-4 h-4" />
+                                </div>
+                                Shop Expenses
+                            </div>
+                            <span className="font-semibold text-red-600">- Nrs. {metrics.totalExpenses.toLocaleString()}</span>
+                        </div>
                         <div className="pt-3 border-t border-dashed border-gray-100 flex justify-between items-center">
-                            <span className="text-base font-bold text-gray-900">Net Revenue</span>
-                            <span className="text-lg font-bold text-purple-600">Nrs. {metrics.totalRevenue.toLocaleString()}</span>
+                            <span className="text-base font-bold text-gray-900">Actual Net Profit</span>
+                            <span className="text-lg font-bold text-purple-600">Nrs. {(metrics.totalRevenue - metrics.totalExpenses).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>

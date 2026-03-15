@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp } from 'lucide-react';
+import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,6 +10,8 @@ const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Analytics', href: '/analytics/products', icon: TrendingUp },
     { name: 'Inventory', href: '/inventory', icon: Package },
+    { name: 'Suppliers', href: '/suppliers', icon: Truck },
+    { name: 'Expenses', href: '/expenses', icon: Receipt },
     { name: 'Settings', href: '/settings', icon: Settings }
 ];
 

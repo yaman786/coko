@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Product, Order, Staff, StoreSettings, AuditLogEntry } from '../types';
+import type { Product, Order, Staff, StoreSettings, AuditLogEntry, Expense, Supplier, SupplierTransaction } from '../types';
 
 /** Strongly-typed payload for order items sent to the checkout RPC */
 export interface OrderItemPayload {
@@ -275,5 +275,90 @@ export const api = {
 
         if (error) throw error;
         return data || [];
+    },
+
+    // Expenses
+    async getExpenses(start?: Date, end?: Date): Promise<Expense[]> {
+        let query = supabase.from('expenses').select('*').order('date', { ascending: false });
+        
+        if (start) query = query.gte('date', start.toISOString());
+        if (end) query = query.lte('date', end.toISOString());
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+    },
+
+    async upsertExpense(expense: Partial<Expense>): Promise<void> {
+        const { error } = await supabase
+            .from('expenses')
+            .upsert(expense);
+
+        if (error) throw error;
+    },
+
+    async deleteExpense(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('expenses')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    // Suppliers
+    async getSuppliers(): Promise<Supplier[]> {
+        const { data, error } = await supabase
+            .from('suppliers')
+            .select('*')
+            .order('name');
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async upsertSupplier(supplier: Partial<Supplier>): Promise<void> {
+        const { error } = await supabase
+            .from('suppliers')
+            .upsert(supplier);
+
+        if (error) throw error;
+    },
+
+    async deleteSupplier(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('suppliers')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    async getSupplierTransactions(supplierId: string): Promise<SupplierTransaction[]> {
+        const { data, error } = await supabase
+            .from('supplier_transactions')
+            .select('*')
+            .eq('supplier_id', supplierId)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async addSupplierTransaction(transaction: Partial<SupplierTransaction>): Promise<void> {
+        const { error } = await supabase
+            .from('supplier_transactions')
+            .insert(transaction);
+
+        if (error) throw error;
+    },
+
+    async deleteSupplierTransaction(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('supplier_transactions')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     }
 };

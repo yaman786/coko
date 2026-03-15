@@ -17,10 +17,11 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from '../../../components/ui/alert-dialog';
-import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes } from 'lucide-react';
+import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes, ChevronRight, ChevronDown, Info } from 'lucide-react';
 
 import { Separator } from '../../../components/ui/separator';
 import { api } from '../../../services/api';
+import { supabase } from '../../../lib/supabase';
 import type { Product } from '../../../types';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -36,6 +37,8 @@ export function InventoryTable() {
     const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
     const [ledgerProduct, setLedgerProduct] = useState<Product | null>(null);
     const [deletingItem, setDeletingItem] = useState<Product | null>(null);
+    const [expandedPopcorn, setExpandedPopcorn] = useState<Set<string>>(new Set());
+    const [permanentDeleteItem, setPermanentDeleteItem] = useState<Product | null>(null);
 
     // ── Restock state ──
     const [restockItem, setRestockItem] = useState<Product | null>(null);
@@ -44,6 +47,8 @@ export function InventoryTable() {
     const [restockExtraScoops, setRestockExtraScoops] = useState('');
     const [restockYield, setRestockYield] = useState('24');
     const [restockTubCost, setRestockTubCost] = useState('');
+    const [restockPopcornWeight, setRestockPopcornWeight] = useState('');
+    const [restockPopcornBoxes, setRestockPopcornBoxes] = useState('');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -61,6 +66,7 @@ export function InventoryTable() {
         stockMultiplier: '1',
         unit: 'pcs',
         boxWeight: '',
+        popcornInitialStock: '',
         halfServingSize: '',
         halfPrice: '',
         fullServingSize: '',
@@ -107,7 +113,7 @@ export function InventoryTable() {
             price: '', costPrice: '', stock: '', lowStockThreshold: '10',
             tubsReceived: '', tubCost: '', tubYield: '24',
             trackInventory: true, parentId: '', stockMultiplier: '1', unit: 'pcs',
-            boxWeight: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: ''
+            boxWeight: '', popcornInitialStock: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: ''
         });
         setEditingItem(null);
         setFormErrors({});
@@ -146,9 +152,10 @@ export function InventoryTable() {
                 stockMultiplier: item.stockMultiplier?.toString() || '1',
                 unit: 'box',
                 boxWeight: boxWeight.toString(),
-                halfServingSize: half ? Math.round(half.stockMultiplier! * boxWeight).toString() : '',
+                popcornInitialStock: '',
+                halfServingSize: half ? half.stockMultiplier?.toString() || '' : '',
                 halfPrice: half ? half.price.toString() : '',
-                fullServingSize: full ? Math.round(full.stockMultiplier! * boxWeight).toString() : '',
+                fullServingSize: full ? full.stockMultiplier?.toString() || '' : '',
                 fullPrice: full ? full.price.toString() : '',
             });
         } else {
@@ -167,7 +174,7 @@ export function InventoryTable() {
                 parentId: item.parentId || '',
                 stockMultiplier: item.stockMultiplier?.toString() || '1',
                 unit: item.unit || 'pcs',
-                boxWeight: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: ''
+                boxWeight: '', popcornInitialStock: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: ''
             });
         }
         setIsAddDialogOpen(true);
@@ -213,7 +220,6 @@ export function InventoryTable() {
                 // Determine IDs
                 const masterId = editingItem?.parentId || editingItem?.id || crypto.randomUUID();
                 const boxCost = parseFloat(formData.tubCost) || 0;
-                const boxWeight = parseFloat(formData.boxWeight) || 1; // avoid div by zero
 
                 // Find existing variants if editing
                 const variants = products.filter(v => v.parentId === masterId);
@@ -226,11 +232,13 @@ export function InventoryTable() {
                     name: `${formData.name} (STOCK)`,
                     category: 'Popcorn',
                     price: 0,
-                    costPrice: boxCost,
+                    // Standardize: Parent stores cost-per-gram (Unit Cost) from birth
+                    costPrice: (parseFloat(formData.tubCost) || 0) / (parseInt(formData.boxWeight) || 10000),
                     isBulk: true,
-                    yield: boxWeight,
+                    // Use yield as the reference grams-per-box (defaults to 10000 for new, or existing yield for edit)
+                    yield: editingItem ? (parseInt(formData.boxWeight) || products.find(p => p.id === masterId)?.yield || 10000) : 10000,
                     tubCost: boxCost,
-                    stock: (editingItem?.parentId || editingItem?.id === masterId) ? (parseFloat(formData.stock) || 0) : (products.find(p => p.id === masterId)?.stock || 0),
+                    stock: editingItem ? (parseFloat(formData.stock) || 0) : 0,
                     lowStockThreshold: parseInt(formData.lowStockThreshold) || 5,
                     trackInventory: true,
                     unit: 'g',
@@ -241,6 +249,7 @@ export function InventoryTable() {
 
                 const halfServingSize = parseFloat(formData.halfServingSize) || 0;
                 const fullServingSize = parseFloat(formData.fullServingSize) || 0;
+                const refWeight = masterProduct.yield || 1;
 
                 // 2. Half Serving
                 const halfProduct: Product = {
@@ -248,9 +257,9 @@ export function InventoryTable() {
                     name: `${formData.name} (Half)`,
                     category: 'Popcorn',
                     price: parseFloat(formData.halfPrice) || 0,
-                    costPrice: (boxCost / boxWeight) * halfServingSize,
+                    costPrice: (boxCost / refWeight) * halfServingSize,
                     parentId: masterId,
-                    stockMultiplier: halfServingSize / boxWeight,
+                    stockMultiplier: halfServingSize, // We store grams directly as multiplier for 1:1 deduction
                     stock: 0,
                     unit: 'pcs',
                     trackInventory: true,
@@ -265,9 +274,9 @@ export function InventoryTable() {
                     name: `${formData.name} (Full)`,
                     category: 'Popcorn',
                     price: parseFloat(formData.fullPrice) || 0,
-                    costPrice: (boxCost / boxWeight) * fullServingSize,
+                    costPrice: (boxCost / refWeight) * fullServingSize,
                     parentId: masterId,
-                    stockMultiplier: fullServingSize / boxWeight,
+                    stockMultiplier: fullServingSize,
                     stock: 0,
                     unit: 'pcs',
                     trackInventory: true,
@@ -352,6 +361,32 @@ export function InventoryTable() {
         upsertMutation.mutate({ ...product, isDeleted: false });
     };
 
+    const handlePermanentDelete = (product: Product) => {
+        setPermanentDeleteItem(product);
+    };
+
+    const confirmPermanentDelete = async () => {
+        if (!permanentDeleteItem) return;
+        const product = permanentDeleteItem;
+        setPermanentDeleteItem(null);
+        try {
+            const { error } = await supabase.from('products').delete().eq('id', product.id);
+            if (error) throw error;
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            toast.success('Permanently Deleted', { description: `"${product.name}" has been permanently removed.` });
+            api.logActivity({
+                action: 'PRODUCT_PERMANENT_DELETE',
+                category: 'INVENTORY',
+                description: `Permanently deleted "${product.name}" (ID: ${product.id})`,
+                metadata: { productId: product.id, name: product.name },
+                actor_email: user?.email || 'unknown',
+                actor_name: user?.email?.split('@')[0] || 'Unknown',
+            });
+        } catch (err) {
+            toast.error('Failed to delete', { description: 'Could not permanently delete. There may be linked orders.' });
+        }
+    };
+
     // ── Restock handlers ──
     const handleOpenRestock = (item: Product) => {
         setRestockItem(item);
@@ -360,76 +395,128 @@ export function InventoryTable() {
         setRestockExtraScoops('');
         setRestockYield(item.yield?.toString() || '24');
         setRestockTubCost('');
+        setRestockPopcornWeight('');
+        setRestockPopcornBoxes('');
     };
 
     const handleConfirmRestock = () => {
         if (!restockItem) return;
-        const addQty = parseInt(restockQty) || 0;
-        if (addQty <= 0) {
+
+        let addWeight = 0;
+        let addBoxes = 1;
+        let addQty = parseInt(restockQty) || 0;
+
+        if (restockItem.category === 'Popcorn') {
+            addWeight = parseFloat(restockPopcornWeight) || 0;
+            addBoxes = parseFloat(restockPopcornBoxes) || 1;
+            if (addWeight <= 0) {
+                toast.error('Invalid weight', { description: 'Enter a positive weight to add.' });
+                return;
+            }
+        } else if (addQty <= 0) {
             toast.error('Invalid quantity', { description: 'Enter a positive number to add.' });
             return;
         }
-        const newStock = restockItem.stock + addQty;
 
-        // ── Weighted Average Cost Price ──
-        // If user entered a new Cost/Tub, blend old stock cost with new batch cost.
-        // If left blank, keep the existing costPrice unchanged.
+        const newStock = restockItem.stock + (restockItem.category === 'Popcorn' ? addWeight : addQty);
         let newCostPrice = restockItem.costPrice;
         const newTubCost = parseFloat(restockTubCost);
         const yieldPerTub = parseFloat(restockYield) || 24;
-        if (!isNaN(newTubCost) && newTubCost > 0) {
-            const newCostPerScoop = newTubCost / yieldPerTub;
-            const oldValue = (restockItem.stock) * (restockItem.costPrice || 0);
-            const newValue = addQty * newCostPerScoop;
-            newCostPrice = (oldValue + newValue) / newStock;
-        }
 
-        // Update Variants automatically if this is a parent product
-        const variants = products.filter(p => p.parentId === restockItem.id);
-        const updatePromises = variants.map(v =>
-            api.upsertProduct({
-                ...v,
-                costPrice: (newCostPrice || 0) * (v.stockMultiplier || 1),
-                updatedAt: new Date()
-            })
-        );
+        if (restockItem.category === 'Popcorn') {
+            // Updated cost per gram calculation
+            if (!isNaN(newTubCost) && newTubCost > 0) {
+                const batchCostPerGram = newTubCost / Math.max(1, addWeight);
+                const oldValue = (restockItem.stock) * (restockItem.costPrice || 0);
+                const newValue = addWeight * batchCostPerGram;
+                newCostPrice = (oldValue + newValue) / newStock;
+            }
 
-        upsertMutation.mutate(
-            { ...restockItem, stock: newStock, costPrice: newCostPrice },
-            {
-                onSuccess: async () => {
-                    // Update all variants in background
-                    if (updatePromises.length > 0) {
-                        try {
+            // Reference weight (grams per box) for this batch
+            const newRefWeight = addWeight / Math.max(1, addBoxes);
+
+            // Sync variants: popcorn variants are weight-based
+            const variants = products.filter(p => p.parentId === restockItem.id);
+            const updatePromises = variants.map(v =>
+                api.upsertProduct({
+                    ...v,
+                    costPrice: (newCostPrice || 0) * (v.stockMultiplier || 1),
+                    updatedAt: new Date()
+                })
+            );
+
+            upsertMutation.mutate(
+                { ...restockItem, stock: newStock, costPrice: newCostPrice, yield: newRefWeight },
+                {
+                    onSuccess: async () => {
+                        if (updatePromises.length > 0) {
                             await Promise.all(updatePromises);
                             queryClient.invalidateQueries({ queryKey: ['products'] });
-                        } catch (err) {
-                            console.error("Failed to sync variant costs:", err);
                         }
+                        toast.success('Popcorn Restocked', { description: `Added ${addWeight}g across ${addBoxes} boxes.` });
+                        setRestockItem(null);
                     }
-
-                    toast.success('Stock Updated', {
-                        description: `"${restockItem.name}" restocked and ${variants.length} variants synchronized.`,
-                    });
-                    api.logActivity({
-                        action: 'PRODUCT_RESTOCKED',
-                        category: 'INVENTORY',
-                        description: `Restocked "${restockItem.name}": ${restockItem.stock} → ${newStock} (+${addQty}). Cost: Nrs.${newCostPrice?.toFixed(2)}`,
-                        metadata: { productId: restockItem.id, name: restockItem.name, previousStock: restockItem.stock, newStock, added: addQty, newCostPrice, variantCount: variants.length },
-                        actor_email: user?.email || 'unknown',
-                        actor_name: user?.email?.split('@')[0] || 'Unknown',
-                    });
-                    setRestockItem(null);
                 }
+            );
+        } else {
+            // Blended cost for Scoops
+            if (restockItem.category === 'Scoops' && !isNaN(newTubCost) && newTubCost > 0) {
+                const newCostPerScoop = newTubCost / yieldPerTub;
+                const oldValue = (restockItem.stock) * (restockItem.costPrice || 0);
+                const newValue = addQty * newCostPerScoop;
+                newCostPrice = (oldValue + newValue) / newStock;
             }
-        );
+
+            // Update Variants automatically if this is a parent product
+            const variants = products.filter(p => p.parentId === restockItem.id);
+            const updatePromises = variants.map(v =>
+                api.upsertProduct({
+                    ...v,
+                    costPrice: (newCostPrice || 0) * (v.stockMultiplier || 1),
+                    updatedAt: new Date()
+                })
+            );
+
+            upsertMutation.mutate(
+                { ...restockItem, stock: newStock, costPrice: newCostPrice },
+                {
+                    onSuccess: async () => {
+                        if (updatePromises.length > 0) {
+                            try {
+                                await Promise.all(updatePromises);
+                                queryClient.invalidateQueries({ queryKey: ['products'] });
+                            } catch (err) {
+                                console.error("Failed to sync variant costs:", err);
+                            }
+                        }
+
+                        toast.success('Stock Updated', {
+                            description: `"${restockItem.name}" restocked and ${variants.length} variants synchronized.`,
+                        });
+                        api.logActivity({
+                            action: 'PRODUCT_RESTOCKED',
+                            category: 'INVENTORY',
+                            description: `Restocked "${restockItem.name}": ${restockItem.stock} → ${newStock} (+${addQty}). Cost: Nrs.${newCostPrice?.toFixed(2)}`,
+                            metadata: { productId: restockItem.id, name: restockItem.name, previousStock: restockItem.stock, newStock, added: addQty, newCostPrice, variantCount: variants.length },
+                            actor_email: user?.email || 'unknown',
+                            actor_name: user?.email?.split('@')[0] || 'Unknown',
+                        });
+                        setRestockItem(null);
+                    }
+                }
+            );
+        }
     };
 
     const filteredInventory = useMemo(() => {
-        let filtered = showArchived ? products : products.filter(p => !p.isDeleted && p.trackInventory !== false);
+        let filtered = showArchived ? products : products.filter(p => !p.isDeleted);
 
-        // Hide internal STOCK products from the main table view to keep it simple
-        filtered = filtered.filter(p => !p.name.includes('(STOCK)'));
+        // Hide popcorn child variants — they'll be rendered as sub-rows under their parent
+        filtered = filtered.filter(p => !(p.category === 'Popcorn' && p.parentId));
+
+        // For Popcorn STOCK parents: show them (they are the group header)
+        // For all other (STOCK) items: keep hidden
+        // No filtering needed since only Popcorn uses (STOCK) pattern
 
         return filtered.filter(item =>
             item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -439,7 +526,7 @@ export function InventoryTable() {
     }, [products, showArchived, searchQuery]);
 
     const lowStockItems = useMemo(() =>
-        products.filter(item => !item.isDeleted && item.stock <= (item.lowStockThreshold ?? 10)),
+        products.filter(item => !item.isDeleted && !item.parentId && item.stock <= (item.lowStockThreshold ?? 10)),
         [products]
     );
 
@@ -478,10 +565,10 @@ export function InventoryTable() {
             )}
 
             <Card className="shadow-sm border-0 ring-1 ring-gray-200">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
+                <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between mb-4">
                         <div>
-                            <CardTitle>Inventory Management</CardTitle>
+                            <CardTitle className="text-xl font-bold text-gray-900">Inventory Management</CardTitle>
                             <CardDescription>Track and manage your entire product catalog (Live)</CardDescription>
                         </div>
                         <div className="flex gap-2">
@@ -489,7 +576,7 @@ export function InventoryTable() {
                                 <Button
                                     variant="outline"
                                     onClick={() => setShowArchived(!showArchived)}
-                                    className={`gap-2 h-10 ${showArchived ? 'bg-purple-50 border-purple-200 text-purple-700' : 'text-gray-500'}`}
+                                    className={`gap-2 h-9 text-xs font-semibold ${showArchived ? 'bg-purple-50 border-purple-200 text-purple-700' : 'text-gray-500'}`}
                                 >
                                     <Archive className="w-4 h-4" />
                                     {showArchived ? 'Active Inventory' : 'View Archived'}
@@ -500,7 +587,7 @@ export function InventoryTable() {
                                 if (!open) resetForm();
                             }}>
                                 <DialogTrigger asChild>
-                                    <Button onClick={handleOpenAdd} className="gap-2 h-10 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-sm text-white">
+                                    <Button onClick={handleOpenAdd} className="gap-2 h-9 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-sm text-white text-xs font-bold">
                                         <Plus className="w-4 h-4" /> Add Item
                                     </Button>
                                 </DialogTrigger>
@@ -514,16 +601,16 @@ export function InventoryTable() {
                                         <div className="space-y-2">
                                             <Label>Product Category</Label>
                                             <div className="flex gap-2 p-1 bg-gray-100/80 rounded-lg">
-                                                {['Scoops', 'Bio-products', 'Bubble Tea', 'Popcorn'].map(cat => (
+                                                {['Scoops', 'Bio-products', 'Drinks', 'Popcorn'].map(cat => (
                                                     <button
                                                         key={cat}
                                                         type="button"
                                                         onClick={() => {
-                                                            const isBubbleTea = cat === 'Bubble Tea';
+                                                            const isDrinks = cat === 'Drinks';
                                                             setFormData({
                                                                 ...formData,
                                                                 category: cat,
-                                                                trackInventory: !isBubbleTea
+                                                                trackInventory: !isDrinks
                                                             });
                                                         }}
                                                         className={`flex-1 py-1.5 px-2 rounded-md text-[13px] font-medium transition-colors ${formData.category === cat ? 'bg-white text-gray-900 shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-900'}`}
@@ -547,7 +634,7 @@ export function InventoryTable() {
                                             />
                                         </div>
 
-                                        {(formData.category === 'Bio-products' || formData.category === 'Scoops') && (
+                                        {(formData.category === 'Bio-products' || formData.category === 'Scoops' || formData.category === 'Drinks') && (
                                             <div className="space-y-2">
                                                 <Label htmlFor="subcategory">Subcategory</Label>
                                                 <Input
@@ -566,26 +653,45 @@ export function InventoryTable() {
                                                     <Boxes className="w-4 h-4 text-purple-600" />
                                                     <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Box & Stock Details</span>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label>Box Cost (Nrs)</Label>
-                                                        <Input
-                                                            type="number"
-                                                            placeholder="5000"
-                                                            value={formData.tubCost}
-                                                            onChange={(e) => setFormData({ ...formData, tubCost: e.target.value })}
-                                                        />
+                                                {editingItem ? (
+                                                    <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl space-y-4">
+                                                        <div className="flex items-center gap-2 text-rose-700 font-bold text-sm">
+                                                            <AlertTriangle className="w-4 h-4" />
+                                                            Inventory Override
+                                                        </div>
+                                                        <div className="grid grid-cols-1 gap-4">
+                                                            <div className="space-y-1.5">
+                                                                <Label className="text-rose-800 text-[11px] uppercase font-bold">Total Grams in Stock</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="1"
+                                                                    value={formData.stock}
+                                                                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                                                                    className="h-9 bg-white border-rose-200 font-bold text-rose-700 focus:ring-rose-500"
+                                                                    title={`Equivalent to approx. ${(parseFloat(formData.stock) / (parseFloat(formData.boxWeight) || 3600)).toFixed(1)} boxes.`}
+                                                                />
+                                                                <p className="text-[10px] text-rose-500 font-medium italic">
+                                                                    ≈ {(parseFloat(formData.stock) / (parseFloat(formData.boxWeight) || 3600)).toFixed(1)} Boxes visually based on {formData.boxWeight}g/box
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-[10px] text-rose-600 leading-tight">
+                                                            Warning: Manually overriding stock will affect inventory counts. For packaging changes, see the Specs section below.
+                                                        </p>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Box Weight (g)</Label>
-                                                        <Input
-                                                            type="number"
-                                                            placeholder="10000"
-                                                            value={formData.boxWeight}
-                                                            onChange={(e) => setFormData({ ...formData, boxWeight: e.target.value })}
-                                                        />
+                                                ) : (
+                                                    <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl border-dashed">
+                                                        <div className="flex flex-col items-center text-center gap-2">
+                                                            <div className="p-2 bg-slate-100 rounded-full">
+                                                                <Info className="w-4 h-4 text-slate-400" />
+                                                            </div>
+                                                            <p className="text-xs font-medium text-slate-500">
+                                                                You are setting up the product information. <br/>
+                                                                You can add <b>Stock</b> and <b>Box Weights</b> later via the <span className="text-purple-600 font-bold">Restock</span> button.
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
 
                                                 <Separator />
 
@@ -594,9 +700,11 @@ export function InventoryTable() {
                                                     <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl space-y-3">
                                                         <div className="flex items-center justify-between">
                                                             <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">Half Serving</Badge>
-                                                            {formData.boxWeight && formData.tubCost && formData.halfServingSize && (
+                                                            {formData.tubCost && formData.halfServingSize && (
                                                                 <span className="text-[10px] font-bold text-blue-600">
-                                                                    Cost: {Math.round((parseFloat(formData.tubCost) / parseFloat(formData.boxWeight)) * parseFloat(formData.halfServingSize))} Nrs
+                                                                    Approx Cost: {formData.tubCost && (parseFloat(formData.boxWeight) || (editingItem ? products.find(p => p.id === (editingItem.parentId || editingItem.id))?.yield : null)) ? 
+                                                                        Math.round((parseFloat(formData.tubCost) / (parseFloat(formData.boxWeight) || products.find(p => p.id === (editingItem!.parentId || editingItem!.id))?.yield || 10000)) * parseFloat(formData.halfServingSize)) 
+                                                                        : '0'} Nrs
                                                                 </span>
                                                             )}
                                                         </div>
@@ -626,9 +734,11 @@ export function InventoryTable() {
                                                     <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl space-y-3">
                                                         <div className="flex items-center justify-between">
                                                             <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-none">Full Serving</Badge>
-                                                            {formData.boxWeight && formData.tubCost && formData.fullServingSize && (
+                                                            {formData.tubCost && formData.fullServingSize && (
                                                                 <span className="text-[10px] font-bold text-purple-600">
-                                                                    Cost: {Math.round((parseFloat(formData.tubCost) / parseFloat(formData.boxWeight)) * parseFloat(formData.fullServingSize))} Nrs
+                                                                    Approx Cost: {formData.tubCost && (parseFloat(formData.boxWeight) || (editingItem ? products.find(p => p.id === (editingItem.parentId || editingItem.id))?.yield : null)) ? 
+                                                                        Math.round((parseFloat(formData.tubCost) / (parseFloat(formData.boxWeight) || products.find(p => p.id === (editingItem!.parentId || editingItem!.id))?.yield || 10000)) * parseFloat(formData.fullServingSize)) 
+                                                                        : '0'} Nrs
                                                                 </span>
                                                             )}
                                                         </div>
@@ -655,18 +765,53 @@ export function InventoryTable() {
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label>Low Stock Alert (Boxes)</Label>
-                                                        <Input type="number" min="0" step="1" value={formData.lowStockThreshold} onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })} />
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[11px] text-gray-600 uppercase font-bold">Low Stock Alert (total grams)</Label>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step="1"
+                                                            value={formData.lowStockThreshold}
+                                                            onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
+                                                            className="h-8 bg-white border-gray-200"
+                                                        />
+                                                        <p className="text-[10px] text-gray-400 italic">
+                                                            Alerts when total stock drops below this weight (e.g., 3600 for 1 box).
+                                                        </p>
                                                     </div>
-                                                    {editingItem && (
-                                                        <div className="space-y-2">
-                                                            <Label>Override Box Stock</Label>
-                                                            <Input type="number" step="0.1" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} />
-                                                        </div>
-                                                    )}
                                                 </div>
+
+                                                {editingItem && (
+                                                    <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                                                        <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase">
+                                                            <Boxes className="w-3 h-3" />
+                                                            Product Packaging Specs
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[10px] text-slate-600">Box Weight (grams)</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={formData.boxWeight}
+                                                                    onChange={(e) => setFormData({ ...formData, boxWeight: e.target.value })}
+                                                                    className="h-8 bg-white"
+                                                                />
+                                                                <p className="text-[9px] text-slate-400 italic">Used for cost math</p>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[10px] text-slate-600">Box Cost (Nrs)</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={formData.tubCost}
+                                                                    onChange={(e) => setFormData({ ...formData, tubCost: e.target.value })}
+                                                                    className="h-8 bg-white font-medium"
+                                                                />
+                                                                <p className="text-[9px] text-slate-400 italic">Last Purchase Price</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (formData.category === 'Scoops') ? (
                                             <>
@@ -695,7 +840,7 @@ export function InventoryTable() {
                                                     <div className="space-y-2"><Label>Cost Price / Unit</Label><Input type="number" min="0" step="1" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })} /></div>
                                                     <div className="space-y-2"><Label>Selling Price</Label><Input type="number" min="0" step="1" className={formErrors.price ? 'border-red-500 ring-1 ring-red-500' : ''} value={formData.price} onChange={(e) => { setFormData({ ...formData, price: e.target.value }); if (formErrors.price) setFormErrors({ ...formErrors, price: false }); }} /></div>
                                                 </div>
-                                                {formData.trackInventory && formData.category !== 'Bubble Tea' && (
+                                                {formData.trackInventory && formData.category !== 'Drinks' && (
                                                     <>
                                                         <div className="space-y-2"><Label>Low Stock Alert</Label><Input type="number" min="0" step="1" value={formData.lowStockThreshold} onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })} /></div>
                                                         {editingItem && (
@@ -717,82 +862,206 @@ export function InventoryTable() {
                             </Dialog>
                         </div>
                     </div>
+                    <div className="relative">
+                        <Input 
+                            placeholder="Search products..." 
+                            value={searchQuery} 
+                            onChange={(e) => setSearchQuery(e.target.value)} 
+                            className="max-w-sm h-9 bg-gray-50 border-transparent focus:bg-white transition-all text-sm pl-9"
+                        />
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardContent>
-                    <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="mb-6 max-w-sm" />
-                    <div className="rounded-xl border shadow-sm overflow-x-auto">
-                        <Table className="min-w-[600px]">
-                            <TableHeader className="bg-gray-50/80">
-                                <TableRow>
-                                    <TableHead>Item Name</TableHead>
-                                    <TableHead>Category</TableHead>
-                                    <TableHead className="text-right">Stock</TableHead>
-                                    <TableHead className="text-right">Selling Price</TableHead>
-                                    <TableHead className="text-center w-[160px]">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                <CardContent className="p-0">
+                    <Table 
+                        containerClassName="max-h-[calc(100vh-280px)] overflow-y-auto relative scrollbar-thin scrollbar-thumb-slate-200 border-t"
+                        className="min-w-[600px] border-separate border-spacing-0"
+                    >
+                        <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px]">Item Name</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px]">Category</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px] text-right">Stock</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px] text-right">Selling Price</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px] text-center w-[160px]">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
                             <TableBody>
-                                {filteredInventory.map(item => (
-                                    <TableRow key={item.id} className={item.isDeleted ? 'opacity-60 bg-slate-50' : ''}>
-                                        <TableCell className="font-medium">{item.name}</TableCell>
-                                        <TableCell>{item.category}</TableCell>
-                                        <TableCell className="text-right">
-                                            {(() => {
-                                                const parentProduct = item.parentId ? products.find(p => p.id === item.parentId) : null;
-                                                const displayStock = parentProduct
-                                                    ? Math.floor(parentProduct.stock / (item.stockMultiplier || 1))
-                                                    : item.stock;
+                                {filteredInventory.map(item => {
+                                    // Check if this is a Popcorn STOCK parent
+                                    const isPopcornParent = item.category === 'Popcorn' && item.name.includes('(STOCK)');
+                                    const popcornVariants = isPopcornParent 
+                                        ? products.filter(v => v.parentId === item.id && !v.isDeleted)
+                                        : [];
 
-                                                if (displayStock <= 0) {
+                                    return (
+                                        <>
+                                        {/* ── Main Row ── */}
+                                        <TableRow key={item.id} className={`${item.isDeleted ? 'opacity-60 bg-slate-50' : ''} ${isPopcornParent ? 'bg-purple-50/30 border-b-0 cursor-pointer hover:bg-purple-50/60 transition-colors' : ''}`}
+                                            onClick={isPopcornParent ? () => setExpandedPopcorn(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                                                return next;
+                                            }) : undefined}
+                                        >
+                                            <TableCell className="font-medium">
+                                                {isPopcornParent ? (
+                                                    <div className="flex items-center gap-2">
+                                                        {expandedPopcorn.has(item.id) 
+                                                            ? <ChevronDown className="w-4 h-4 text-purple-400 transition-transform" />
+                                                            : <ChevronRight className="w-4 h-4 text-purple-400 transition-transform" />
+                                                        }
+                                                        <Boxes className="w-4 h-4 text-purple-500" />
+                                                        <span className="font-bold text-purple-800">{item.name.replace(' (STOCK)', '')}</span>
+                                                        <Badge className="bg-purple-100 text-purple-600 border-none text-[10px] px-1.5 py-0">Bulk</Badge>
+                                                        <span className="text-[10px] text-slate-400 ml-1">({popcornVariants.length} variants)</span>
+                                                    </div>
+                                                ) : item.name}
+                                            </TableCell>
+                                            <TableCell>{item.category}</TableCell>
+                                            <TableCell className="text-right">
+                                                {(() => {
+                                                    if (item.trackInventory === false) {
+                                                        return (
+                                                            <span className="text-slate-400 font-medium text-sm border-b border-dashed border-slate-300 pb-0.5" title="Inventory not tracked">
+                                                                Untracked
+                                                            </span>
+                                                        );
+                                                    }
+
+                                                    // Popcorn STOCK parent: show grams + boxes
+                                                    if (isPopcornParent) {
+                                                        const grams = item.stock;
+                                                        const boxes = item.yield ? (grams / item.yield).toFixed(1) : '?';
+                                                        if (grams <= 0) {
+                                                            return (
+                                                                <Badge variant="destructive" className="animate-pulse bg-red-100 text-red-700 border border-red-200 shadow-none">
+                                                                    Out of Stock
+                                                                </Badge>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <div className="flex flex-col items-end gap-0.5">
+                                                                <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-none font-bold">
+                                                                    {grams.toLocaleString()}g
+                                                                </Badge>
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">≈ {boxes} boxes</span>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    const parentProduct = item.parentId ? products.find(p => p.id === item.parentId) : null;
+                                                    const displayStock = parentProduct
+                                                        ? Math.floor(parentProduct.stock / (item.stockMultiplier || 1))
+                                                        : item.stock;
+
+                                                    if (displayStock <= 0) {
+                                                        return (
+                                                            <Badge variant="destructive" className="animate-pulse bg-red-100 text-red-700 border border-red-200 shadow-none">
+                                                                Out of Stock
+                                                            </Badge>
+                                                        );
+                                                    }
+
+                                                    const unitLabel = item.category === 'Scoops' ? 'scoops' : (item.unit || 'pcs');
+
+                                                    if (displayStock <= Math.max(1, Math.floor((item.lowStockThreshold ?? 10) / 2))) {
+                                                        return (
+                                                            <Badge className="bg-red-50 text-red-600 border border-red-200 shadow-none font-bold">
+                                                                {displayStock} {unitLabel} ⚠️
+                                                            </Badge>
+                                                        );
+                                                    }
+                                                    if (displayStock <= (item.lowStockThreshold ?? 10)) {
+                                                        return (
+                                                            <Badge className="bg-amber-50 text-amber-700 border border-amber-200 shadow-none font-bold">
+                                                                {displayStock} {unitLabel}
+                                                            </Badge>
+                                                        );
+                                                    }
                                                     return (
-                                                        <Badge variant="destructive" className="animate-pulse bg-red-100 text-red-700 border border-red-200 shadow-none">
-                                                            Out of Stock
+                                                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-none font-bold">
+                                                            {displayStock} {unitLabel}
                                                         </Badge>
                                                     );
-                                                }
-                                                if (displayStock <= Math.max(1, Math.floor((item.lowStockThreshold ?? 10) / 2))) {
-                                                    return (
-                                                        <Badge className="bg-red-50 text-red-600 border border-red-200 shadow-none font-bold">
-                                                            {displayStock} {item.unit || 'pcs'} ⚠️
-                                                        </Badge>
-                                                    );
-                                                }
-                                                if (displayStock <= (item.lowStockThreshold ?? 10)) {
-                                                    return (
-                                                        <Badge className="bg-amber-50 text-amber-700 border border-amber-200 shadow-none font-bold">
-                                                            {displayStock} {item.unit || 'pcs'}
-                                                        </Badge>
-                                                    );
-                                                }
-                                                return (
-                                                    <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-none font-bold">
-                                                        {displayStock} {item.unit || 'pcs'}
-                                                    </Badge>
-                                                );
-                                            })()}
-                                        </TableCell>
-                                        <TableCell className="text-right font-medium">Nrs.{item.price}</TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                {item.isDeleted ? (
-                                                    <Button variant="ghost" size="sm" onClick={() => handleRestoreItem(item)}><RefreshCcw className="w-4 h-4" /></Button>
+                                                })()}
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium">
+                                                {isPopcornParent ? (
+                                                    <span className="text-xs text-slate-400">—</span>
                                                 ) : (
-                                                    <>
-                                                        <Button variant="ghost" size="sm" onClick={() => setLedgerProduct(item)} className="text-purple-600 hover:text-purple-700 hover:bg-purple-50" title="View Daily Ledger"><History className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => handleOpenRestock(item)} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Quick Restock"><PackagePlus className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)} title="Edit Item"><Edit3 className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => handleDeleteItem(item)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
-                                                    </>
+                                                    `Nrs.${item.price}`
                                                 )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    {item.isDeleted ? (
+                                                        <>
+                                                            <Button variant="ghost" size="sm" onClick={() => handleRestoreItem(item)} className="text-green-600 hover:text-green-700 hover:bg-green-50" title="Restore Item"><RefreshCcw className="w-4 h-4" /></Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => handlePermanentDelete(item)} className="text-red-500 hover:text-red-700 hover:bg-red-50" title="Permanently Delete"><Trash2 className="w-4 h-4" /></Button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Button variant="ghost" size="sm" onClick={() => setLedgerProduct(item)} className="text-purple-600 hover:text-purple-700 hover:bg-purple-50" title="View Daily Ledger"><History className="w-4 h-4" /></Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => handleOpenRestock(item)} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Quick Restock"><PackagePlus className="w-4 h-4" /></Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)} title="Edit Item"><Edit3 className="w-4 h-4" /></Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => handleDeleteItem(item)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+
+                                        {/* ── Popcorn Variant Sub-Rows ── */}
+                                        {isPopcornParent && expandedPopcorn.has(item.id) && popcornVariants.map(variant => {
+                                            const unitsAvailable = Math.floor(item.stock / (variant.stockMultiplier || 1));
+                                            return (
+                                                <TableRow key={variant.id} className="bg-slate-50/50 border-b border-dashed border-slate-100">
+                                                    <TableCell className="font-medium pl-10">
+                                                        <div className="flex items-center gap-2">
+                                                            <ChevronRight className="w-3 h-3 text-slate-300" />
+                                                            <span className="text-sm text-slate-600">{variant.name.replace(' (STOCK)', '')}</span>
+                                                            <span className="text-[10px] font-bold text-slate-400">({variant.stockMultiplier}g/serving)</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-xs text-slate-400">Variant</span>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {unitsAvailable <= 0 ? (
+                                                            <Badge variant="destructive" className="animate-pulse bg-red-100 text-red-700 border border-red-200 shadow-none text-xs">
+                                                                0 units
+                                                            </Badge>
+                                                        ) : unitsAvailable <= 5 ? (
+                                                            <Badge className="bg-amber-50 text-amber-700 border border-amber-200 shadow-none font-bold text-xs">
+                                                                {unitsAvailable} units ⚠️
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className="bg-blue-50 text-blue-700 border border-blue-200 shadow-none font-bold text-xs">
+                                                                {unitsAvailable} units
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium text-sm">Nrs.{variant.price}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <Button variant="ghost" size="sm" onClick={() => setLedgerProduct(variant)} className="text-purple-600 hover:text-purple-700 hover:bg-purple-50" title="View Daily Ledger"><History className="w-4 h-4" /></Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(variant)} title="Edit Variant"><Edit3 className="w-4 h-4" /></Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                        </>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
-                    </div>
                 </CardContent>
             </Card>
+
             {/* ── Quick Restock Dialog ── */}
             <Dialog open={!!restockItem} onOpenChange={(open) => { if (!open) setRestockItem(null); }}>
                 <DialogContent className="max-w-md">
@@ -804,125 +1073,118 @@ export function InventoryTable() {
                     </DialogHeader>
                     {restockItem && (
                         <div className="space-y-5 py-2">
-                            {/* Current stock display */}
                             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                                 <span className="text-sm font-medium text-slate-600">Current Stock</span>
-                                <span className="text-lg font-black text-slate-800">{restockItem.stock} {restockItem.category === 'Scoops' ? 'scoops' : 'pcs'}</span>
+                                <span className="text-lg font-black text-slate-800">
+                                    {restockItem.category === 'Popcorn' 
+                                        ? `${restockItem.stock}g` 
+                                        : `${restockItem.stock} ${restockItem.category === 'Scoops' ? 'scoops' : (restockItem.unit || 'pcs')}`}
+                                </span>
                             </div>
 
-                            {/* Scoops: Tub + Extra Scoops Restock */}
                             {restockItem.category === 'Scoops' ? (
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50">
-                                            <Label className="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase">
-                                                <PackagePlus className="w-3.5 h-3.5" /> Full Tubs to Add
-                                            </Label>
+                                            <Label className="text-xs font-bold text-slate-500 uppercase">Full Tubs</Label>
                                             <Input
                                                 type="number"
                                                 min="0"
-                                                placeholder="0"
                                                 value={restockTubs}
                                                 onChange={(e) => {
                                                     setRestockTubs(e.target.value);
                                                     const tubs = parseInt(e.target.value) || 0;
                                                     const extra = parseInt(restockExtraScoops) || 0;
                                                     const yld = parseInt(restockYield) || 24;
-                                                    if (tubs > 0 || extra > 0) {
-                                                        setRestockQty((tubs * yld + extra).toString());
-                                                    } else {
-                                                        setRestockQty('');
-                                                    }
+                                                    setRestockQty(tubs > 0 || extra > 0 ? (tubs * yld + extra).toString() : '');
                                                 }}
                                                 className="h-10 text-lg font-bold"
                                             />
                                         </div>
                                         <div className="space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50">
-                                            <Label className="text-xs font-bold text-slate-500 uppercase">🥄 Extra Loose Scoops</Label>
+                                            <Label className="text-xs font-bold text-slate-500 uppercase">Extra Scoops</Label>
                                             <Input
                                                 type="number"
                                                 min="0"
-                                                placeholder="0"
                                                 value={restockExtraScoops}
                                                 onChange={(e) => {
                                                     setRestockExtraScoops(e.target.value);
                                                     const tubs = parseInt(restockTubs) || 0;
                                                     const extra = parseInt(e.target.value) || 0;
                                                     const yld = parseInt(restockYield) || 24;
-                                                    if (tubs > 0 || extra > 0) {
-                                                        setRestockQty((tubs * yld + extra).toString());
-                                                    } else {
-                                                        setRestockQty('');
-                                                    }
+                                                    setRestockQty(tubs > 0 || extra > 0 ? (tubs * yld + extra).toString() : '');
                                                 }}
                                                 className="h-10 text-lg font-bold"
                                             />
                                         </div>
                                     </div>
-
-                                    {/* Cost/Tub field for weighted average calculation */}
-                                    <div className="p-3 bg-amber-50/50 rounded-lg border border-amber-200/60 space-y-2">
-                                        <Label className="text-xs font-bold text-amber-700 uppercase tracking-wider">New Cost/Tub (Optional)</Label>
-                                        <p className="text-xs text-amber-700/80 mb-1">Updates your blended cost per scoop. Leave blank if prices haven't changed.</p>
+                                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
+                                        <Label className="text-xs font-bold text-amber-700 uppercase">Cost/Tub (Optional)</Label>
                                         <Input
                                             type="number"
-                                            min="0"
-                                            placeholder={`Default: Nrs. ${((restockItem.costPrice || 0) * (parseFloat(restockYield) || 24)).toFixed(0)}/tub`}
                                             value={restockTubCost}
+                                            placeholder={`Default: Nrs. ${((restockItem.costPrice || 0) * (parseFloat(restockYield) || 24)).toFixed(0)}`}
                                             onChange={(e) => setRestockTubCost(e.target.value)}
                                             className="h-9"
                                         />
-                                        {restockTubCost && parseFloat(restockTubCost) > 0 && (parseInt(restockQty) || 0) > 0 && (() => {
-                                            const newCostPerScoop = parseFloat(restockTubCost) / (parseFloat(restockYield) || 24);
-                                            const oldValue = restockItem.stock * (restockItem.costPrice || 0);
-                                            const newValue = (parseInt(restockQty) || 0) * newCostPerScoop;
-                                            const totalStock = restockItem.stock + (parseInt(restockQty) || 0);
-                                            const blended = totalStock > 0 ? (oldValue + newValue) / totalStock : 0;
-                                            return (
-                                                <p className="text-xs text-amber-700 font-semibold mt-2">
-                                                    Blended cost: Nrs. {blended.toFixed(2)}/scoop
-                                                    <span className="text-slate-400 font-normal"> (was Nrs. {(restockItem.costPrice || 0).toFixed(2)}/scoop)</span>
-                                                </p>
-                                            );
-                                        })()}
                                     </div>
-
-                                    {/* Preview */}
-                                    {(parseInt(restockQty) || 0) > 0 && (
-                                        <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200 mt-2">
-                                            <span className="text-sm font-medium text-emerald-800">Total Scoops to Add:</span>
-                                            <span className="text-xl font-black text-emerald-700">+{restockQty || '0'} scoops</span>
+                                </div>
+                            ) : restockItem.category === 'Popcorn' ? (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase">Boxes Received</Label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                value={restockPopcornBoxes}
+                                                onChange={(e) => setRestockPopcornBoxes(e.target.value)}
+                                                className="h-10 text-lg font-bold"
+                                            />
                                         </div>
-                                    )}
+                                        <div className="space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase">Total Weight (g)</Label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                value={restockPopcornWeight}
+                                                onChange={(e) => setRestockPopcornWeight(e.target.value)}
+                                                className="h-10 text-lg font-bold"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase">Total Cost for these Boxes</Label>
+                                        <Input
+                                            type="number"
+                                            value={restockTubCost}
+                                            placeholder={`Default: Nrs. ${((parseFloat(restockPopcornBoxes) || 1) * (restockItem.tubCost || 0)).toFixed(0)}`}
+                                            onChange={(e) => setRestockTubCost(e.target.value)}
+                                            className="h-10 text-lg font-bold"
+                                        />
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {/* Main input: Add quantity for non-scoops */}
-                                    <Label className="text-sm font-semibold">Add Quantity</Label>
+                                    <Label className="text-sm font-semibold">Quantity to Add</Label>
                                     <Input
                                         type="number"
                                         min="1"
-                                        placeholder="Enter quantity to add..."
                                         value={restockQty}
                                         onChange={(e) => setRestockQty(e.target.value)}
                                         className="h-11 text-lg font-bold"
-                                        autoFocus
                                     />
-                                    {/* Preview */}
-                                    {(parseInt(restockQty) || 0) > 0 && (
-                                        <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200 mt-2">
-                                            <span className="text-sm font-medium text-emerald-700">New Stock</span>
-                                            <span className="text-lg font-black text-emerald-700">
-                                                {restockItem.stock} + {parseInt(restockQty) || 0} = {restockItem.stock + (parseInt(restockQty) || 0)}
-                                            </span>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
                             <Button
                                 onClick={handleConfirmRestock}
-                                disabled={!restockQty || (parseInt(restockQty) || 0) <= 0 || upsertMutation.isPending}
+                                disabled={
+                                    (restockItem.category === 'Popcorn' 
+                                       ? (!restockPopcornWeight || parseFloat(restockPopcornWeight) <= 0)
+                                       : (!restockQty || (parseInt(restockQty) || 0) <= 0)) 
+                                    || upsertMutation.isPending
+                                }
                                 className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                             >
                                 {upsertMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -959,6 +1221,31 @@ export function InventoryTable() {
                             className="bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-100"
                         >
                             Yes, Archive Item
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ── Permanent Delete Confirmation ── */}
+            <AlertDialog open={!!permanentDeleteItem} onOpenChange={(open) => !open && setPermanentDeleteItem(null)}>
+                <AlertDialogContent className="border-red-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+                            <Trash2 className="w-5 h-5" />
+                            Permanently Delete "{permanentDeleteItem?.name}"?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 space-y-2">
+                            <p>This action <strong>cannot be undone</strong>. The item will be permanently removed from the database.</p>
+                            <p className="text-xs text-slate-400">Note: Past order history referencing this item will not be affected — order records store item details independently.</p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel className="border-slate-200 text-slate-500 hover:bg-slate-50">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmPermanentDelete}
+                            className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-100"
+                        >
+                            Yes, Permanently Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

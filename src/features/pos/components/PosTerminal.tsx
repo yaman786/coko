@@ -263,6 +263,53 @@ export function PosTerminal() {
                             const categoryItems = filteredItems.filter(item => item.category === category);
                             if (categoryItems.length === 0) return null;
 
+                            const renderProductCard = (item: Product) => {
+                                const isParent = products.some(p => p.parentId === item.id);
+                                const isOutOfStock = item.trackInventory !== false && item.stock <= 0;
+                                const isLowStock = item.trackInventory !== false && item.stock > 0 && item.stock <= 5;
+
+                                const handleClick = () => {
+                                    if (isOutOfStock) return;
+                                    if (isParent) {
+                                        setSelectedParent(item);
+                                    } else {
+                                        addToCart(item);
+                                    }
+                                };
+
+                                return (
+                                    <Button
+                                        key={item.id}
+                                        variant="outline"
+                                        disabled={isOutOfStock}
+                                        className={`h-auto flex-col items-start p-3 md:p-4 transition-all active:scale-[0.98] shadow-sm text-left border-slate-200 group relative ${isOutOfStock
+                                            ? 'bg-slate-50 opacity-60 cursor-not-allowed border-slate-100'
+                                            : isLowStock
+                                                ? 'bg-amber-50/30 hover:bg-amber-50 border-amber-200 hover:border-amber-300'
+                                                : 'bg-white hover:bg-purple-50 hover:border-purple-300'
+                                            }`}
+                                        onClick={handleClick}
+                                    >
+                                        {isOutOfStock && (
+                                            <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Sold Out</span>
+                                        )}
+                                        {isLowStock && (
+                                            <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">{item.stock} left</span>
+                                        )}
+                                        <span className={`text-xs md:text-sm font-semibold leading-tight mb-1.5 md:mb-2 transition-colors text-wrap h-auto min-h-[1.5rem] md:min-h-[2.5rem] ${isOutOfStock ? 'text-slate-400' : 'text-slate-700 group-hover:text-purple-700'
+                                            }`}>{item.name.replace(' (STOCK)', '')}</span>
+                                        <div className="flex items-center justify-between w-full mt-auto">
+                                            <span className={`font-bold px-1.5 md:px-2 py-0.5 rounded text-[11px] md:text-xs transition-colors ${isOutOfStock
+                                                ? 'bg-slate-100 text-slate-400'
+                                                : 'text-purple-600 bg-purple-50 group-hover:bg-purple-100'
+                                                }`}>
+                                                {isParent ? 'View Options' : `Nrs. ${item.price.toLocaleString()}`}
+                                            </span>
+                                        </div>
+                                    </Button>
+                                );
+                            };
+
                             return (
                                 <div key={category} className="mb-8 last:mb-0">
                                     <div className="flex items-center gap-2 mb-4">
@@ -271,54 +318,45 @@ export function PosTerminal() {
                                             {categoryItems.length}
                                         </Badge>
                                     </div>
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
-                                        {categoryItems.map(item => {
-                                            const isParent = products.some(p => p.parentId === item.id);
-                                            const isOutOfStock = item.trackInventory !== false && item.stock <= 0;
-                                            const isLowStock = item.trackInventory !== false && item.stock > 0 && item.stock <= 5;
+                                    {['Scoops', 'Bio-products', 'Drinks'].includes(category) ? (
+                                        <div className="space-y-6">
+                                            {(() => {
+                                                // Group items case-insensitively first
+                                                const groupsMap = new Map<string, Product[]>();
+                                                categoryItems.forEach(item => {
+                                                    const rawSub = item.subcategory?.trim() || `Other ${category}`;
+                                                    // Normalize key for grouping (e.g. "bubble tea" === "Bubble Tea")
+                                                    const key = rawSub.toLowerCase();
 
-                                            const handleClick = () => {
-                                                if (isOutOfStock) return;
-                                                if (isParent) {
-                                                    setSelectedParent(item);
-                                                } else {
-                                                    addToCart(item);
-                                                }
-                                            };
+                                                    if (!groupsMap.has(key)) {
+                                                        groupsMap.set(key, []);
+                                                    }
+                                                    groupsMap.get(key)!.push(item);
+                                                });
 
-                                            return (
-                                                <Button
-                                                    key={item.id}
-                                                    variant="outline"
-                                                    disabled={isOutOfStock}
-                                                    className={`h-auto flex-col items-start p-3 md:p-4 transition-all active:scale-[0.98] shadow-sm text-left border-slate-200 group relative ${isOutOfStock
-                                                        ? 'bg-slate-50 opacity-60 cursor-not-allowed border-slate-100'
-                                                        : isLowStock
-                                                            ? 'bg-amber-50/30 hover:bg-amber-50 border-amber-200 hover:border-amber-300'
-                                                            : 'bg-white hover:bg-purple-50 hover:border-purple-300'
-                                                        }`}
-                                                    onClick={handleClick}
-                                                >
-                                                    {isOutOfStock && (
-                                                        <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Sold Out</span>
-                                                    )}
-                                                    {isLowStock && (
-                                                        <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">{item.stock} left</span>
-                                                    )}
-                                                    <span className={`text-xs md:text-sm font-semibold leading-tight mb-1.5 md:mb-2 transition-colors text-wrap h-auto min-h-[1.5rem] md:min-h-[2.5rem] ${isOutOfStock ? 'text-slate-400' : 'text-slate-700 group-hover:text-purple-700'
-                                                        }`}>{item.name.replace(' (STOCK)', '')}</span>
-                                                    <div className="flex items-center justify-between w-full mt-auto">
-                                                        <span className={`font-bold px-1.5 md:px-2 py-0.5 rounded text-[11px] md:text-xs transition-colors ${isOutOfStock
-                                                            ? 'bg-slate-100 text-slate-400'
-                                                            : 'text-purple-600 bg-purple-50 group-hover:bg-purple-100'
-                                                            }`}>
-                                                            {isParent ? 'View Options' : `Nrs. ${item.price.toLocaleString()}`}
-                                                        </span>
-                                                    </div>
-                                                </Button>
-                                            );
-                                        })}
-                                    </div>
+                                                // Now map over the grouped lists
+                                                return Array.from(groupsMap.entries()).map(([key, items]) => {
+                                                    // Pick the capitalized version of the name from the first item as the display header
+                                                    const displayHeader = items[0].subcategory?.trim() || `Other ${category}`;
+                                                    
+                                                    return (
+                                                        <div key={key}>
+                                                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center mb-3">
+                                                                <span className="bg-slate-100 px-3 py-1 rounded-md">{displayHeader}</span>
+                                                            </h3>
+                                                            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
+                                                                {items.map(item => renderProductCard(item))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
+                                            {categoryItems.map(item => renderProductCard(item))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

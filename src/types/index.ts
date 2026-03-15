@@ -20,6 +20,44 @@ export interface Product {
     user_id?: string;
 }
 
+export interface Expense {
+    id: string;
+    date: Date;
+    category: 'Rent' | 'Salary' | 'Inventory' | 'Utilities' | 'Marketing' | 'Other' | string;
+    description: string;
+    amount: number;
+    payment_method: string;
+    cashier_id?: string;
+    cashier_name?: string;
+    createdat: Date;
+    updatedat: Date;
+}
+
+export interface Supplier {
+    id: string;
+    name: string;
+    contact_person?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    current_balance: number;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface SupplierTransaction {
+    id: string;
+    supplier_id: string;
+    date: Date;
+    type: 'BILL' | 'PAYMENT';
+    amount: number;
+    payment_method?: string;
+    description?: string;
+    reference_number?: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 export interface OrderItem {
     productId: string;
     name: string;

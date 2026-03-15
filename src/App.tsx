@@ -13,6 +13,8 @@ const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default:
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProductAnalyticsPage = lazy(() => import('./pages/ProductAnalyticsPage').then(m => ({ default: m.ProductAnalyticsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
+const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
+const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
@@ -73,6 +75,8 @@ function App() {
                 {/* Admin-Only Routes */}
                 <Route path="/orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
                 <Route path="/inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
+                <Route path="/suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                <Route path="/expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                 <Route path="/dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
                 <Route path="/analytics/products" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
                 <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
