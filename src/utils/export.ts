@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import { format } from 'date-fns';
+import autoTable from 'jspdf-autotable';
+import { format, isValid } from 'date-fns';
 
 /**
  * Interface extending jsPDF to include autoTable method from the plugin
@@ -109,7 +109,7 @@ export const exportDashboardToPDF = (data: DashboardExportData) => {
     const formatCurrency = (amount: number) => `Nrs. ${amount.toLocaleString()}`;
 
     // Use autoTable for layout of summary metrics
-    doc.autoTable({
+    autoTable(doc, {
         startY: 70,
         head: [['Metric', 'Value']],
         body: [
@@ -141,7 +141,7 @@ export const exportDashboardToPDF = (data: DashboardExportData) => {
         doc.setFontSize(14);
         doc.text("Top Selling Products", 14, finalY + 15);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: finalY + 20,
             head: [['Product Name', 'Quantity Sold']],
             body: data.topProducts.map(p => [p.name, p.quantity.toString()]),
@@ -232,24 +232,29 @@ export const exportSupplierLedgerToPDF = (data: SupplierExportData) => {
     doc.text(`Current Outstanding: Nrs. ${data.supplier.current_balance.toLocaleString()}`, 110, 70);
 
     // Transaction Table
-    doc.autoTable({
+    autoTable(doc, {
         startY: 95,
         head: [['Date', 'Type', 'Note / Reference', 'Amount (Nrs.)']],
-        body: data.transactions.map(t => [
-            format(new Date(t.date), 'MMM dd, yyyy'),
-            { 
-                content: t.is_deleted ? `${t.type} (ARCHIVED)` : t.type,
-                styles: { textColor: t.type === 'BILL' ? [234, 88, 12] : [21, 128, 61], fontStyle: 'bold' }
-            },
-            {
-                content: `${t.description || 'No note'}${t.reference ? `\nRef: ${t.reference}` : ''}`,
-                styles: { fontSize: 9 }
-            },
-            { 
-                content: `${t.type === 'BILL' ? '+' : '-'} ${t.amount.toLocaleString()}`, 
-                styles: { halign: 'right', fontStyle: 'bold', fontSize: 11 } 
-            }
-        ]),
+        body: data.transactions.map(t => {
+            const dateObj = new Date(t.date);
+            const dateStr = isValid(dateObj) ? format(dateObj, 'MMM dd, yyyy') : 'N/A';
+            
+            return [
+                dateStr,
+                { 
+                    content: t.is_deleted ? `${t.type} (ARCHIVED)` : t.type,
+                    styles: { textColor: t.type === 'BILL' ? [234, 88, 12] : [21, 128, 61], fontStyle: 'bold' }
+                },
+                {
+                    content: `${t.description || 'No note'}${t.reference ? `\nRef: ${t.reference}` : ''}`,
+                    styles: { fontSize: 9 }
+                },
+                { 
+                    content: `${t.type === 'BILL' ? '+' : '-'} ${t.amount.toLocaleString()}`, 
+                    styles: { halign: 'right', fontStyle: 'bold', fontSize: 11 } 
+                }
+            ];
+        }),
         theme: 'striped',
         headStyles: { 
             fillColor: [15, 23, 42], 
