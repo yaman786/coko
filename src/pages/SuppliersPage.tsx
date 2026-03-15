@@ -176,17 +176,16 @@ export function SuppliersPage() {
                                         View Ledger
                                     </Button>
                                     <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="h-9 px-3 rounded-lg font-bold border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-2"
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-9 w-9 text-slate-400 hover:text-blue-600 transition-colors"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingSupplier(supplier);
                                             setIsAddOpen(true);
                                         }}
                                     >
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                        Edit
+                                        <Edit2 className="w-4 h-4" />
                                     </Button>
                                     <Button 
                                         variant="ghost" 

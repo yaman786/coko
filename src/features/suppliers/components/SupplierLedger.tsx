@@ -276,17 +276,6 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            {t.attachment_url && (
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
-                                                    onClick={() => window.open(t.attachment_url, '_blank')}
-                                                    title="View Attachment"
-                                                >
-                                                    <Search className="w-4 h-4" />
-                                                </Button>
-                                            )}
                                             {t.is_deleted ? (
                                                 <Button 
                                                     variant="ghost" 
@@ -301,15 +290,15 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                                 <>
                                                     <Button 
                                                         variant="ghost" 
-                                                        size="sm" 
-                                                        className="h-8 px-2 text-xs font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 gap-1.5"
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-slate-100"
                                                         onClick={() => {
                                                             setEditingTransaction(t);
                                                             setIsRecordOpen(true);
                                                         }}
+                                                        title="Edit Transaction"
                                                     >
-                                                        <Edit2 className="w-3.5 h-3.5" />
-                                                        Edit
+                                                        <Edit2 className="w-4 h-4" />
                                                     </Button>
                                                     <Button 
                                                         variant="ghost" 
