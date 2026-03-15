@@ -184,6 +184,7 @@ export interface SupplierExportData {
         date: string;
         type: string;
         amount: number;
+        description?: string;
         reference?: string;
         author?: string;
         is_deleted?: boolean;
@@ -233,27 +234,37 @@ export const exportSupplierLedgerToPDF = (data: SupplierExportData) => {
     // Transaction Table
     doc.autoTable({
         startY: 95,
-        head: [['Date', 'Type', 'Reference', 'Recorded By', 'Amount (Nrs.)']],
+        head: [['Date', 'Type', 'Note / Reference', 'Amount (Nrs.)']],
         body: data.transactions.map(t => [
             format(new Date(t.date), 'MMM dd, yyyy'),
-            t.is_deleted ? `${t.type} (ARCHIVED)` : t.type,
-            t.reference || '-',
-            t.author || 'System',
             { 
-                content: t.amount.toLocaleString(), 
-                styles: { halign: 'right', fontStyle: t.type === 'BILL' ? 'bold' : 'normal' } 
+                content: t.is_deleted ? `${t.type} (ARCHIVED)` : t.type,
+                styles: { textColor: t.type === 'BILL' ? [234, 88, 12] : [21, 128, 61], fontStyle: 'bold' }
+            },
+            {
+                content: `${t.description || 'No note'}${t.reference ? `\nRef: ${t.reference}` : ''}`,
+                styles: { fontSize: 9 }
+            },
+            { 
+                content: `${t.type === 'BILL' ? '+' : '-'} ${t.amount.toLocaleString()}`, 
+                styles: { halign: 'right', fontStyle: 'bold', fontSize: 11 } 
             }
         ]),
         theme: 'striped',
-        headStyles: { fillColor: [20, 20, 25], textColor: 255 },
+        headStyles: { 
+            fillColor: [15, 23, 42], 
+            textColor: 255,
+            fontSize: 10,
+            cellPadding: 4
+        },
         columnStyles: {
             0: { cellWidth: 35 },
             1: { cellWidth: 35 },
-            2: { cellWidth: 40 },
-            3: { cellWidth: 40 },
-            4: { cellWidth: 32 }
+            2: { cellWidth: 'auto' },
+            3: { cellWidth: 35 }
         },
-        margin: { left: 14 }
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 14, right: 14 }
     });
 
     // Footer

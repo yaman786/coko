@@ -9,8 +9,10 @@ import type { Supplier, SupplierTransaction } from '../../../types';
 import { RecordTransactionDialog } from './RecordTransactionDialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../../components/ui/alert-dialog';
-import { exportSupplierLedgerToPDF } from '../../../utils/export';
+import { exportSupplierLedgerToPDF, exportToCSV } from '../../../utils/export';
 import { useAuth } from '../../../contexts/AuthContext';
+import { DropdownMenu } from '../../../components/ui/DropdownMenu';
+import { FileText as FileIcon, Table as CsvIcon } from 'lucide-react';
 
 interface SupplierLedgerProps {
     supplier: Supplier;
@@ -69,7 +71,7 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
         }
     };
 
-    const handleExport = () => {
+    const handleExportPDF = () => {
         const exportData = {
             supplier: {
                 name: supplier.name,
@@ -81,6 +83,7 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                 date: t.date.toString(),
                 type: t.type,
                 amount: t.amount,
+                description: t.description,
                 reference: t.reference_number,
                 author: t.created_by,
                 is_deleted: t.is_deleted
@@ -88,6 +91,19 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
             adminName: user?.email?.split('@')[0] || 'Admin'
         };
         exportSupplierLedgerToPDF(exportData);
+    };
+
+    const handleExportCSV = () => {
+        const csvData = transactions.map(t => ({
+            Date: new Date(t.date).toLocaleDateString(),
+            Type: t.type,
+            Amount: t.amount,
+            Note: t.description || '',
+            Reference: t.reference_number || '',
+            RecordedBy: t.created_by || 'Unknown',
+            Status: t.is_deleted ? 'Archived' : 'Active'
+        }));
+        exportToCSV(csvData, `ledger-${supplier.name.toLowerCase().replace(/\s+/g, '-')}`);
     };
 
     const filteredTransactions = transactions.filter(t => 
@@ -122,14 +138,29 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={handleExport}
-                            className="bg-white rounded-xl border-slate-200 font-bold text-slate-700 hover:bg-slate-50 gap-2 shadow-sm h-11 px-4"
-                        >
-                            <Download className="h-4 w-4" />
-                            Statement
-                        </Button>
+                        <DropdownMenu
+                            buttonContent={
+                                <>
+                                    <Download className="h-4 w-4" />
+                                    Statement
+                                </>
+                            }
+                            buttonClassName="bg-white rounded-xl border-slate-200 font-bold text-slate-700 hover:bg-slate-50 gap-2 shadow-sm h-11 px-4 ring-0"
+                            items={[
+                                {
+                                    label: 'Export PDF',
+                                    icon: FileIcon,
+                                    onClick: handleExportPDF,
+                                    className: 'font-bold text-slate-700'
+                                },
+                                {
+                                    label: 'Export CSV',
+                                    icon: CsvIcon,
+                                    onClick: handleExportCSV,
+                                    className: 'font-bold text-slate-700'
+                                }
+                            ]}
+                        />
                         <Button 
                             onClick={() => {
                                 setEditingTransaction(null);
