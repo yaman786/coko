@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, PlusCircle, Search, FileText, Trash2, Calendar, CreditCard, Receipt } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Search, FileText, Trash2, Calendar, CreditCard, Receipt, Download, Paperclip } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Card } from '../../../components/ui/card';
@@ -11,7 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../../components/ui/alert-dialog';
 import { exportSupplierLedgerToPDF } from '../../../utils/export';
 import { useAuth } from '../../../contexts/AuthContext';
-import { Download } from 'lucide-react';
 
 interface SupplierLedgerProps {
     supplier: Supplier;
@@ -252,18 +251,42 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="space-y-0.5">
-                                            <p className="text-sm font-semibold text-slate-700 line-clamp-1">{t.description || 'No note'}</p>
-                                            {t.reference_number && (
-                                                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                                    <Receipt className="w-3 h-3" />
-                                                    {t.reference_number}
-                                                </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="space-y-0.5">
+                                                <p className="text-sm font-semibold text-slate-700 line-clamp-1">{t.description || 'No note'}</p>
+                                                {t.reference_number && (
+                                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                        <Receipt className="w-3 h-3" />
+                                                        {t.reference_number}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {t.attachment_url && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => window.open(t.attachment_url, '_blank')}
+                                                    className="h-7 px-2 text-[10px] font-bold gap-1.5 border-orange-100 bg-orange-50/50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 rounded-lg shrink-0"
+                                                >
+                                                    <Paperclip className="w-3 h-3" />
+                                                    View Receipt
+                                                </Button>
                                             )}
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
+                                            {t.attachment_url && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                                                    onClick={() => window.open(t.attachment_url, '_blank')}
+                                                    title="View Attachment"
+                                                >
+                                                    <Search className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                             {t.is_deleted ? (
                                                 <Button 
                                                     variant="ghost" 

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Loader2, PlusCircle, ArrowUpCircle, Calendar } from 'lucide-react';
 import type { Supplier, SupplierTransaction } from '../../../types';
 import { useAuth } from '../../../contexts/AuthContext';
+import { compressImage } from '../../../utils/image';
 
 interface RecordTransactionDialogProps {
     supplier: Supplier;
@@ -98,7 +99,9 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
 
         setUploading(true);
         try {
-            const url = await api.uploadSupplierAttachment(file);
+            // Compress image if it's a photo
+            const processedFile = await compressImage(file);
+            const url = await api.uploadSupplierAttachment(processedFile);
             setFormData(prev => ({ ...prev, attachment_url: url }));
             toast.success('Document uploaded');
         } catch (error) {
