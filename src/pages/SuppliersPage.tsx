@@ -171,14 +171,14 @@ export function SuppliersPage() {
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
-                                        className="w-full rounded-lg font-bold border-slate-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 transition-all"
+                                        className="flex-1 rounded-lg font-bold border-slate-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 transition-all"
                                     >
                                         View Ledger
                                     </Button>
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
-                                        className="h-9 px-3 rounded-lg font-bold border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-2"
+                                        className="flex-1 rounded-lg font-bold border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center justify-center gap-2"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingSupplier(supplier);
