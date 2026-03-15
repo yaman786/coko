@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, PlusCircle, Search, FileText, Trash2, Calendar, CreditCard, Receipt, Download, Paperclip } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Search, Edit2, Trash2, Calendar, CreditCard, Receipt, Download, Paperclip, FileText } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Card } from '../../../components/ui/card';
@@ -301,14 +301,15 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                                 <>
                                                     <Button 
                                                         variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                                        size="sm" 
+                                                        className="h-8 px-2 text-xs font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 gap-1.5"
                                                         onClick={() => {
                                                             setEditingTransaction(t);
                                                             setIsRecordOpen(true);
                                                         }}
                                                     >
-                                                        <FileText className="w-4 h-4" />
+                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                        Edit
                                                     </Button>
                                                     <Button 
                                                         variant="ghost" 
