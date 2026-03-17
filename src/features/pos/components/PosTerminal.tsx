@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Trash2, 
   Calendar, 
+  Clock,
   CreditCard, 
   ShoppingBag, 
   Loader2, 
@@ -122,8 +123,12 @@ export function PosTerminal() {
     const [offerTitle, setOfferTitle] = useState('');
     const [offerAmountInput, setOfferAmountInput] = useState('0');
 
-    // Phase 14: Admin Date Override
-    const [overrideDate, setOverrideDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    // Phase 14: Admin Date & Time Override
+    const [overrideDate, setOverrideDate] = useState<string>(() => {
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset() * 60000;
+        return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+    });
 
     // Derived Financials
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -536,18 +541,30 @@ export function PosTerminal() {
                                 <h3 className="font-bold text-slate-700 uppercase tracking-widest text-xs mb-2 text-purple-600">Financial Breakdown</h3>
 
                                 {role?.toLowerCase() === 'admin' && (
-                                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 mb-4 space-y-2">
-                                        <div className="flex items-center gap-2 text-amber-700">
-                                            <Calendar className="w-3.5 h-3.5" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Order Date Override (Admin Only)</span>
+                                    <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-100 shadow-sm mb-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-amber-700">
+                                                <Calendar className="w-4 h-4" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Historical Override</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100/50 rounded-full text-[9px] font-bold text-amber-800 uppercase tracking-tight">
+                                                <Clock className="w-3 h-3" />
+                                                Admin Only
+                                            </div>
                                         </div>
-                                        <Input 
-                                            type="date" 
-                                            value={overrideDate} 
-                                            onChange={(e) => setOverrideDate(e.target.value)}
-                                            className="h-9 text-xs font-bold bg-white border-amber-200 focus-visible:ring-amber-500"
-                                        />
-                                        <p className="text-[9px] text-amber-600 font-medium italic">Leave as today for normal sales. Change only to correct past transactions.</p>
+                                        
+                                        <div className="relative group">
+                                            <Input 
+                                                type="datetime-local" 
+                                                value={overrideDate} 
+                                                onChange={(e) => setOverrideDate(e.target.value)}
+                                                className="h-10 text-sm font-bold bg-white border-amber-200 focus-visible:ring-amber-500 rounded-lg pr-10 transition-all hover:border-amber-300"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-amber-600/80 font-medium leading-tight">
+                                            Specify exact date/time for past corrections. 
+                                            <span className="block mt-0.5 opacity-60 italic">Defaults to current time if left unchanged.</span>
+                                        </p>
                                     </div>
                                 )}
 
