@@ -1,17 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  ArrowLeft, 
-  PlusCircle, 
-  Search, 
-  Edit2, 
   Trash2, 
   Calendar, 
   CreditCard, 
-  Receipt, 
-  Download, 
-  Paperclip, 
-  FileText, 
   ShoppingBag, 
   Loader2, 
   Gift, 
@@ -34,7 +26,7 @@ import { Input } from '../../../components/ui/input';
 import { Separator } from '../../../components/ui/separator';
 
 export function PosTerminal() {
-    const { session, user } = useAuth();
+    const { session, user, role } = useAuth();
     const queryClient = useQueryClient();
     const { cart, addToCart, updateQuantity, setQuantity, removeFromCart, clearCart } = usePosStore();
     const [searchQuery, setSearchQuery] = useState('');
@@ -543,7 +535,7 @@ export function PosTerminal() {
                             <div className="space-y-4">
                                 <h3 className="font-bold text-slate-700 uppercase tracking-widest text-xs mb-2 text-purple-600">Financial Breakdown</h3>
 
-                                {user?.role === 'admin' && (
+                                {role === 'admin' && (
                                     <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 mb-4 space-y-2">
                                         <div className="flex items-center gap-2 text-amber-700">
                                             <Calendar className="w-3.5 h-3.5" />
