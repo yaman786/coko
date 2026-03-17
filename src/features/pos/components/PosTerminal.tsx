@@ -1,9 +1,26 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { Separator } from '../../../components/ui/separator';
-import { Plus, Minus, Trash2, ShoppingBag, Loader2, Gift, Tag } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  PlusCircle, 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Calendar, 
+  CreditCard, 
+  Receipt, 
+  Download, 
+  Paperclip, 
+  FileText, 
+  ShoppingBag, 
+  Loader2, 
+  Gift, 
+  Tag, 
+  Plus, 
+  Minus,
+  Banknote,
+  SplitSquareHorizontal
+} from 'lucide-react';
 import { api } from '../../../services/api';
 import type { OrderItemPayload } from '../../../services/api';
 import type { Product } from '../../../types';
@@ -12,10 +29,12 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'sonner';
 import { Badge } from '../../../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../../components/ui/dialog';
-import { CreditCard, Banknote, SplitSquareHorizontal } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Separator } from '../../../components/ui/separator';
 
 export function PosTerminal() {
-    const { session } = useAuth();
+    const { session, user } = useAuth();
     const queryClient = useQueryClient();
     const { cart, addToCart, updateQuantity, setQuantity, removeFromCart, clearCart } = usePosStore();
     const [searchQuery, setSearchQuery] = useState('');
@@ -56,6 +75,7 @@ export function PosTerminal() {
             complimentaryAmount?: number;
             offerTitle?: string;
             offerAmount?: number;
+            createdAt?: string;
         }) => {
             return api.processOrder(orderData);
         },
@@ -65,6 +85,7 @@ export function PosTerminal() {
             });
             clearCart();
             setIsCheckoutModalOpen(false);
+            setOverrideDate(new Date().toISOString().split('T')[0]);
             setDiscountInput('0');
             setLoyaltyInput('0');
             setVatInput('0');
@@ -108,6 +129,9 @@ export function PosTerminal() {
     const [complimentaryAmountInput, setComplimentaryAmountInput] = useState('0');
     const [offerTitle, setOfferTitle] = useState('');
     const [offerAmountInput, setOfferAmountInput] = useState('0');
+
+    // Phase 14: Admin Date Override
+    const [overrideDate, setOverrideDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     // Derived Financials
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -210,7 +234,8 @@ export function PosTerminal() {
             isComplimentary,
             complimentaryAmount: complimentaryDeduction,
             offerTitle: offerTitle || undefined,
-            offerAmount: offerDeduction
+            offerAmount: offerDeduction,
+            createdAt: overrideDate === new Date().toISOString().split('T')[0] ? undefined : new Date(overrideDate).toISOString()
         });
     };
 
@@ -517,6 +542,22 @@ export function PosTerminal() {
                             {/* Left Side: Financial Breakdown */}
                             <div className="space-y-4">
                                 <h3 className="font-bold text-slate-700 uppercase tracking-widest text-xs mb-2 text-purple-600">Financial Breakdown</h3>
+
+                                {user?.role === 'admin' && (
+                                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 mb-4 space-y-2">
+                                        <div className="flex items-center gap-2 text-amber-700">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Order Date Override (Admin Only)</span>
+                                        </div>
+                                        <Input 
+                                            type="date" 
+                                            value={overrideDate} 
+                                            onChange={(e) => setOverrideDate(e.target.value)}
+                                            className="h-9 text-xs font-bold bg-white border-amber-200 focus-visible:ring-amber-500"
+                                        />
+                                        <p className="text-[9px] text-amber-600 font-medium italic">Leave as today for normal sales. Change only to correct past transactions.</p>
+                                    </div>
+                                )}
 
                                 <div className="flex justify-between text-sm font-medium text-slate-600">
                                     <span>Subtotal</span>
