@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const staff = await api.getStaff(true);
                 const staffRecord = staff.find(s => s.email === currentUser.email);
 
-                // Role comes from DB only. No hardcoded email fallbacks.
-                // If no staff record exists, default to 'cashier' (principle of least privilege)
-                setRole(staffRecord?.role ?? 'cashier');
+                // Normalizing to lowercase for robust role checking
+                const rawRole = staffRecord?.role ?? 'cashier';
+                setRole(rawRole.toLowerCase() as 'admin' | 'cashier');
             } catch (err) {
                 console.error("Failed to fetch staff role from API:", err);
                 setRole('cashier'); // Fallback to least privilege
