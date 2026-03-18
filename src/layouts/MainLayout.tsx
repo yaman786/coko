@@ -1,21 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck } from 'lucide-react';
+import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck, Warehouse, Boxes, Users } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
-const navigation = [
-    { name: 'POS', href: '/', icon: ShoppingCart },
-    { name: 'Orders', href: '/orders', icon: Receipt },
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Analytics', href: '/analytics/products', icon: TrendingUp },
-    { name: 'Inventory', href: '/inventory', icon: Package },
-    { name: 'Suppliers', href: '/suppliers', icon: Truck },
-    { name: 'Expenses', href: '/expenses', icon: Receipt },
-    { name: 'Settings', href: '/settings', icon: Settings }
-];
+interface MainLayoutProps {
+    mode?: 'retail' | 'wholesale';
+}
 
-export function MainLayout() {
+export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
+    const isRetail = mode === 'retail';
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(() => {
         try { return localStorage.getItem('sidebar-collapsed') === 'true'; }
@@ -24,6 +18,30 @@ export function MainLayout() {
     const { signOut, role } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+
+    const navigation = useMemo(() => {
+        if (isRetail) {
+            return [
+                { name: 'POS', href: '/pos', icon: ShoppingCart },
+                { name: 'Orders', href: '/pos/orders', icon: Receipt },
+                { name: 'Inventory', href: '/pos/inventory', icon: Package },
+                { name: 'Dashboard', href: '/pos/dashboard', icon: Home },
+                { name: 'Analytics', href: '/pos/analytics', icon: TrendingUp },
+                { name: 'Suppliers', href: '/pos/suppliers', icon: Truck },
+                { name: 'Expenses', href: '/pos/expenses', icon: Receipt },
+                { name: 'Settings', href: '/pos/settings', icon: Settings }
+            ];
+        } else {
+            return [
+                { name: 'GOD Dashboard', href: '/wholesale/dashboard', icon: Home },
+                { name: 'Stock Warehouse', href: '/wholesale/inventory', icon: Boxes },
+                { name: 'Client Ledger', href: '/wholesale/clients', icon: Users },
+                { name: 'Supplier Ledger', href: '/wholesale/suppliers', icon: Truck },
+                { name: 'Cash Book', href: '/wholesale/expenses', icon: Receipt },
+                { name: 'System Settings', href: '/wholesale/settings', icon: Settings }
+            ];
+        }
+    }, [isRetail]);
 
     useEffect(() => {
         try { localStorage.setItem('sidebar-collapsed', String(isCollapsed)); }
@@ -35,8 +53,15 @@ export function MainLayout() {
         navigate('/login');
     };
 
+    // Dynamic Theme Classes
+    const activeBg = isRetail ? 'bg-purple-50' : 'bg-blue-50';
+    const activeText = isRetail ? 'text-purple-700' : 'text-blue-700';
+    const iconColor = isRetail ? 'text-purple-600' : 'text-blue-600';
+    const gradientFrom = isRetail ? 'from-purple-600' : 'from-blue-600';
+    const gradientTo = isRetail ? 'to-pink-500' : 'to-sky-500';
+
     return (
-        <div className="flex bg-white h-screen overflow-hidden font-sans text-slate-900 selection:bg-purple-100 relative">
+        <div className={`flex bg-white h-screen overflow-hidden font-sans text-slate-900 selection:${isRetail ? 'bg-purple-100' : 'bg-blue-100'} relative`}>
             {/* Mobile sidebar backdrop */}
             {isMobileMenuOpen && (
                 <div
@@ -53,10 +78,16 @@ export function MainLayout() {
                 {/* Header */}
                 <div className={`flex items-center h-16 border-b border-slate-200/60 bg-white flex-none ${isCollapsed ? 'lg:justify-center lg:px-0 px-6' : 'px-6'} justify-between`}>
                     <span className={`text-xl font-black tracking-tight text-slate-800 flex items-center gap-2 ${isCollapsed ? 'lg:gap-0' : ''}`}>
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-500 rounded-lg flex items-center justify-center shadow-sm flex-none">
-                            <span className="text-white text-lg leading-none">C</span>
+                        <div className={`w-8 h-8 bg-gradient-to-br ${gradientFrom} ${gradientTo} rounded-lg flex items-center justify-center shadow-sm flex-none`}>
+                            {isRetail ? (
+                                <span className="text-white text-lg leading-none">C</span>
+                            ) : (
+                                <Warehouse className="w-5 h-5 text-white" />
+                            )}
                         </div>
-                        <span className={`transition-all duration-300 ${isCollapsed ? 'lg:hidden' : ''}`}>Coko POS</span>
+                        <span className={`transition-all duration-300 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                            {isRetail ? 'Coko POS' : 'GOD HUB'}
+                        </span>
                     </span>
                     <button
                         className="lg:hidden text-slate-400 hover:text-slate-600 transition-colors"
@@ -70,13 +101,14 @@ export function MainLayout() {
                 <nav className={`flex-1 py-6 space-y-1 overflow-y-auto ${isCollapsed ? 'lg:px-2 px-4' : 'px-4'}`}>
                     {navigation
                         .filter(item => {
-                            if (role !== 'admin' && item.name !== 'POS') return false;
+                            if (role !== 'admin' && item.name === 'Dashboard') return false; 
                             return true;
                         })
                         .map((item) => {
                             const Icon = item.icon;
-                            const isActive = item.href === '/'
-                                ? location.pathname === '/'
+                            // Exact match for root, otherwise startsWith
+                            const isActive = item.href === '/pos' || item.href === '/wholesale'
+                                ? location.pathname === item.href
                                 : location.pathname.startsWith(item.href);
 
                             return (
@@ -87,11 +119,11 @@ export function MainLayout() {
                                     title={isCollapsed ? item.name : undefined}
                                     className={`flex items-center py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 group ${isCollapsed ? 'lg:justify-center lg:px-0 px-3' : 'px-3'
                                         } ${isActive
-                                            ? 'bg-purple-50 text-purple-700'
+                                            ? `${activeBg} ${activeText}`
                                             : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                                         }`}
                                 >
-                                    <Icon className={`w-5 h-5 flex-none transition-colors ${isCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'} ${isActive ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                    <Icon className={`w-5 h-5 flex-none transition-colors ${isCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'} ${isActive ? iconColor : 'text-slate-400 group-hover:text-slate-600'}`} />
                                     <span className={`font-semibold transition-all duration-300 ${isCollapsed ? 'lg:hidden' : ''}`}>{item.name}</span>
                                 </NavLink>
                             );
@@ -110,7 +142,7 @@ export function MainLayout() {
                         <span className={`transition-all duration-300 ${isCollapsed ? 'lg:hidden' : ''}`}>Sign Out</span>
                     </button>
                     <div className={`pt-2 ${isCollapsed ? 'lg:hidden' : 'px-3'}`}>
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Logged in as: <span className="text-slate-600">{role}</span></span>
+                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Logged in as: <span className="text-slate-600 capitalize">{role}</span></span>
                     </div>
 
                     {/* Desktop collapse toggle */}
@@ -142,12 +174,14 @@ export function MainLayout() {
                     >
                         <Menu className="w-6 h-6" />
                     </button>
-                    <span className="text-lg font-black tracking-tight text-slate-800">Coko POS</span>
+                    <span className="text-lg font-black tracking-tight text-slate-800">
+                        {isRetail ? 'Coko POS' : 'GOD HUB'}
+                    </span>
                     <div className="w-6" />
                 </div>
 
                 {/* Page content */}
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 overflow-auto px-4 py-8">
                     <Outlet />
                 </div>
             </main>

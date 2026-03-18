@@ -4,6 +4,7 @@ import { MainLayout } from './layouts/MainLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/QueryClient';
+import { Toaster } from 'sonner';
 
 // Lazy-loaded pages — each page is a separate chunk loaded on demand
 // This reduces the initial bundle by ~40%, making first paint significantly faster
@@ -11,6 +12,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m
 const POSPage = lazy(() => import('./pages/POSPage').then(m => ({ default: m.POSPage })));
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default: m.OrdersPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const WholesaleDashboard = lazy(() => import('./pages/wholesale/WholesaleDashboard'));
 const ProductAnalyticsPage = lazy(() => import('./pages/ProductAnalyticsPage').then(m => ({ default: m.ProductAnalyticsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
@@ -52,13 +54,13 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (role !== 'admin') {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/pos" replace />;
   }
 
   return <>{children}</>;
 }
 
-function App() {
+export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -68,22 +70,34 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-              {/* Protected Application Routes */}
-              <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                <Route path="/" element={<POSPage />} />
-
-                {/* Admin-Only Routes */}
-                <Route path="/orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
-                <Route path="/inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
-                <Route path="/suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
-                <Route path="/expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
-                <Route path="/dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
-                <Route path="/analytics/products" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
-                <Route path="/settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+              {/* Retail (Coko) Route Branch */}
+              <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
+                <Route index element={<POSPage />} />
+                <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
+                <Route path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
+                <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
+                <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
+                <Route path="analytics" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
+                <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
               </Route>
+
+              {/* Wholesale (GOD) Route Branch */}
+              <Route path="/wholesale" element={<ProtectedRoute><MainLayout mode="wholesale" /></ProtectedRoute>}>
+                 <Route index element={<Navigate to="dashboard" replace />} />
+                 <Route path="dashboard" element={<AdminRoute><WholesaleDashboard /></AdminRoute>} />
+                 <Route path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
+                 <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                 <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
+                 <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+              </Route>
+
+              {/* Fallback & Root Redirects */}
+              <Route path="/" element={<Navigate to="/pos" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
+        <Toaster position="top-right" richColors theme="light" />
       </AuthProvider>
     </QueryClientProvider>
   );

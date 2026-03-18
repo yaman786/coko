@@ -9,6 +9,7 @@ export function LoginPage() {
     usePageTitle('Login');
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
+    const [targetApp, setTargetApp] = useState<'retail' | 'wholesale'>('retail');
 
     const handleLogin = async (email: string, password: string) => {
         if (!email || !password) {
@@ -28,8 +29,14 @@ export function LoginPage() {
                 toast.error("Authentication Failed", { description: error.message });
                 console.error('Login error:', error.message);
             } else {
-                toast.success("Welcome Back", { description: "You have successfully logged in." });
-                navigate('/');
+                toast.success("Welcome Back", { description: `Logged into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}` });
+                
+                // Redirect based on selected portal
+                if (targetApp === 'retail') {
+                    navigate('/pos');
+                } else {
+                    navigate('/wholesale');
+                }
             }
         } catch (err) {
             toast.error("Network Error", { description: "Could not connect to authentication server." });
@@ -39,5 +46,12 @@ export function LoginPage() {
         }
     };
 
-    return <LoginForm onLogin={handleLogin} isLoading={isLoading} />;
+    return (
+        <LoginForm 
+            onLogin={handleLogin} 
+            isLoading={isLoading} 
+            targetApp={targetApp} 
+            setTargetApp={setTargetApp} 
+        />
+    );
 }
