@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const handleSessionRefresh = async (session: Session | null) => {
-        setLoading(true); // Signal that we are processing auth/roles
         setSession(session);
         const currentUser = session?.user ?? null;
         setUser(currentUser);

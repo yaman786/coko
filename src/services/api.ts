@@ -13,11 +13,23 @@ export interface OrderItemPayload {
 export const api = {
     // Products
     async getProducts(portal?: 'retail' | 'wholesale'): Promise<Product[]> {
-        let query = supabase.from('products').select('*');
+        // Try with portal filter first; if column doesn't exist yet, fall back gracefully
         if (portal) {
-            query = query.eq('portal', portal);
+            const { data, error } = await supabase
+                .from('products')
+                .select('*')
+                .eq('portal', portal)
+                .order('name');
+
+            if (!error) return data || [];
+            // If the portal column doesn't exist, fall back to unfiltered query
+            console.warn('Portal filter failed (column may not exist yet), falling back:', error.message);
         }
-        const { data, error } = await query.order('name');
+
+        const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('name');
 
         if (error) throw error;
         return data || [];
