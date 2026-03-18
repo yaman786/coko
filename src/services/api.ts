@@ -68,10 +68,20 @@ export const api = {
     },
 
     async getProductAnalytics(startDate: Date, endDate: Date, portal?: 'retail' | 'wholesale'): Promise<any[]> {
+        // Try with portal filter first; if RPC doesn't support it yet, fall back gracefully
+        if (portal) {
+            const { data, error } = await supabase.rpc('get_product_analytics', {
+                p_start_date: startDate.toISOString(),
+                p_end_date: endDate.toISOString(),
+                p_portal: portal
+            });
+            if (!error) return data || [];
+            console.warn('Analytics portal filter failed, falling back:', error.message);
+        }
+
         const { data, error } = await supabase.rpc('get_product_analytics', {
             p_start_date: startDate.toISOString(),
-            p_end_date: endDate.toISOString(),
-            p_portal: portal || null
+            p_end_date: endDate.toISOString()
         });
         if (error) throw error;
         return data || [];
