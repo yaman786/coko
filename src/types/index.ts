@@ -123,3 +123,71 @@ export interface AuditLogEntry {
     actor_name: string;
     createdAt: Date;
 }
+
+// ─── GOD Wholesale Types ─────────────────────────────────
+
+export interface WsProduct {
+    id: string;
+    name: string;
+    category: string;
+    unit: 'Carton' | 'Liter' | 'KG' | 'Tray' | 'Piece';
+    cost_price: number;
+    base_sell_price: number;
+    stock: number;
+    min_stock: number;
+    description?: string;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface WsClient {
+    id: string;
+    name: string;
+    contact_person?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    city?: string;
+    balance: number;        // Positive = they owe you
+    notes?: string;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface WsClientPricing {
+    id: string;
+    client_id: string;
+    product_id: string;
+    sell_price: number;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface WsOrderItem {
+    product_id: string;
+    name: string;
+    qty: number;
+    unit: string;
+    rate: number;
+    total: number;
+}
+
+export interface WsOrder {
+    id: string;
+    order_number?: string;
+    client_id: string;
+    client_name: string;
+    items: WsOrderItem[];
+    subtotal: number;
+    discount: number;
+    total_amount: number;
+    paid_amount: number;
+    payment_status: 'unpaid' | 'partial' | 'paid';
+    payment_method: 'cash' | 'credit' | 'mixed';
+    notes?: string;
+    created_by?: string;
+    created_at: Date;
+    updated_at: Date;
+}

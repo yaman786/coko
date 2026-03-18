@@ -36,8 +36,8 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 { name: 'GOD Dashboard', href: '/wholesale/dashboard', icon: Home },
                 { name: 'Stock Warehouse', href: '/wholesale/inventory', icon: Boxes },
                 { name: 'Client Ledger', href: '/wholesale/clients', icon: Users },
+                { name: 'Supply Orders', href: '/wholesale/orders', icon: Receipt },
                 { name: 'Supplier Ledger', href: '/wholesale/suppliers', icon: Truck },
-                { name: 'Cash Book', href: '/wholesale/expenses', icon: Receipt },
                 { name: 'System Settings', href: '/wholesale/settings', icon: Settings }
             ];
         }

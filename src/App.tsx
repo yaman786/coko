@@ -13,6 +13,9 @@ const POSPage = lazy(() => import('./pages/POSPage').then(m => ({ default: m.POS
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default: m.OrdersPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const WholesaleDashboard = lazy(() => import('./pages/wholesale/WholesaleDashboard'));
+const WholesaleInventoryPage = lazy(() => import('./pages/wholesale/WholesaleInventoryPage'));
+const ClientsPage = lazy(() => import('./pages/wholesale/ClientsPage'));
+const WholesaleOrdersPage = lazy(() => import('./pages/wholesale/WholesaleOrdersPage'));
 const ProductAnalyticsPage = lazy(() => import('./pages/ProductAnalyticsPage').then(m => ({ default: m.ProductAnalyticsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
@@ -86,9 +89,10 @@ export function App() {
               <Route path="/wholesale" element={<ProtectedRoute><MainLayout mode="wholesale" /></ProtectedRoute>}>
                  <Route index element={<Navigate to="dashboard" replace />} />
                  <Route path="dashboard" element={<AdminRoute><WholesaleDashboard /></AdminRoute>} />
-                 <Route path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
+                 <Route path="inventory" element={<AdminRoute><WholesaleInventoryPage /></AdminRoute>} />
+                 <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
+                 <Route path="orders" element={<AdminRoute><WholesaleOrdersPage /></AdminRoute>} />
                  <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
-                 <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                  <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
               </Route>
 
