@@ -195,8 +195,8 @@ export async function getTopProducts(limit: number = 5, period: number | { start
 
     // Fetch both periods in parallel if possible, or sequentially
     const [rawData, prevRawData] = await Promise.all([
-        api.getProductAnalytics(start, end),
-        api.getProductAnalytics(prevStart, prevEnd)
+        api.getProductAnalytics(start, end, 'retail'),
+        api.getProductAnalytics(prevStart, prevEnd, 'retail')
     ]);
 
     if (!Array.isArray(rawData)) {

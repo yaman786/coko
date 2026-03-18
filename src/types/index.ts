@@ -18,6 +18,7 @@ export interface Product {
     updatedAt: Date;
     isDeleted?: boolean;
     user_id?: string;
+    portal?: 'retail' | 'wholesale';
 }
 
 export interface Expense {

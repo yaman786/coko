@@ -36,8 +36,8 @@ export function PosTerminal() {
 
     // 1. Robust Data Fetching with TanStack Query
     const { data: products = [], isLoading: productsLoading } = useQuery({
-        queryKey: ['products'],
-        queryFn: api.getProducts,
+        queryKey: ['products', 'retail'],
+        queryFn: () => api.getProducts('retail'),
         select: (data) => data.filter(p => !p.isDeleted)
     });
 

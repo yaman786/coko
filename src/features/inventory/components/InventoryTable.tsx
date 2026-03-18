@@ -75,8 +75,8 @@ export function InventoryTable() {
 
     // 1. Data Fetching
     const { data: products = [], isLoading } = useQuery({
-        queryKey: ['products'],
-        queryFn: api.getProducts
+        queryKey: ['products', 'retail'],
+        queryFn: () => api.getProducts('retail')
     });
 
     const upsertMutation = useMutation({

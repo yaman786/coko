@@ -12,11 +12,12 @@ export interface OrderItemPayload {
 
 export const api = {
     // Products
-    async getProducts(): Promise<Product[]> {
-        const { data, error } = await supabase
-            .from('products')
-            .select('*')
-            .order('name');
+    async getProducts(portal?: 'retail' | 'wholesale'): Promise<Product[]> {
+        let query = supabase.from('products').select('*');
+        if (portal) {
+            query = query.eq('portal', portal);
+        }
+        const { data, error } = await query.order('name');
 
         if (error) throw error;
         return data || [];
@@ -38,6 +39,7 @@ export const api = {
             .from('products')
             .upsert({
                 ...product,
+                portal: product.portal || 'retail',
                 updatedAt: new Date()
             });
 
@@ -53,10 +55,11 @@ export const api = {
         if (error) throw error;
     },
 
-    async getProductAnalytics(startDate: Date, endDate: Date): Promise<any[]> {
+    async getProductAnalytics(startDate: Date, endDate: Date, portal?: 'retail' | 'wholesale'): Promise<any[]> {
         const { data, error } = await supabase.rpc('get_product_analytics', {
             p_start_date: startDate.toISOString(),
-            p_end_date: endDate.toISOString()
+            p_end_date: endDate.toISOString(),
+            p_portal: portal || null
         });
         if (error) throw error;
         return data || [];
