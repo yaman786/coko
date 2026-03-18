@@ -526,7 +526,13 @@ export function InventoryTable() {
     }, [products, showArchived, searchQuery]);
 
     const lowStockItems = useMemo(() =>
-        products.filter(item => !item.isDeleted && !item.parentId && item.stock <= (item.lowStockThreshold ?? 10)),
+        products.filter(item => 
+            !item.isDeleted && 
+            !item.parentId && 
+            item.trackInventory !== false && 
+            item.category !== 'Drinks' && 
+            item.stock <= (item.lowStockThreshold ?? 10)
+        ),
         [products]
     );
 
