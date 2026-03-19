@@ -9,18 +9,26 @@ import { useAuth } from '../contexts/AuthContext';
 export function LoginPage() {
     usePageTitle('Login');
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
     const { session, loading } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     
-    // Sync state with URL parameter 'to'
-    const targetApp = (searchParams.get('to') as 'retail' | 'wholesale') || 'retail';
+    // Check localStorage for previous intent, default to retail
+    const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => {
+        try {
+            return (localStorage.getItem('portal_intent') as 'retail' | 'wholesale') || 'retail';
+        } catch {
+            return 'retail';
+        }
+    });
 
     const setTargetApp = (val: 'retail' | 'wholesale') => {
-        setSearchParams({ to: val }, { replace: true });
+        setTargetAppState(val);
+        try {
+            localStorage.setItem('portal_intent', val);
+        } catch { /* ignore */ }
     };
 
-    // Redirect if already logged in (Industry Standard: handle intent in useEffect)
+    // Redirect if already logged in
     useEffect(() => {
         if (!loading && session) {
             if (targetApp === 'wholesale') {
@@ -40,6 +48,9 @@ export function LoginPage() {
         setIsLoading(true);
 
         try {
+            // Ensure intent is saved before login
+            localStorage.setItem('portal_intent', targetApp);
+
             const { error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -53,7 +64,6 @@ export function LoginPage() {
                 toast.success("Welcome Back", { 
                     description: `Logged into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}` 
                 });
-                // Note: The useEffect above will catch the session update and perform the redirect
             }
         } catch (err) {
             toast.error("Network Error", { description: "Could not connect to authentication server." });

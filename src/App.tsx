@@ -74,7 +74,14 @@ function RootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  const to = searchParams.get('to');
+  // Check URL param first, then fallback to localStorage
+  const to = searchParams.get('to') || localStorage.getItem('portal_intent');
+  
+  // Clear intent after reading to prevent "sticky" behavior on next login
+  try {
+    localStorage.removeItem('portal_intent');
+  } catch { /* ignore */ }
+
   if (to === 'wholesale') {
     return <Navigate to="/wholesale" replace />;
   }
