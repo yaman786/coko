@@ -48,6 +48,36 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Portal-aware wrapper for the /pos route
+// When a user logs in with the GOD toggle selected, sessionStorage contains 'wholesale'.
+// This component intercepts that and redirects to /wholesale before the POS loads.
+function RetailProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <PageLoader />;
+  }
+
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check if the user just logged in targeting the wholesale portal
+  let portal = 'retail';
+  try { portal = sessionStorage.getItem('god-portal') || 'retail'; } catch { /* ignore */ }
+
+  if (portal === 'wholesale') {
+    // Clear the flag so it doesn't redirect forever on subsequent /pos visits
+    try { sessionStorage.removeItem('god-portal'); } catch { /* ignore */ }
+    return <Navigate to="/wholesale" replace />;
+  }
+
+  // Clear flag for retail login too (cleanup)
+  try { sessionStorage.removeItem('god-portal'); } catch { /* ignore */ }
+
+  return <>{children}</>;
+}
+
 // Higher Order Component to restrict access to Admins only
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { role, loading } = useAuth();
@@ -63,13 +93,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Smart redirect: checks sessionStorage for portal choice set during login
-function PortalRedirect() {
-  let portal = 'retail';
-  try { portal = sessionStorage.getItem('god-portal') || 'retail'; } catch { /* ignore */ }
-  return <Navigate to={portal === 'wholesale' ? '/wholesale' : '/pos'} replace />;
-}
-
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -80,8 +103,8 @@ export function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-              {/* Retail (Coko) Route Branch */}
-              <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
+              {/* Retail (Coko) Route Branch — uses RetailProtectedRoute to intercept wholesale users */}
+              <Route path="/pos" element={<RetailProtectedRoute><MainLayout mode="retail" /></RetailProtectedRoute>}>
                 <Route index element={<POSPage />} />
                 <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
                 <Route path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
@@ -104,7 +127,7 @@ export function App() {
               </Route>
 
               {/* Fallback & Root Redirects */}
-              <Route path="/" element={<PortalRedirect />} />
+              <Route path="/" element={<Navigate to="/pos" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
