@@ -12,35 +12,34 @@ export function LoginPage() {
     const { session, loading } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     
-    // Check localStorage for previous intent, default to retail
-    const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => {
-        try {
-            const intent = localStorage.getItem('portal_intent') as 'retail' | 'wholesale';
-            return intent || 'retail';
-        } catch {
-            return 'retail';
-        }
-    });
+    // Cookie helper for portal intent
+    const setIntent = (val: string) => {
+        document.cookie = `portal_intent=${val}; path=/; max-age=600; SameSite=Lax`;
+    };
+
+    const getIntent = () => {
+        const match = document.cookie.match(/(^| )portal_intent=([^;]+)/);
+        return match ? (match[2] as 'retail' | 'wholesale') : 'retail';
+    };
+
+    const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => getIntent());
 
     const setTargetApp = (val: 'retail' | 'wholesale') => {
         setTargetAppState(val);
-        try {
-            localStorage.setItem('portal_intent', val);
-        } catch (err) {
-            console.error('Failed to save portal intent:', err);
-        }
+        setIntent(val);
     };
 
-    // Redirect if already logged in (Handled by RootRedirect or manual navigate)
+    // Redirect if already logged in (Dispatcher in App.tsx will handle the heavy lifting)
     useEffect(() => {
         if (!loading && session) {
-            if (targetApp === 'wholesale') {
+            const currentIntent = getIntent();
+            if (currentIntent === 'wholesale') {
                 navigate('/wholesale', { replace: true });
             } else {
                 navigate('/pos', { replace: true });
             }
         }
-    }, [session, loading, navigate, targetApp]);
+    }, [session, loading, navigate]);
 
     const handleLogin = async (email: string, password: string) => {
         if (!email || !password) {
@@ -51,8 +50,8 @@ export function LoginPage() {
         setIsLoading(true);
 
         try {
-            // Save intent before sign-in attempt
-            localStorage.setItem('portal_intent', targetApp);
+            // Save intent as cookie
+            setIntent(targetApp);
 
             const { error } = await supabase.auth.signInWithPassword({
                 email,
@@ -64,9 +63,8 @@ export function LoginPage() {
                 setIsLoading(false);
             } else {
                 toast.success("Welcome Back", { 
-                    description: `Logging into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}...` 
+                    description: `Redirecting to ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}...` 
                 });
-                // The useEffect above or the PosInterceptor in App.tsx will handle the redirect
             }
         } catch (err) {
             toast.error("Network Error", { description: "Could not connect to authentication server." });

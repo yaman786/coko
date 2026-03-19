@@ -63,21 +63,53 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Specialized guard for the POS route to intercept wholesale users
+// Helper to get/set cookies for portal intent (more robust than localStorage during redirects)
+const intentCookie = {
+  get: () => {
+    const match = document.cookie.match(/(^| )portal_intent=([^;]+)/);
+    return match ? match[2] : null;
+  },
+  set: (val: string) => {
+    document.cookie = `portal_intent=${val}; path=/; max-age=600; SameSite=Lax`;
+  },
+  clear: () => {
+    document.cookie = "portal_intent=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  }
+};
+
+// Central Dispatcher for the Root Path — The Professional Standard
+function AppDispatcher() {
+  const { session, loading } = useAuth();
+  
+  if (loading) return <PageLoader />;
+  if (!session) return <Navigate to="/login" replace />;
+
+  const intent = intentCookie.get();
+  
+  // Clear intent after reading to avoid "sticky" behavior
+  if (intent) {
+    intentCookie.clear();
+    if (intent === 'wholesale') {
+      return <Navigate to="/wholesale" replace />;
+    }
+  }
+
+  // Fallback: Check if they are already on a wholesale path or default to POS
+  return <Navigate to="/pos" replace />;
+}
+
+// Interceptor to catch cases where a hardcoded redirect from Supabase lands on /pos
 function PosInterceptor({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   
   if (loading) return <PageLoader />;
   if (!session) return <Navigate to="/login" replace />;
 
-  // Check if user intended to go to wholesale
-  try {
-    const intent = localStorage.getItem('portal_intent');
-    if (intent === 'wholesale') {
-      localStorage.removeItem('portal_intent'); // Clear it so they can go back to retail later
-      return <Navigate to="/wholesale" replace />;
-    }
-  } catch { /* ignore */ }
+  const intent = intentCookie.get();
+  if (intent === 'wholesale') {
+    intentCookie.clear();
+    return <Navigate to="/wholesale" replace />;
+  }
 
   return <>{children}</>;
 }
@@ -116,7 +148,7 @@ export function App() {
               </Route>
 
               {/* Fallback & Root Redirects */}
-              <Route path="/" element={<Navigate to="/pos" replace />} />
+              <Route path="/" element={<AppDispatcher />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
