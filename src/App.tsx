@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -74,7 +74,6 @@ function PosInterceptor({ children }: { children: React.ReactNode }) {
   try {
     const intent = localStorage.getItem('portal_intent');
     if (intent === 'wholesale') {
-      console.log('[PosInterceptor] Intercepted wholesale intent, redirecting...');
       localStorage.removeItem('portal_intent'); // Clear it so they can go back to retail later
       return <Navigate to="/wholesale" replace />;
     }

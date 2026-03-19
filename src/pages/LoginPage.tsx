@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '../features/auth/components/LoginForm';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -16,7 +16,6 @@ export function LoginPage() {
     const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => {
         try {
             const intent = localStorage.getItem('portal_intent') as 'retail' | 'wholesale';
-            console.log('[LoginPage] Initial intent from localStorage:', intent);
             return intent || 'retail';
         } catch {
             return 'retail';
@@ -24,31 +23,26 @@ export function LoginPage() {
     });
 
     const setTargetApp = (val: 'retail' | 'wholesale') => {
-        console.log('[LoginPage] Setting targetApp toggle:', val);
         setTargetAppState(val);
         try {
             localStorage.setItem('portal_intent', val);
         } catch (err) {
-            console.error('[LoginPage] Failed to save intent to localStorage:', err);
+            console.error('Failed to save portal intent:', err);
         }
     };
 
-    // Redirect if already logged in
+    // Redirect if already logged in (Handled by RootRedirect or manual navigate)
     useEffect(() => {
         if (!loading && session) {
-            console.log('[LoginPage] Session detected, taking action. targetApp:', targetApp);
             if (targetApp === 'wholesale') {
-                console.log('[LoginPage] Navigating to /wholesale');
                 navigate('/wholesale', { replace: true });
             } else {
-                console.log('[LoginPage] Navigating to /pos');
                 navigate('/pos', { replace: true });
             }
         }
     }, [session, loading, navigate, targetApp]);
 
     const handleLogin = async (email: string, password: string) => {
-        console.log('[LoginPage] handleLogin called', { email, targetApp });
         if (!email || !password) {
             toast.error("Required Fields", { description: "Please enter both email and password." });
             return;
@@ -57,8 +51,7 @@ export function LoginPage() {
         setIsLoading(true);
 
         try {
-            // Ensure intent is saved
-            console.log('[LoginPage] Saving intent:', targetApp);
+            // Save intent before sign-in attempt
             localStorage.setItem('portal_intent', targetApp);
 
             const { error } = await supabase.auth.signInWithPassword({
@@ -67,25 +60,15 @@ export function LoginPage() {
             });
 
             if (error) {
-                console.error('[LoginPage] SignIn Error:', error.message);
                 toast.error("Authentication Failed", { description: error.message });
                 setIsLoading(false);
             } else {
-                console.log('[LoginPage] SignIn Success, forcing redirect to:', targetApp);
                 toast.success("Welcome Back", { 
-                    description: `Redirecting to ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}...` 
+                    description: `Logging into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}...` 
                 });
-                
-                // Deterministic "Nuclear Option": Force browser navigation
-                // This bypasses React Router race conditions and Supabase defaults
-                if (targetApp === 'wholesale') {
-                    window.location.href = '/wholesale';
-                } else {
-                    window.location.href = '/pos';
-                }
+                // The useEffect above or the PosInterceptor in App.tsx will handle the redirect
             }
         } catch (err) {
-            console.error('[LoginPage] Unexpected Error during SignIn:', err);
             toast.error("Network Error", { description: "Could not connect to authentication server." });
             setIsLoading(false);
         }
