@@ -197,7 +197,7 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp,
                                         )}
                                     </Button>
 
-                                    <div className="text-center pt-2">
+                                    <div className="text-center pt-2 flex flex-col gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setShowForgotPassword(true)}
@@ -205,6 +205,17 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp,
                                         >
                                             Inaccessible Account? Reset Password
                                         </button>
+
+                                        {locked && (
+                                            <button
+                                                type="button"
+                                                onClick={() => window.location.href = '/'}
+                                                className="mt-2 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all group"
+                                            >
+                                                <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
+                                                Back to Selection
+                                            </button>
+                                        )}
                                     </div>
                                 </form>
                             )}
