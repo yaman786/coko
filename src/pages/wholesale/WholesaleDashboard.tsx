@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { wholesaleApi } from '../../services/wholesaleApi';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Warehouse, TrendingUp, Users, Package } from 'lucide-react';
@@ -5,12 +7,54 @@ import { Warehouse, TrendingUp, Users, Package } from 'lucide-react';
 export function WholesaleDashboard() {
     usePageTitle('GOD Dashboard');
 
+    const { data: statsData, isLoading, error } = useQuery({
+        queryKey: ['ws_dashboard_stats'],
+        queryFn: () => wholesaleApi.getDashboardStats(),
+        refetchInterval: 30000, // Refresh every 30s
+    });
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-[400px] text-red-500 font-medium">
+                Failed to load dashboard statistics.
+            </div>
+        );
+    }
+
     const stats = [
-        { label: 'Total Supply Volume', value: '4,250 Ltrs', icon: Warehouse, color: 'text-blue-600' },
-        { label: 'Outstanding Credits', value: 'Rs. 1,25,000', icon: Users, color: 'text-sky-600' },
-        { label: 'Factory Debt', value: 'Rs. 45,000', icon: TrendingUp, color: 'text-indigo-600' },
-        { label: 'Bulk Stock Level', value: '85%', icon: Package, color: 'text-blue-500' },
+        { 
+            label: 'Total Supply Volume', 
+            value: statsData ? `${statsData.totalVolume.toLocaleString()} Ltrs` : '...', 
+            icon: Warehouse, 
+            color: 'text-blue-600' 
+        },
+        { 
+            label: 'Outstanding Credits', 
+            value: statsData ? `Rs. ${statsData.totalCredits.toLocaleString()}` : '...', 
+            icon: Users, 
+            color: 'text-sky-600' 
+        },
+        { 
+            label: 'Total Revenue', 
+            value: statsData ? `Rs. ${statsData.totalRevenue.toLocaleString()}` : '...', 
+            icon: TrendingUp, 
+            color: 'text-indigo-600' 
+        },
+        { 
+            label: 'Bulk Stock Level', 
+            value: statsData ? `${Math.min(100, Math.round((statsData.totalVolume / 5000) * 100))}%` : '...', 
+            icon: Package, 
+            color: 'text-blue-500' 
+        },
     ];
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">

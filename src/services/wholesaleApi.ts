@@ -241,5 +241,32 @@ export const wholesaleApi = {
             priceMap.set(row.product_id, row.sell_price);
         }
         return priceMap;
+    },
+
+    // ─── Analytics ────────────────────────────────────────
+    
+    async getDashboardStats() {
+        // Parallel fetch for speed
+        const [products, clients, orders] = await Promise.all([
+            this.getProducts(),
+            this.getClients(),
+            this.getOrders(1000) // All recent orders for accurate revenue
+        ]);
+
+        const totalVolume = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+        const totalCredits = clients.reduce((sum, c) => sum + (c.balance || 0), 0);
+        const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+        const receivedRevenue = orders.reduce((sum, o) => sum + (o.paid_amount || 0), 0);
+        
+        // Factory Debt: Placeholder or calculated from a 'debts' table if we add one later
+        const factoryDebt = 0; 
+
+        return {
+            totalVolume,
+            totalCredits,
+            totalRevenue,
+            receivedRevenue,
+            factoryDebt
+        };
     }
 };
