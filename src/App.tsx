@@ -63,35 +63,24 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Generic redirector for the root path
-function RootRedirect() {
-  const { session, loading, role } = useAuth();
-  const [searchParams] = useSearchParams();
+// Specialized guard for the POS route to intercept wholesale users
+function PosInterceptor({ children }: { children: React.ReactNode }) {
+  const { session, loading } = useAuth();
   
-  console.log('[RootRedirect] Rendering', { loading, hasSession: !!session, role });
-
   if (loading) return <PageLoader />;
-  
-  if (!session) {
-    console.log('[RootRedirect] No session, going to login');
-    return <Navigate to="/login" replace />;
-  }
+  if (!session) return <Navigate to="/login" replace />;
 
-  // Check URL param first, then fallback to localStorage
-  const to = searchParams.get('to') || localStorage.getItem('portal_intent');
-  console.log('[RootRedirect] Intent check:', { 
-    param: searchParams.get('to'), 
-    localStorage: localStorage.getItem('portal_intent'),
-    resolvedTo: to 
-  });
+  // Check if user intended to go to wholesale
+  try {
+    const intent = localStorage.getItem('portal_intent');
+    if (intent === 'wholesale') {
+      console.log('[PosInterceptor] Intercepted wholesale intent, redirecting...');
+      localStorage.removeItem('portal_intent'); // Clear it so they can go back to retail later
+      return <Navigate to="/wholesale" replace />;
+    }
+  } catch { /* ignore */ }
 
-  if (to === 'wholesale') {
-    console.log('[RootRedirect] Redirecting to wholesale');
-    return <Navigate to="/wholesale" replace />;
-  }
-
-  console.log('[RootRedirect] Defaulting to pos');
-  return <Navigate to="/pos" replace />;
+  return <>{children}</>;
 }
 
 export function App() {
@@ -104,8 +93,8 @@ export function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-              {/* Retail (Coko) Route Branch */}
-              <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
+              {/* Retail (Coko) Route Branch - Intercepts wholesale intent if landed here */}
+              <Route path="/pos" element={<PosInterceptor><MainLayout mode="retail" /></PosInterceptor>}>
                 <Route index element={<POSPage />} />
                 <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
                 <Route index={false} path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
@@ -128,7 +117,7 @@ export function App() {
               </Route>
 
               {/* Fallback & Root Redirects */}
-              <Route path="/" element={<RootRedirect />} />
+              <Route path="/" element={<Navigate to="/pos" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
