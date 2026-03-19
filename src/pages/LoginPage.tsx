@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { LoginForm } from '../features/auth/components/LoginForm';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -7,24 +8,38 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
     usePageTitle('Login');
+    const [searchParams, setSearchParams] = useSearchParams();
     const { session, loading } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    // Cookie helpers for portal intent
-    const setIntent = (val: string) => {
-        document.cookie = `portal_intent=${val}; path=/; max-age=600; SameSite=Lax`;
-    };
 
-    const getIntent = () => {
+    // Initial intent from URL or default to retail
+    const getInitialIntent = () => {
+        const to = searchParams.get('to') as 'retail' | 'wholesale';
+        if (to === 'retail' || to === 'wholesale') return to;
+        
+        // Fallback to cookie check if URL is empty
         const match = document.cookie.match(/(^| )portal_intent=([^;]+)/);
         return match ? (match[2] as 'retail' | 'wholesale') : 'retail';
     };
 
-    const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => getIntent());
+    const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => getInitialIntent());
 
+    // Effect to sync state -> URL when toggled manually
     const setTargetApp = (val: 'retail' | 'wholesale') => {
         setTargetAppState(val);
-        setIntent(val);
+        // Update URL
+        setSearchParams({ to: val }, { replace: true });
+        // Set cookie for the AuthContext redirector
+        document.cookie = `portal_intent=${val}; path=/; max-age=600; SameSite=Lax`;
     };
+
+    // Effect to sync URL -> state (e.g., if someone types in the address bar manually)
+    useEffect(() => {
+        const to = searchParams.get('to') as 'retail' | 'wholesale';
+        if (to && (to === 'retail' || to === 'wholesale') && to !== targetApp) {
+            setTargetAppState(to);
+        }
+    }, [searchParams, targetApp]);
 
     const handleLogin = async (email: string, password: string) => {
         if (!email || !password) {
@@ -36,7 +51,7 @@ export function LoginPage() {
 
         try {
             // Save intent as cookie
-            setIntent(targetApp);
+            document.cookie = `portal_intent=${targetApp}; path=/; max-age=600; SameSite=Lax`;
 
             const { error } = await supabase.auth.signInWithPassword({
                 email,

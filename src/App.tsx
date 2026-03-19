@@ -88,6 +88,8 @@ export function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/pos/login" element={<Navigate to="/login?to=retail" replace />} />
+              <Route path="/wholesale/login" element={<Navigate to="/login?to=wholesale" replace />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
               {/* Retail (Coko) Route Branch */}
