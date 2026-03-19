@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LoginForm } from '../features/auth/components/LoginForm';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -9,33 +9,33 @@ import { useAuth } from '../contexts/AuthContext';
 export function LoginPage() {
     usePageTitle('Login');
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { session, loading } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    const [targetApp, setTargetApp] = useState<'retail' | 'wholesale'>('retail');
+    
+    // Sync state with URL parameter 'to'
+    const targetApp = (searchParams.get('to') as 'retail' | 'wholesale') || 'retail';
 
-    // KEY FIX: If user already has a session (or just logged in), redirect them
-    // This catches the race condition where onAuthStateChange fires before navigate()
+    const setTargetApp = (val: 'retail' | 'wholesale') => {
+        setSearchParams({ to: val }, { replace: true });
+    };
+
+    // Redirect if already logged in (Industry Standard: handle intent in useEffect)
     useEffect(() => {
         if (!loading && session) {
-            let portal = 'retail';
-            try { portal = sessionStorage.getItem('god-portal') || 'retail'; } catch { /* ignore */ }
-            
-            if (portal === 'wholesale') {
+            if (targetApp === 'wholesale') {
                 navigate('/wholesale', { replace: true });
             } else {
                 navigate('/pos', { replace: true });
             }
         }
-    }, [session, loading, navigate]);
+    }, [session, loading, navigate, targetApp]);
 
     const handleLogin = async (email: string, password: string) => {
         if (!email || !password) {
             toast.error("Required Fields", { description: "Please enter both email and password." });
             return;
         }
-
-        // Persist portal choice BEFORE login so it survives the auth state change
-        try { sessionStorage.setItem('god-portal', targetApp); } catch { /* ignore */ }
 
         setIsLoading(true);
 
@@ -50,8 +50,10 @@ export function LoginPage() {
                 console.error('Login error:', error.message);
                 setIsLoading(false);
             } else {
-                toast.success("Welcome Back", { description: `Logged into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}` });
-                // The useEffect above will handle the redirect once session updates
+                toast.success("Welcome Back", { 
+                    description: `Logged into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}` 
+                });
+                // Note: The useEffect above will catch the session update and perform the redirect
             }
         } catch (err) {
             toast.error("Network Error", { description: "Could not connect to authentication server." });
@@ -60,7 +62,7 @@ export function LoginPage() {
         }
     };
 
-    // Don't show login form if already authenticated (prevents flash)
+    // Don't flash the login form if already authenticated
     if (!loading && session) {
         return null;
     }

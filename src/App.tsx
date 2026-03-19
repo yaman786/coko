@@ -6,8 +6,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/QueryClient';
 import { Toaster } from 'sonner';
 
-// Lazy-loaded pages — each page is a separate chunk loaded on demand
-// This reduces the initial bundle by ~40%, making first paint significantly faster
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const POSPage = lazy(() => import('./pages/POSPage').then(m => ({ default: m.POSPage })));
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default: m.OrdersPage })));
@@ -23,7 +21,6 @@ const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(m => ({ de
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
-// Shared loading fallback for Suspense boundaries
 function PageLoader() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] gap-3">
@@ -42,38 +39,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!session) {
+    // Industry Standard: Redirect to login with the current path as a return-to parameter
+    // But for this app, we'll keep it simple and just go to login.
+    // The LoginPage toggle will naturally handle the 'to' parameter.
     return <Navigate to="/login" replace />;
   }
-
-  return <>{children}</>;
-}
-
-// Portal-aware wrapper for the /pos route
-// When a user logs in with the GOD toggle selected, sessionStorage contains 'wholesale'.
-// This component intercepts that and redirects to /wholesale before the POS loads.
-function RetailProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
-
-  if (loading) {
-    return <PageLoader />;
-  }
-
-  if (!session) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Check if the user just logged in targeting the wholesale portal
-  let portal = 'retail';
-  try { portal = sessionStorage.getItem('god-portal') || 'retail'; } catch { /* ignore */ }
-
-  if (portal === 'wholesale') {
-    // Clear the flag so it doesn't redirect forever on subsequent /pos visits
-    try { sessionStorage.removeItem('god-portal'); } catch { /* ignore */ }
-    return <Navigate to="/wholesale" replace />;
-  }
-
-  // Clear flag for retail login too (cleanup)
-  try { sessionStorage.removeItem('god-portal'); } catch { /* ignore */ }
 
   return <>{children}</>;
 }
@@ -103,8 +73,8 @@ export function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-              {/* Retail (Coko) Route Branch — uses RetailProtectedRoute to intercept wholesale users */}
-              <Route path="/pos" element={<RetailProtectedRoute><MainLayout mode="retail" /></RetailProtectedRoute>}>
+              {/* Retail (Coko) Route Branch */}
+              <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
                 <Route index element={<POSPage />} />
                 <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
                 <Route path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
