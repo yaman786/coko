@@ -6,14 +6,20 @@ import { toast } from 'sonner';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../contexts/AuthContext';
 
-export function LoginPage() {
-    usePageTitle('Login');
+interface LoginPageProps {
+    lockedTo?: 'retail' | 'wholesale';
+}
+
+export function LoginPage({ lockedTo }: LoginPageProps) {
+    usePageTitle(lockedTo ? `${lockedTo === 'retail' ? 'Coko' : 'GOD'} Login` : 'Login');
     const [searchParams, setSearchParams] = useSearchParams();
     const { session, loading } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
-    // Initial intent from URL or default to retail
+    // Initial intent from prop, URL or default to retail
     const getInitialIntent = () => {
+        if (lockedTo) return lockedTo;
+        
         const to = searchParams.get('to') as 'retail' | 'wholesale';
         if (to === 'retail' || to === 'wholesale') return to;
         
@@ -83,6 +89,7 @@ export function LoginPage() {
             isLoading={isLoading} 
             targetApp={targetApp} 
             setTargetApp={setTargetApp} 
+            locked={!!lockedTo}
         />
     );
 }

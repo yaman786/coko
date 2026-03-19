@@ -30,19 +30,22 @@ function PageLoader() {
   );
 }
 
-// Higher Order Component to protect routes
+const PortalSelector = lazy(() => import('./pages/PortalSelector'));
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
+  const location = window.location.pathname;
 
   if (loading) {
     return <PageLoader />;
   }
 
   if (!session) {
-    // Industry Standard: Redirect to login with the current path as a return-to parameter
-    // But for this app, we'll keep it simple and just go to login.
-    // The LoginPage toggle will naturally handle the 'to' parameter.
-    return <Navigate to="/login" replace />;
+    // Redirect to the appropriate portal login based on the path
+    if (location.startsWith('/wholesale')) {
+      return <Navigate to="/wholesale/login" replace />;
+    }
+    return <Navigate to="/pos/login" replace />;
   }
 
   return <>{children}</>;
@@ -63,23 +66,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Central Dispatcher for the Root Path
-function AppDispatcher() {
-  const { session, loading } = useAuth();
-  
-  if (loading) return <PageLoader />;
-  if (!session) return <Navigate to="/login" replace />;
-
-  const match = document.cookie.match(/(^| )portal_intent=([^;]+)/);
-  const intent = match ? match[2] : null;
-  
-  if (intent === 'wholesale') {
-    return <Navigate to="/wholesale" replace />;
-  }
-
-  return <Navigate to="/pos" replace />;
-}
-
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -87,9 +73,14 @@ export function App() {
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
+              {/* Root Portal Selector */}
+              <Route path="/" element={<PortalSelector />} />
+              
+              {/* Specialized Login Routes */}
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/pos/login" element={<Navigate to="/login?to=retail" replace />} />
-              <Route path="/wholesale/login" element={<Navigate to="/login?to=wholesale" replace />} />
+              <Route path="/pos/login" element={<LoginPage lockedTo="retail" />} />
+              <Route path="/wholesale/login" element={<LoginPage lockedTo="wholesale" />} />
+              
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
               {/* Retail (Coko) Route Branch */}
@@ -115,8 +106,8 @@ export function App() {
                  <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
               </Route>
 
-              {/* Fallback & Root Redirects */}
-              <Route path="/" element={<AppDispatcher />} />
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

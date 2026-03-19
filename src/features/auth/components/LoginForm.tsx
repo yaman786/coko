@@ -12,9 +12,10 @@ interface LoginFormProps {
     isLoading?: boolean;
     targetApp: 'retail' | 'wholesale';
     setTargetApp: (val: 'retail' | 'wholesale') => void;
+    locked?: boolean;
 }
 
-export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp }: LoginFormProps) {
+export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp, locked = false }: LoginFormProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -58,23 +59,25 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp 
                 <div className="w-full max-w-md shrink-0">
                     <Card className="shadow-2xl border-0">
                         <CardHeader className="space-y-4 pb-6">
-                            {/* Portal Toggle */}
-                            <div className="flex p-1 bg-gray-100 rounded-xl mb-4">
-                                <button 
-                                    onClick={() => setTargetApp('retail')}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${isRetail ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    <IceCream className="w-3.5 h-3.5" />
-                                    Coko Boutique
-                                </button>
-                                <button 
-                                    onClick={() => setTargetApp('wholesale')}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${!isRetail ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    <Warehouse className="w-3.5 h-3.5" />
-                                    GOD Warehouse
-                                </button>
-                            </div>
+                            {/* Portal Toggle - Hidden if Locked */}
+                            {!locked && (
+                                <div className="flex p-1 bg-gray-100 rounded-xl mb-4">
+                                    <button 
+                                        onClick={() => setTargetApp('retail')}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${isRetail ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        <IceCream className="w-3.5 h-3.5" />
+                                        Coko Boutique
+                                    </button>
+                                    <button 
+                                        onClick={() => setTargetApp('wholesale')}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${!isRetail ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        <Warehouse className="w-3.5 h-3.5" />
+                                        GOD Warehouse
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="flex justify-center">
                                 <div className={`relative w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 transform ${isRetail ? 'bg-gradient-to-br from-pink-400 to-purple-500 rotate-0' : 'bg-gradient-to-br from-blue-500 to-sky-600 rotate-180'}`}>
