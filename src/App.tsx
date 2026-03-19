@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -63,6 +63,25 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Generic redirector for the root path
+function RootRedirect() {
+  const { session, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  
+  if (loading) return <PageLoader />;
+  
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const to = searchParams.get('to');
+  if (to === 'wholesale') {
+    return <Navigate to="/wholesale" replace />;
+  }
+
+  return <Navigate to="/pos" replace />;
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -77,7 +96,7 @@ export function App() {
               <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
                 <Route index element={<POSPage />} />
                 <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
-                <Route path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
+                <Route index={false} path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
                 <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
                 <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                 <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
@@ -97,7 +116,7 @@ export function App() {
               </Route>
 
               {/* Fallback & Root Redirects */}
-              <Route path="/" element={<Navigate to="/pos" replace />} />
+              <Route path="/" element={<RootRedirect />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

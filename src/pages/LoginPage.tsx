@@ -62,9 +62,9 @@ export function LoginPage() {
         }
     };
 
-    // Don't flash the login form if already authenticated
+    // Show redirecting state if authenticated
     if (!loading && session) {
-        return null;
+        return <PageLoader />;
     }
 
     return (
@@ -75,4 +75,13 @@ export function LoginPage() {
             setTargetApp={setTargetApp} 
         />
     );
+}
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] gap-3">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600" />
+      <p className="text-sm text-slate-400 font-medium tracking-tight">Redirecting...</p>
+    </div>
+  );
 }
