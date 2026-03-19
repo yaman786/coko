@@ -57,8 +57,8 @@ export function LoginPage() {
         setIsLoading(true);
 
         try {
-            // Ensure intent is saved before login
-            console.log('[LoginPage] Saving final intent before sign-in:', targetApp);
+            // Ensure intent is saved
+            console.log('[LoginPage] Saving intent:', targetApp);
             localStorage.setItem('portal_intent', targetApp);
 
             const { error } = await supabase.auth.signInWithPassword({
@@ -71,10 +71,18 @@ export function LoginPage() {
                 toast.error("Authentication Failed", { description: error.message });
                 setIsLoading(false);
             } else {
-                console.log('[LoginPage] SignIn Success');
+                console.log('[LoginPage] SignIn Success, forcing redirect to:', targetApp);
                 toast.success("Welcome Back", { 
-                    description: `Logged into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}` 
+                    description: `Redirecting to ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}...` 
                 });
+                
+                // Deterministic "Nuclear Option": Force browser navigation
+                // This bypasses React Router race conditions and Supabase defaults
+                if (targetApp === 'wholesale') {
+                    window.location.href = '/wholesale';
+                } else {
+                    window.location.href = '/pos';
+                }
             }
         } catch (err) {
             console.error('[LoginPage] Unexpected Error during SignIn:', err);
