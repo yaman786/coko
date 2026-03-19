@@ -10,7 +10,7 @@ import { ClientDetailSheet } from '../../features/wholesale/components/ClientDet
 import type { WsClient } from '../../types';
 
 export function ClientsPage() {
-    usePageTitle('Client Ledger | GOD');
+    usePageTitle('Client Ledger', 'GOD');
     const [searchQuery, setSearchQuery] = useState('');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<WsClient | null>(null);

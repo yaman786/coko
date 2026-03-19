@@ -6,7 +6,8 @@ import { ChangePassword } from '../features/settings/components/ChangePassword';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export function SettingsPage() {
-    usePageTitle('Settings');
+    const isWholesale = typeof window !== 'undefined' && window.location.pathname.startsWith('/wholesale');
+    usePageTitle('Settings', isWholesale ? 'GOD' : 'Coko');
     return (
         <div className="space-y-5 md:space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto">
             <div>

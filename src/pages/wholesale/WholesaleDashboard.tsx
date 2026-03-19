@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Warehouse, TrendingUp, Users, Package } from 'lucide-react';
 
 export function WholesaleDashboard() {
-    usePageTitle('GOD Dashboard');
+    usePageTitle('GOD Dashboard', 'GOD');
 
     const { data: statsData, isLoading, error } = useQuery({
         queryKey: ['ws_dashboard_stats'],

@@ -10,7 +10,7 @@ import { AddWsProductDialog } from '../../features/wholesale/components/AddWsPro
 import type { WsProduct } from '../../types';
 
 export function WholesaleInventoryPage() {
-    usePageTitle('Stock Warehouse | GOD');
+    usePageTitle('Stock Warehouse', 'GOD');
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
     const [dialogOpen, setDialogOpen] = useState(false);

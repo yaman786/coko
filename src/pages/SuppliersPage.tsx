@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { Truck, Plus, Search, Building2, Phone, ArrowUpRight, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,6 +12,9 @@ import { AddSupplierDialog } from '../features/suppliers/components/AddSupplierD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 
 export function SuppliersPage() {
+    const isWholesale = typeof window !== 'undefined' && window.location.pathname.startsWith('/wholesale');
+    usePageTitle('Suppliers', isWholesale ? 'GOD' : 'Coko');
+    
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddOpen, setIsAddOpen] = useState(false);

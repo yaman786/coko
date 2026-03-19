@@ -8,7 +8,7 @@ import { Search, Plus, FileText } from 'lucide-react';
 import { CreateSupplyOrderDialog } from '../../features/wholesale/components/CreateSupplyOrderDialog';
 
 export function WholesaleOrdersPage() {
-    usePageTitle('Supply Orders | GOD');
+    usePageTitle('Supply Orders', 'GOD');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [createOpen, setCreateOpen] = useState(false);
