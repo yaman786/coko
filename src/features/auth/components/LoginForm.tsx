@@ -16,6 +16,10 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp, locked = false }: LoginFormProps) {
+    // Robustly check if we are on a dedicated portal login path
+    const isDedicatedPath = typeof window !== 'undefined' && (window.location.pathname === '/pos/login' || window.location.pathname === '/wholesale/login');
+    const isLocked = locked || isDedicatedPath;
+    
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -60,7 +64,7 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp,
                     <Card className="shadow-2xl border-0">
                         <CardHeader className="space-y-4 pb-6">
                             {/* Portal Toggle - Hidden if Locked */}
-                            {!locked && (
+                            {!isLocked && (
                                 <div className="flex p-1 bg-gray-100 rounded-xl mb-4">
                                     <button 
                                         onClick={() => setTargetApp('retail')}
@@ -206,7 +210,7 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp,
                                             Inaccessible Account? Reset Password
                                         </button>
 
-                                        {locked && (
+                                        {isLocked && (
                                             <button
                                                 type="button"
                                                 onClick={() => window.location.href = '/'}

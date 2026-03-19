@@ -50,7 +50,8 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
 
     const handleLogout = async () => {
         await signOut();
-        navigate('/login');
+        // Return to the specific portal login
+        navigate(isRetail ? '/pos/login' : '/wholesale/login');
     };
 
     // Dynamic Theme Classes
