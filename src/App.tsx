@@ -77,7 +77,7 @@ export function App() {
               <Route path="/" element={<PortalSelector />} />
               
               {/* Specialized Login Routes */}
-              <Route path="/login" element={<LoginPage />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/pos/login" element={<LoginPage lockedTo="retail" />} />
               <Route path="/wholesale/login" element={<LoginPage lockedTo="wholesale" />} />
               
