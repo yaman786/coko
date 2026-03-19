@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { LoginForm } from '../features/auth/components/LoginForm';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -8,11 +7,9 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
     usePageTitle('Login');
-    const navigate = useNavigate();
     const { session, loading } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    
-    // Cookie helper for portal intent
+    // Cookie helpers for portal intent
     const setIntent = (val: string) => {
         document.cookie = `portal_intent=${val}; path=/; max-age=600; SameSite=Lax`;
     };
@@ -28,18 +25,6 @@ export function LoginPage() {
         setTargetAppState(val);
         setIntent(val);
     };
-
-    // Redirect if already logged in (Dispatcher in App.tsx will handle the heavy lifting)
-    useEffect(() => {
-        if (!loading && session) {
-            const currentIntent = getIntent();
-            if (currentIntent === 'wholesale') {
-                navigate('/wholesale', { replace: true });
-            } else {
-                navigate('/pos', { replace: true });
-            }
-        }
-    }, [session, loading, navigate]);
 
     const handleLogin = async (email: string, password: string) => {
         if (!email || !password) {

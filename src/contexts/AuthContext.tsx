@@ -36,6 +36,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser);
 
         if (currentUser?.email) {
+            // -- MASTER REDIRECTION LOGIC --
+            // This is the source of truth for portal landing.
+            try {
+                const match = document.cookie.match(/(^| )portal_intent=([^;]+)/);
+                const intent = match ? match[2] : null;
+
+                if (intent) {
+                    // Clear cookie immediately
+                    document.cookie = "portal_intent=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                    
+                    const currentPath = window.location.pathname;
+                    if (intent === 'wholesale' && !currentPath.startsWith('/wholesale')) {
+                        console.log('[AuthContext] Forcing redirect to Wholesale Dashboard');
+                        window.location.replace('/wholesale/dashboard');
+                        return; // Prevent further state updates during redirect
+                    } else if (intent === 'retail' && !currentPath.startsWith('/pos')) {
+                        console.log('[AuthContext] Forcing redirect to Retail POS');
+                        window.location.replace('/pos');
+                        return;
+                    }
+                }
+            } catch (e) { /* ignore */ }
+
             try {
                 // Fetch staff profile from database — role is determined ONLY from the staff table
                 const staff = await api.getStaff(true);

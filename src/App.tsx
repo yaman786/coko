@@ -63,55 +63,21 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Helper to get/set cookies for portal intent (more robust than localStorage during redirects)
-const intentCookie = {
-  get: () => {
-    const match = document.cookie.match(/(^| )portal_intent=([^;]+)/);
-    return match ? match[2] : null;
-  },
-  set: (val: string) => {
-    document.cookie = `portal_intent=${val}; path=/; max-age=600; SameSite=Lax`;
-  },
-  clear: () => {
-    document.cookie = "portal_intent=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-  }
-};
-
-// Central Dispatcher for the Root Path — The Professional Standard
+// Central Dispatcher for the Root Path
 function AppDispatcher() {
   const { session, loading } = useAuth();
   
   if (loading) return <PageLoader />;
   if (!session) return <Navigate to="/login" replace />;
 
-  const intent = intentCookie.get();
+  const match = document.cookie.match(/(^| )portal_intent=([^;]+)/);
+  const intent = match ? match[2] : null;
   
-  // Clear intent after reading to avoid "sticky" behavior
-  if (intent) {
-    intentCookie.clear();
-    if (intent === 'wholesale') {
-      return <Navigate to="/wholesale" replace />;
-    }
-  }
-
-  // Fallback: Check if they are already on a wholesale path or default to POS
-  return <Navigate to="/pos" replace />;
-}
-
-// Interceptor to catch cases where a hardcoded redirect from Supabase lands on /pos
-function PosInterceptor({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
-  
-  if (loading) return <PageLoader />;
-  if (!session) return <Navigate to="/login" replace />;
-
-  const intent = intentCookie.get();
   if (intent === 'wholesale') {
-    intentCookie.clear();
     return <Navigate to="/wholesale" replace />;
   }
 
-  return <>{children}</>;
+  return <Navigate to="/pos" replace />;
 }
 
 export function App() {
@@ -124,8 +90,8 @@ export function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-              {/* Retail (Coko) Route Branch - Intercepts wholesale intent if landed here */}
-              <Route path="/pos" element={<PosInterceptor><MainLayout mode="retail" /></PosInterceptor>}>
+              {/* Retail (Coko) Route Branch */}
+              <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
                 <Route index element={<POSPage />} />
                 <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
                 <Route index={false} path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
