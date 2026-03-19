@@ -15,31 +15,40 @@ export function LoginPage() {
     // Check localStorage for previous intent, default to retail
     const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => {
         try {
-            return (localStorage.getItem('portal_intent') as 'retail' | 'wholesale') || 'retail';
+            const intent = localStorage.getItem('portal_intent') as 'retail' | 'wholesale';
+            console.log('[LoginPage] Initial intent from localStorage:', intent);
+            return intent || 'retail';
         } catch {
             return 'retail';
         }
     });
 
     const setTargetApp = (val: 'retail' | 'wholesale') => {
+        console.log('[LoginPage] Setting targetApp toggle:', val);
         setTargetAppState(val);
         try {
             localStorage.setItem('portal_intent', val);
-        } catch { /* ignore */ }
+        } catch (err) {
+            console.error('[LoginPage] Failed to save intent to localStorage:', err);
+        }
     };
 
     // Redirect if already logged in
     useEffect(() => {
         if (!loading && session) {
+            console.log('[LoginPage] Session detected, taking action. targetApp:', targetApp);
             if (targetApp === 'wholesale') {
+                console.log('[LoginPage] Navigating to /wholesale');
                 navigate('/wholesale', { replace: true });
             } else {
+                console.log('[LoginPage] Navigating to /pos');
                 navigate('/pos', { replace: true });
             }
         }
     }, [session, loading, navigate, targetApp]);
 
     const handleLogin = async (email: string, password: string) => {
+        console.log('[LoginPage] handleLogin called', { email, targetApp });
         if (!email || !password) {
             toast.error("Required Fields", { description: "Please enter both email and password." });
             return;
@@ -49,6 +58,7 @@ export function LoginPage() {
 
         try {
             // Ensure intent is saved before login
+            console.log('[LoginPage] Saving final intent before sign-in:', targetApp);
             localStorage.setItem('portal_intent', targetApp);
 
             const { error } = await supabase.auth.signInWithPassword({
@@ -57,17 +67,18 @@ export function LoginPage() {
             });
 
             if (error) {
+                console.error('[LoginPage] SignIn Error:', error.message);
                 toast.error("Authentication Failed", { description: error.message });
-                console.error('Login error:', error.message);
                 setIsLoading(false);
             } else {
+                console.log('[LoginPage] SignIn Success');
                 toast.success("Welcome Back", { 
                     description: `Logged into ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}` 
                 });
             }
         } catch (err) {
+            console.error('[LoginPage] Unexpected Error during SignIn:', err);
             toast.error("Network Error", { description: "Could not connect to authentication server." });
-            console.error('Unexpected error:', err);
             setIsLoading(false);
         }
     };

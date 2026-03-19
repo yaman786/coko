@@ -65,27 +65,32 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 // Generic redirector for the root path
 function RootRedirect() {
-  const { session, loading } = useAuth();
+  const { session, loading, role } = useAuth();
   const [searchParams] = useSearchParams();
   
+  console.log('[RootRedirect] Rendering', { loading, hasSession: !!session, role });
+
   if (loading) return <PageLoader />;
   
   if (!session) {
+    console.log('[RootRedirect] No session, going to login');
     return <Navigate to="/login" replace />;
   }
 
   // Check URL param first, then fallback to localStorage
   const to = searchParams.get('to') || localStorage.getItem('portal_intent');
-  
-  // Clear intent after reading to prevent "sticky" behavior on next login
-  try {
-    localStorage.removeItem('portal_intent');
-  } catch { /* ignore */ }
+  console.log('[RootRedirect] Intent check:', { 
+    param: searchParams.get('to'), 
+    localStorage: localStorage.getItem('portal_intent'),
+    resolvedTo: to 
+  });
 
   if (to === 'wholesale') {
+    console.log('[RootRedirect] Redirecting to wholesale');
     return <Navigate to="/wholesale" replace />;
   }
 
+  console.log('[RootRedirect] Defaulting to pos');
   return <Navigate to="/pos" replace />;
 }
 
