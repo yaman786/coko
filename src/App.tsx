@@ -63,6 +63,13 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Smart redirect: checks sessionStorage for portal choice set during login
+function PortalRedirect() {
+  let portal = 'retail';
+  try { portal = sessionStorage.getItem('god-portal') || 'retail'; } catch { /* ignore */ }
+  return <Navigate to={portal === 'wholesale' ? '/wholesale' : '/pos'} replace />;
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -97,7 +104,7 @@ export function App() {
               </Route>
 
               {/* Fallback & Root Redirects */}
-              <Route path="/" element={<Navigate to="/pos" replace />} />
+              <Route path="/" element={<PortalRedirect />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

@@ -17,6 +17,9 @@ export function LoginPage() {
             return;
         }
 
+        // Persist portal choice BEFORE login so it survives the auth state change
+        try { sessionStorage.setItem('god-portal', targetApp); } catch { /* ignore */ }
+
         setIsLoading(true);
 
         try {
@@ -33,9 +36,9 @@ export function LoginPage() {
                 
                 // Redirect based on selected portal
                 if (targetApp === 'retail') {
-                    navigate('/pos');
+                    navigate('/pos', { replace: true });
                 } else {
-                    navigate('/wholesale');
+                    navigate('/wholesale', { replace: true });
                 }
             }
         } catch (err) {
