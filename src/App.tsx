@@ -4,6 +4,7 @@ import { MainLayout } from './layouts/MainLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/QueryClient';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Toaster } from 'sonner';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -72,43 +73,45 @@ export function App() {
       <AuthProvider>
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Root Portal Selector */}
-              <Route path="/" element={<PortalSelector />} />
-              
-              {/* Specialized Login Routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/pos/login" element={<LoginPage lockedTo="retail" />} />
-              <Route path="/wholesale/login" element={<LoginPage lockedTo="wholesale" />} />
-              
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <ErrorBoundary>
+              <Routes>
+                {/* Root Portal Selector */}
+                <Route path="/" element={<PortalSelector />} />
+                
+                {/* Specialized Login Routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/pos/login" element={<LoginPage lockedTo="retail" />} />
+                <Route path="/wholesale/login" element={<LoginPage lockedTo="wholesale" />} />
+                
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-              {/* Retail (Coko) Route Branch */}
-              <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
-                <Route index element={<POSPage />} />
-                <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
-                <Route index={false} path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
-                <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
-                <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
-                <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
-                <Route path="analytics" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
-                <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
-              </Route>
+                {/* Retail (Coko) Route Branch */}
+                <Route path="/pos" element={<ProtectedRoute><MainLayout mode="retail" /></ProtectedRoute>}>
+                  <Route index element={<POSPage />} />
+                  <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
+                  <Route index={false} path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
+                  <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                  <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
+                  <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
+                  <Route path="analytics" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
+                  <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+                </Route>
 
-              {/* Wholesale (GOD) Route Branch */}
-              <Route path="/wholesale" element={<ProtectedRoute><MainLayout mode="wholesale" /></ProtectedRoute>}>
-                 <Route index element={<Navigate to="dashboard" replace />} />
-                 <Route path="dashboard" element={<AdminRoute><WholesaleDashboard /></AdminRoute>} />
-                 <Route path="inventory" element={<AdminRoute><WholesaleInventoryPage /></AdminRoute>} />
-                 <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
-                 <Route path="orders" element={<AdminRoute><WholesaleOrdersPage /></AdminRoute>} />
-                 <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
-                 <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
-              </Route>
+                {/* Wholesale (GOD) Route Branch */}
+                <Route path="/wholesale" element={<ProtectedRoute><MainLayout mode="wholesale" /></ProtectedRoute>}>
+                   <Route index element={<Navigate to="dashboard" replace />} />
+                   <Route path="dashboard" element={<AdminRoute><WholesaleDashboard /></AdminRoute>} />
+                   <Route path="inventory" element={<AdminRoute><WholesaleInventoryPage /></AdminRoute>} />
+                   <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
+                   <Route path="orders" element={<AdminRoute><WholesaleOrdersPage /></AdminRoute>} />
+                   <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                   <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+                </Route>
 
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </ErrorBoundary>
           </Suspense>
         </BrowserRouter>
         <Toaster position="top-right" richColors theme="light" />
