@@ -1,7 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { wholesaleApi } from '../../../services/wholesaleApi';
-import { X, Pencil, Phone, MapPin, Mail, FileText, Package } from 'lucide-react';
+import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { ClientPricingTable } from './ClientPricingTable';
+import { RecordClientPaymentDialog } from './RecordClientPaymentDialog';
 import type { WsClient } from '../../../types';
 
 interface Props {
@@ -11,9 +13,18 @@ interface Props {
 }
 
 export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
+    const queryClient = useQueryClient();
+    const [activeTab, setActiveTab] = useState<'details' | 'ledger'>('details');
+    const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+
     const { data: orders = [] } = useQuery({
         queryKey: ['ws_orders', 'client', client.id],
         queryFn: () => wholesaleApi.getOrdersByClient(client.id),
+    });
+
+    const { data: transactions = [] } = useQuery({
+        queryKey: ['ws_client_transactions', client.id],
+        queryFn: () => wholesaleApi.getClientTransactions(client.id),
     });
 
     return (
@@ -30,6 +41,13 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     </div>
                     <div className="flex items-center gap-2">
                         <button
+                            onClick={() => setPaymentDialogOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-sky-600 text-white rounded-lg font-bold text-xs hover:bg-sky-700 transition-colors shadow-sm"
+                        >
+                            <Coins className="w-3.5 h-3.5" />
+                            Receive Payment
+                        </button>
+                        <button
                             onClick={onEdit}
                             className="p-2 rounded-lg hover:bg-sky-50 text-sky-600 transition-colors"
                             title="Edit Client"
@@ -42,8 +60,26 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="flex border-b border-slate-100 px-6 mt-2">
+                    <button
+                        onClick={() => setActiveTab('details')}
+                        className={`py-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'details' ? 'border-sky-600 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    >
+                        Overview
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('ledger')}
+                        className={`py-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ledger' ? 'border-sky-600 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    >
+                        Ledger History
+                    </button>
+                </div>
+
                 {/* Content */}
-                <div className="p-6 space-y-6">
+                <div className="p-6 pt-4 space-y-6">
+                    {activeTab === 'details' && (
+                        <>
                     {/* Balance Card */}
                     <div className={`rounded-xl p-5 ${client.balance > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-green-50 border border-green-200'}`}>
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Outstanding Balance</p>
@@ -131,8 +167,86 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                             </div>
                         )}
                     </div>
+                        </>
+                    )}
+
+                    {activeTab === 'ledger' && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                            {/* Balance Summary */}
+                            <div className="flex items-center justify-between p-5 bg-slate-50 rounded-xl border border-slate-100">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Current Balance</p>
+                                    <p className={`text-2xl font-black mt-0.5 ${client.balance > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                                        Rs. {Math.abs(client.balance).toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-slate-500 font-medium bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                                        {client.balance > 0 ? 'Client owes you' : client.balance < 0 ? 'Advance credit' : 'Account Settled ✓'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Timeline */}
+                            <div className="space-y-3 pt-4">
+                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Transaction Timeline</h3>
+                                {transactions.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                                        <FileText className="w-8 h-8 mx-auto mb-3 text-slate-300" />
+                                        <p className="text-sm font-semibold text-slate-500">No transactions recorded</p>
+                                        <p className="text-xs mt-1">Payments and order credits will appear here.</p>
+                                    </div>
+                                ) : (
+                                    transactions.map(tx => (
+                                        <div key={tx.id} className="flex items-start gap-3.5 p-4 bg-white border border-slate-100 rounded-xl hover:border-slate-200 hover:shadow-sm transition-all shadow-sm">
+                                            <div className={`mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                                tx.type === 'PAYMENT_RECEIVED' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                            }`}>
+                                                {tx.type === 'PAYMENT_RECEIVED' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <p className="text-sm font-bold text-slate-800">
+                                                        {tx.type === 'PAYMENT_RECEIVED' ? 'Payment Received' : 'Order Credit Added'}
+                                                    </p>
+                                                    <p className={`text-sm font-bold whitespace-nowrap ${tx.type === 'PAYMENT_RECEIVED' ? 'text-green-600' : 'text-rose-600'}`}>
+                                                        {tx.type === 'PAYMENT_RECEIVED' ? '-' : '+'} Rs. {tx.amount.toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500 font-medium">
+                                                    <span>{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    {tx.payment_method && (
+                                                        <>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className="px-2 py-0.5 bg-slate-100 rounded-md text-slate-600 font-semibold">{tx.payment_method}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {tx.reference_note && (
+                                                    <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100 italic">
+                                                        "{tx.reference_note}"
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
+            
+            <RecordClientPaymentDialog
+                open={paymentDialogOpen}
+                onOpenChange={setPaymentDialogOpen}
+                client={client}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
+                    queryClient.invalidateQueries({ queryKey: ['ws_clients'] });
+                    // Balance will be updated globally via query invalidation
+                }}
+            />
         </div>
     );
 }

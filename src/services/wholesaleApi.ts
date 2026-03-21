@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { WsProduct, WsClient, WsClientPricing, WsOrder } from '../types';
+import type { WsProduct, WsClient, WsClientPricing, WsOrder, WsClientTransaction } from '../types';
 
 /**
  * GOD Wholesale API — Completely separate from retail api.ts
@@ -124,6 +124,41 @@ export const wholesaleApi = {
         if (error) throw error;
     },
 
+    // ─── Client Transactions (Ledger) ─────────────────────
+
+    async getClientTransactions(clientId: string): Promise<WsClientTransaction[]> {
+        const { data, error } = await supabase
+            .from('ws_client_transactions')
+            .select('*')
+            .eq('client_id', clientId)
+            .eq('is_deleted', false)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    },
+
+    async recordClientPayment(clientId: string, amount: number, method: string, notes?: string): Promise<void> {
+        // 1. Get current balance
+        const client = await this.getClientById(clientId);
+        if (!client) throw new Error("Client not found");
+
+        // 2. Insert PAYMENT_RECEIVED transaction
+        const { error: txError } = await supabase
+            .from('ws_client_transactions')
+            .insert({
+                client_id: clientId,
+                amount: amount,
+                type: 'PAYMENT_RECEIVED',
+                payment_method: method,
+                reference_note: notes
+            });
+        if (txError) throw txError;
+
+        // 3. Deduct from balance
+        const newBalance = client.balance - amount;
+        await this.updateClientBalance(clientId, newBalance);
+    },
+
     // ─── Orders ───────────────────────────────────────────
 
     async getOrders(limit: number = 100): Promise<WsOrder[]> {
@@ -146,11 +181,14 @@ export const wholesaleApi = {
         return data || [];
     },
 
-    async createOrder(order: Partial<WsOrder>): Promise<void> {
-        const { error } = await supabase
+    async createOrder(order: Partial<WsOrder>): Promise<WsOrder> {
+        const { data, error } = await supabase
             .from('ws_orders')
-            .insert(order);
+            .insert(order)
+            .select()
+            .single();
         if (error) throw error;
+        return data;
     },
 
     async updateOrderPayment(id: string, paidAmount: number, status: 'unpaid' | 'partial' | 'paid'): Promise<void> {
@@ -173,7 +211,7 @@ export const wholesaleApi = {
      */
     async processSupplyOrder(order: Partial<WsOrder>, items: { product_id: string; qty: number }[]): Promise<void> {
         // 1. Create the order
-        await this.createOrder(order);
+        const createdOrder = await this.createOrder(order);
 
         // 2. Deduct stock for each item
         for (const item of items) {
@@ -189,15 +227,29 @@ export const wholesaleApi = {
             }
         }
 
-        // 3. Update client balance (add what they owe)
+        // 3. Update client balance (add what they owe) and record CREDIT ledger transaction
         if (order.client_id && order.total_amount !== undefined && order.paid_amount !== undefined) {
             const client = await this.getClientById(order.client_id);
             if (client) {
                 const creditAmount = order.total_amount - order.paid_amount;
-                await this.updateClientBalance(
-                    order.client_id,
-                    client.balance + creditAmount
-                );
+                
+                if (creditAmount > 0) {
+                    // Record chronological debt
+                    await supabase
+                        .from('ws_client_transactions')
+                        .insert({
+                            client_id: order.client_id,
+                            amount: creditAmount,
+                            type: 'ORDER_CREDIT',
+                            reference_id: createdOrder.id,
+                            reference_note: 'Supply order credit'
+                        });
+
+                    await this.updateClientBalance(
+                        order.client_id,
+                        client.balance + creditAmount
+                    );
+                }
             }
         }
     },

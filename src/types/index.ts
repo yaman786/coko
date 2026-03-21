@@ -166,6 +166,19 @@ export interface WsClientPricing {
     updated_at: Date;
 }
 
+export interface WsClientTransaction {
+    id: string;
+    client_id: string;
+    amount: number;
+    type: 'ORDER_CREDIT' | 'PAYMENT_RECEIVED';
+    payment_method?: string;
+    reference_id?: string;
+    reference_note?: string;
+    created_at: Date;
+    is_deleted?: boolean;
+    deleted_at?: Date;
+}
+
 export interface WsOrderItem {
     product_id: string;
     name: string;
