@@ -117,7 +117,7 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
                             <select
                                 value={form.category}
                                 onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
-                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
                             >
                                 {CATEGORIES.map(c => (
                                     <option key={c} value={c}>{c}</option>
@@ -129,7 +129,7 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
                             <select
                                 value={form.unit}
                                 onChange={(e) => setForm(f => ({ ...f, unit: e.target.value as WsProduct['unit'] }))}
-                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
                             >
                                 {UNITS.map(u => (
                                     <option key={u} value={u}>{u}</option>
@@ -168,9 +168,9 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
 
                     {/* Margin Preview */}
                     {form.cost_price && form.base_sell_price && (
-                        <div className="bg-blue-50 rounded-xl p-3 text-sm">
+                        <div className="bg-sky-50 rounded-xl p-3 text-sm">
                             <span className="text-slate-600">Base Margin: </span>
-                            <span className="font-bold text-blue-700">
+                            <span className="font-bold text-sky-700">
                                 Rs. {(Number(form.base_sell_price) - Number(form.cost_price)).toFixed(0)}
                             </span>
                             <span className="text-slate-500 ml-2">
@@ -213,7 +213,7 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
                             placeholder="Any additional notes..."
                             value={form.description}
                             onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none resize-none"
                             rows={2}
                         />
                     </div>
@@ -222,7 +222,7 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
                     <button
                         type="submit"
                         disabled={mutation.isPending}
-                        className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-sm"
+                        className="w-full py-3 bg-sky-600 text-white rounded-xl font-bold text-sm hover:bg-sky-700 transition-colors disabled:opacity-50 shadow-sm"
                     >
                         {mutation.isPending ? 'Saving...' : isEditing ? 'Update Product' : 'Add Product'}
                     </button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { LoginForm } from '../features/auth/components/LoginForm';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -11,15 +11,14 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ lockedTo }: LoginPageProps) {
-    usePageTitle(lockedTo ? `${lockedTo === 'retail' ? 'Coko' : 'GOD'} Login` : 'Login');
     const [searchParams, setSearchParams] = useSearchParams();
-    const { session, loading } = useAuth();
+    const navigate = useNavigate();
+    const { session, loading, role } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
-    // Initial intent from prop, URL or default to retail
+    // Initial intent from URL or default to retail
     const getInitialIntent = () => {
         if (lockedTo) return lockedTo;
-        
         const to = searchParams.get('to') as 'retail' | 'wholesale';
         if (to === 'retail' || to === 'wholesale') return to;
         
@@ -30,22 +29,28 @@ export function LoginPage({ lockedTo }: LoginPageProps) {
 
     const [targetApp, setTargetAppState] = useState<'retail' | 'wholesale'>(() => getInitialIntent());
 
-    // Effect to sync state -> URL when toggled manually
+    usePageTitle(targetApp === 'retail' ? 'Coko Login' : 'GOD HUB Login');
+
+    // Automatic Redirection once session is established
+    useEffect(() => {
+        if (!loading && session && role) {
+            console.log("Auth State Ready:", { targetApp, role, hasSession: !!session });
+            // Determine destination
+            if (targetApp === 'wholesale' && role === 'admin') {
+                console.log("Redirecting to Wholesale Dashboard...");
+                navigate('/wholesale/dashboard', { replace: true });
+            } else {
+                console.log("Redirecting to Retail POS...");
+                navigate('/pos', { replace: true });
+            }
+        }
+    }, [session, loading, role, targetApp, navigate]);
+
     const setTargetApp = (val: 'retail' | 'wholesale') => {
         setTargetAppState(val);
-        // Update URL
         setSearchParams({ to: val }, { replace: true });
-        // Set cookie for the AuthContext redirector
-        document.cookie = `portal_intent=${val}; path=/; max-age=600; SameSite=Lax`;
+        document.cookie = `portal_intent=${val}; path=/; max-age=86400; SameSite=Lax`;
     };
-
-    // Effect to sync URL -> state (e.g., if someone types in the address bar manually)
-    useEffect(() => {
-        const to = searchParams.get('to') as 'retail' | 'wholesale';
-        if (to && (to === 'retail' || to === 'wholesale') && to !== targetApp) {
-            setTargetAppState(to);
-        }
-    }, [searchParams, targetApp]);
 
     const handleLogin = async (email: string, password: string) => {
         if (!email || !password) {
@@ -56,8 +61,8 @@ export function LoginPage({ lockedTo }: LoginPageProps) {
         setIsLoading(true);
 
         try {
-            // Save intent as cookie
-            document.cookie = `portal_intent=${targetApp}; path=/; max-age=600; SameSite=Lax`;
+            // Persist intent before signing in
+            document.cookie = `portal_intent=${targetApp}; path=/; max-age=86400; SameSite=Lax`;
 
             const { error } = await supabase.auth.signInWithPassword({
                 email,
@@ -69,7 +74,7 @@ export function LoginPage({ lockedTo }: LoginPageProps) {
                 setIsLoading(false);
             } else {
                 toast.success("Welcome Back", { 
-                    description: `Redirecting to ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}...` 
+                    description: `Accessing ${targetApp === 'retail' ? 'Coko Boutique' : 'GOD Warehouse'}...` 
                 });
             }
         } catch (err) {
@@ -78,7 +83,6 @@ export function LoginPage({ lockedTo }: LoginPageProps) {
         }
     };
 
-    // Show redirecting state if authenticated
     if (!loading && session) {
         return <PageLoader />;
     }
@@ -98,7 +102,7 @@ function PageLoader() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] gap-3">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600" />
-      <p className="text-sm text-slate-400 font-medium tracking-tight">Redirecting...</p>
+      <p className="text-sm text-slate-400 font-medium tracking-tight">Accessing Portal...</p>
     </div>
   );
 }

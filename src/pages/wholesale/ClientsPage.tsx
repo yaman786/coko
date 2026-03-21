@@ -48,7 +48,7 @@ export function ClientsPage() {
     if (isLoading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
             </div>
         );
     }
@@ -59,13 +59,13 @@ export function ClientsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black tracking-tight text-slate-800">
-                        Client <span className="text-blue-600">Ledger</span>
+                        Client <span className="text-sky-600">Ledger</span>
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">Manage cafes, restaurants & their balances</p>
                 </div>
                 <button
                     onClick={handleAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl font-semibold text-sm hover:bg-sky-700 transition-colors shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
                     Add Client
@@ -77,7 +77,7 @@ export function ClientsPage() {
                 <Card className="border-0 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Clients</CardTitle>
-                        <Users className="w-4 h-4 text-blue-500" />
+                        <Users className="w-4 h-4 text-sky-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-slate-800">{clients.length}</div>
@@ -114,7 +114,7 @@ export function ClientsPage() {
                     placeholder="Search clients..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-11 bg-white"
+                    className="pl-10 h-11 bg-white focus-visible:ring-sky-500 focus-visible:border-sky-500"
                 />
             </div>
 
@@ -132,13 +132,13 @@ export function ClientsPage() {
                     {filteredClients.map((client) => (
                         <Card
                             key={client.id}
-                            className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                            className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:ring-2 hover:ring-sky-100"
                             onClick={() => setSelectedClient(client)}
                         >
                             <CardContent className="p-5">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1">
-                                        <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                        <h3 className="font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
                                             {client.name}
                                         </h3>
                                         {client.contact_person && (
@@ -155,13 +155,13 @@ export function ClientsPage() {
                                 <div className="flex flex-col gap-1.5 text-xs text-slate-500">
                                     {client.phone && (
                                         <div className="flex items-center gap-1.5">
-                                            <Phone className="w-3.5 h-3.5" />
+                                            <Phone className="w-3.5 h-3.5 text-sky-500" />
                                             <span>{client.phone}</span>
                                         </div>
                                     )}
                                     {client.address && (
                                         <div className="flex items-center gap-1.5">
-                                            <MapPin className="w-3.5 h-3.5" />
+                                            <MapPin className="w-3.5 h-3.5 text-sky-500" />
                                             <span className="truncate">{client.address}</span>
                                         </div>
                                     )}

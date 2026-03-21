@@ -91,7 +91,7 @@ export function ClientPricingTable({ clientId }: Props) {
                                 <td className="px-4 py-2.5 text-right text-slate-400 line-through">
                                     Rs. {getBasePrice(p.product_id).toLocaleString()}
                                 </td>
-                                <td className="px-4 py-2.5 text-right font-bold text-blue-700">
+                                <td className="px-4 py-2.5 text-right font-bold text-sky-700">
                                     Rs. {p.sell_price.toLocaleString()}
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
@@ -110,7 +110,7 @@ export function ClientPricingTable({ clientId }: Props) {
 
             {/* Add New Price Row */}
             {addingNew && (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 border-t border-blue-100">
+                <div className="flex items-center gap-2 p-3 bg-sky-50 border-t border-sky-100">
                     <select
                         value={newProductId}
                         onChange={(e) => setNewProductId(e.target.value)}
@@ -133,7 +133,7 @@ export function ClientPricingTable({ clientId }: Props) {
                     />
                     <button
                         onClick={handleAddPrice}
-                        className="p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                        className="p-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700"
                     >
                         <Save className="w-4 h-4" />
                     </button>
@@ -143,7 +143,7 @@ export function ClientPricingTable({ clientId }: Props) {
             {/* Add Button */}
             <button
                 onClick={() => setAddingNew(!addingNew)}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors border-t border-slate-200"
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-sky-600 hover:bg-sky-50 transition-colors border-t border-slate-200"
             >
                 <Plus className="w-3.5 h-3.5" />
                 {addingNew ? 'Cancel' : 'Add Custom Price'}

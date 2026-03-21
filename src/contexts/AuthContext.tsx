@@ -31,26 +31,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const handleSessionRefresh = async (session: Session | null) => {
+        setLoading(true); // Always signal loading during a refresh event
+        
         setSession(session);
         const currentUser = session?.user ?? null;
         setUser(currentUser);
 
         if (currentUser?.email) {
             try {
-                // Fetch staff profile from database — role is determined ONLY from the staff table
+                // Fetch staff profile from database
                 const staff = await api.getStaff(true);
                 const staffRecord = staff.find(s => s.email === currentUser.email);
 
-                // Normalizing to lowercase for robust role checking
                 const rawRole = staffRecord?.role ?? 'cashier';
                 setRole(rawRole.toLowerCase() as 'admin' | 'cashier');
             } catch (err) {
                 console.error("Failed to fetch staff role from API:", err);
-                setRole('cashier'); // Fallback to least privilege
+                setRole('cashier'); 
             }
         } else {
             setRole(null);
         }
+        
+        // Only release the loading lock once everything is ready
         setLoading(false);
     };
 

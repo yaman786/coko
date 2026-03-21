@@ -38,7 +38,7 @@ export function WholesaleOrdersPage() {
     if (isLoading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
             </div>
         );
     }
@@ -49,13 +49,13 @@ export function WholesaleOrdersPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black tracking-tight text-slate-800">
-                        Supply <span className="text-blue-600">Orders</span>
+                        Supply <span className="text-sky-600">Orders</span>
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">Track all supply deliveries to clients</p>
                 </div>
                 <button
                     onClick={() => setCreateOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl font-semibold text-sm hover:bg-sky-700 transition-colors shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
                     New Supply Order
@@ -64,7 +64,7 @@ export function WholesaleOrdersPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
-                <Card className="border-0 shadow-sm">
+                <Card className="border-0 shadow-sm font-bold">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Revenue</CardTitle>
                     </CardHeader>
@@ -72,7 +72,7 @@ export function WholesaleOrdersPage() {
                         <div className="text-2xl font-bold text-slate-800">Rs. {totalRevenue.toLocaleString()}</div>
                     </CardContent>
                 </Card>
-                <Card className="border-0 shadow-sm">
+                <Card className="border-0 shadow-sm font-bold">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Received</CardTitle>
                     </CardHeader>
@@ -80,7 +80,7 @@ export function WholesaleOrdersPage() {
                         <div className="text-2xl font-bold text-green-600">Rs. {totalReceived.toLocaleString()}</div>
                     </CardContent>
                 </Card>
-                <Card className={`border-0 shadow-sm ${totalPending > 0 ? 'ring-2 ring-amber-200' : ''}`}>
+                <Card className={`border-0 shadow-sm font-bold ${totalPending > 0 ? 'ring-2 ring-amber-200' : ''}`}>
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending</CardTitle>
                     </CardHeader>
@@ -100,13 +100,13 @@ export function WholesaleOrdersPage() {
                         placeholder="Search by client or order number..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 bg-white"
+                        className="pl-10 h-11 bg-white focus-visible:ring-sky-500 focus-visible:border-sky-500"
                     />
                 </div>
                 <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm"
+                    className="h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:ring-sky-500 focus:border-sky-500"
                 >
                     <option value="all">All Status</option>
                     <option value="paid">Paid</option>
@@ -141,8 +141,8 @@ export function WholesaleOrdersPage() {
                                 </tr>
                             ) : (
                                 filteredOrders.map(order => (
-                                    <tr key={order.id} className="border-b border-slate-50 hover:bg-blue-50/30 transition-colors">
-                                        <td className="px-4 py-3 font-bold text-blue-700 text-sm">
+                                    <tr key={order.id} className="border-b border-slate-50 hover:bg-sky-50/30 transition-colors">
+                                        <td className="px-4 py-3 font-bold text-sky-700 text-sm">
                                             {order.order_number || '—'}
                                         </td>
                                         <td className="px-4 py-3">

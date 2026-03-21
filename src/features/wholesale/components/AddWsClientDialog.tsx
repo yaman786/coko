@@ -150,12 +150,11 @@ export function AddWsClientDialog({ open, onClose, editingClient }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Notes</label>
                         <textarea
                             placeholder="Any additional notes about this client..."
                             value={form.notes}
                             onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none resize-none"
                             rows={2}
                         />
                     </div>
@@ -163,7 +162,7 @@ export function AddWsClientDialog({ open, onClose, editingClient }: Props) {
                     <button
                         type="submit"
                         disabled={mutation.isPending}
-                        className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-sm"
+                        className="w-full py-3 bg-sky-600 text-white rounded-xl font-bold text-sm hover:bg-sky-700 transition-colors disabled:opacity-50 shadow-sm"
                     >
                         {mutation.isPending ? 'Saving...' : isEditing ? 'Update Client' : 'Add Client'}
                     </button>

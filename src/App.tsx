@@ -7,6 +7,7 @@ import { queryClient } from './lib/QueryClient';
 import { Toaster } from 'sonner';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const PortalSelector = lazy(() => import('./pages/PortalSelector'));
 const POSPage = lazy(() => import('./pages/POSPage').then(m => ({ default: m.POSPage })));
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default: m.OrdersPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -30,7 +31,6 @@ function PageLoader() {
   );
 }
 
-const PortalSelector = lazy(() => import('./pages/PortalSelector'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
@@ -77,7 +77,7 @@ export function App() {
               <Route path="/" element={<PortalSelector />} />
               
               {/* Specialized Login Routes */}
-              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/login" element={<LoginPage />} />
               <Route path="/pos/login" element={<LoginPage lockedTo="retail" />} />
               <Route path="/wholesale/login" element={<LoginPage lockedTo="wholesale" />} />
               

@@ -22,11 +22,11 @@ export function WholesaleDashboard() {
     }
 
     const stats = [
-        { 
+        {
             label: 'Total Supply Volume', 
             value: statsData ? `${statsData.totalVolume.toLocaleString()} Ltrs` : '...', 
             icon: Warehouse, 
-            color: 'text-blue-600' 
+            color: 'text-sky-600' 
         },
         { 
             label: 'Outstanding Credits', 
@@ -38,20 +38,20 @@ export function WholesaleDashboard() {
             label: 'Total Revenue', 
             value: statsData ? `Rs. ${statsData.totalRevenue.toLocaleString()}` : '...', 
             icon: TrendingUp, 
-            color: 'text-indigo-600' 
+            color: 'text-sky-600' 
         },
         { 
             label: 'Bulk Stock Level', 
             value: statsData ? `${Math.min(100, Math.round((statsData.totalVolume / 5000) * 100))}%` : '...', 
             icon: Package, 
-            color: 'text-blue-500' 
+            color: 'text-sky-600' 
         },
     ];
 
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-[400px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
             </div>
         );
     }
@@ -60,7 +60,7 @@ export function WholesaleDashboard() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-black tracking-tight text-slate-800">
-                    Welcome to <span className="text-blue-600">GOD HUB</span>
+                    Welcome to <span className="text-sky-600">GOD HUB</span>
                 </h1>
                 <p className="text-slate-500 font-medium">Wholesale Distribution & Logistics Overview</p>
             </div>
@@ -83,8 +83,8 @@ export function WholesaleDashboard() {
 
             <Card className="border-0 shadow-sm min-h-[400px] flex items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200">
                 <div className="text-center space-y-2 p-12">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Warehouse className="w-8 h-8 text-blue-600" />
+                    <div className="w-16 h-16 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Warehouse className="w-8 h-8 text-sky-600" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-800">Warehouse Operations Coming Soon</h3>
                     <p className="text-sm text-slate-500 max-w-xs mx-auto">

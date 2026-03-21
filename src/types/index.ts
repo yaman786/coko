@@ -42,6 +42,7 @@ export interface Supplier {
     email?: string;
     address?: string;
     current_balance: number;
+    portal?: 'retail' | 'wholesale';
     createdAt: Date;
     updatedAt: Date;
 }

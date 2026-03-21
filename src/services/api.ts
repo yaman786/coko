@@ -334,7 +334,19 @@ export const api = {
     },
 
     // Suppliers
-    async getSuppliers(): Promise<Supplier[]> {
+    async getSuppliers(portal?: 'retail' | 'wholesale'): Promise<Supplier[]> {
+        // Try with portal filter first; if column doesn't exist yet, fall back gracefully
+        if (portal) {
+            const { data, error } = await supabase
+                .from('suppliers')
+                .select('*')
+                .eq('portal', portal)
+                .order('name');
+
+            if (!error) return data || [];
+            console.warn('Supplier portal filter failed, falling back:', error.message);
+        }
+
         const { data, error } = await supabase
             .from('suppliers')
             .select('*')
@@ -347,7 +359,11 @@ export const api = {
     async upsertSupplier(supplier: Partial<Supplier>): Promise<void> {
         const { error } = await supabase
             .from('suppliers')
-            .upsert(supplier);
+            .upsert({
+                ...supplier,
+                portal: supplier.portal || 'retail',
+                updatedAt: new Date()
+            });
 
         if (error) throw error;
     },

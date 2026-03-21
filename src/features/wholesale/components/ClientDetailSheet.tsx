@@ -31,7 +31,7 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={onEdit}
-                            className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
+                            className="p-2 rounded-lg hover:bg-sky-50 text-sky-600 transition-colors"
                             title="Edit Client"
                         >
                             <Pencil className="w-4 h-4" />
@@ -60,25 +60,25 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                         <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Details</h3>
                         {client.phone && (
                             <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                                <Phone className="w-4 h-4 text-blue-500" />
+                                <Phone className="w-4 h-4 text-sky-500" />
                                 <span>{client.phone}</span>
                             </div>
                         )}
                         {client.email && (
                             <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                                <Mail className="w-4 h-4 text-blue-500" />
+                                <Mail className="w-4 h-4 text-sky-500" />
                                 <span>{client.email}</span>
                             </div>
                         )}
                         {client.address && (
                             <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                                <MapPin className="w-4 h-4 text-blue-500" />
+                                <MapPin className="w-4 h-4 text-sky-500" />
                                 <span>{client.address}{client.city ? `, ${client.city}` : ''}</span>
                             </div>
                         )}
                         {client.notes && (
                             <div className="flex items-start gap-2.5 text-sm text-slate-600">
-                                <FileText className="w-4 h-4 text-blue-500 mt-0.5" />
+                                <FileText className="w-4 h-4 text-sky-500 mt-0.5" />
                                 <span>{client.notes}</span>
                             </div>
                         )}

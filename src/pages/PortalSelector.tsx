@@ -46,18 +46,18 @@ export default function PortalSelector() {
                     onClick={() => navigate('/wholesale')}
                     className="group relative flex flex-col items-start p-8 bg-slate-900 rounded-[2.5rem] border border-slate-800 shadow-2xl shadow-slate-900/40 hover:shadow-slate-900/60 transition-all duration-500 hover:-translate-y-2 text-left"
                 >
-                    <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mb-6 border border-slate-700 group-hover:bg-purple-600 group-hover:scale-110 transition-all duration-500">
+                    <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mb-6 border border-slate-700 group-hover:bg-sky-600 group-hover:scale-110 transition-all duration-500 text-white">
                         <Warehouse className="w-7 h-7 text-slate-300 group-hover:text-white transition-colors duration-500" />
                     </div>
                     <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">GOD Warehouse</h2>
                     <p className="text-slate-400 font-medium leading-relaxed mb-8">
                         Bulk supply management, wholesale client orders, and warehouse logistics.
                     </p>
-                    <div className="mt-auto flex items-center text-purple-400 font-bold tracking-tight">
+                    <div className="mt-auto flex items-center text-sky-400 font-bold tracking-tight">
                         Enter Warehouse <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
                     </div>
                     <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                        <Warehouse className="w-24 h-24 text-purple-500 -rotate-12" />
+                        <Warehouse className="w-24 h-24 text-sky-500 -rotate-12" />
                     </div>
                 </button>
             </div>

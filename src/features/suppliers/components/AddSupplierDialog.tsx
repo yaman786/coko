@@ -13,9 +13,10 @@ interface AddSupplierDialogProps {
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
     editingSupplier?: Supplier | null;
+    portal: 'retail' | 'wholesale';
 }
 
-export function AddSupplierDialog({ open, onOpenChange, onSuccess, editingSupplier }: AddSupplierDialogProps) {
+export function AddSupplierDialog({ open, onOpenChange, onSuccess, editingSupplier, portal }: AddSupplierDialogProps) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -56,6 +57,7 @@ export function AddSupplierDialog({ open, onOpenChange, onSuccess, editingSuppli
         try {
             await api.upsertSupplier({
                 id: editingSupplier?.id || undefined,
+                portal: editingSupplier?.portal || portal,
                 ...formData
             });
             toast.success(editingSupplier ? 'Supplier updated' : 'Supplier added');
@@ -137,7 +139,7 @@ export function AddSupplierDialog({ open, onOpenChange, onSuccess, editingSuppli
                         <Button 
                             type="submit" 
                             disabled={loading} 
-                            className="bg-purple-600 hover:bg-purple-700 rounded-xl font-bold min-w-[100px]"
+                            className={`${portal === 'wholesale' ? 'bg-sky-600 hover:bg-sky-700 shadow-sky-100' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-100'} rounded-xl font-bold min-w-[100px] text-white shadow-lg`}
                         >
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             {editingSupplier ? 'Save Changes' : 'Add Vendor'}

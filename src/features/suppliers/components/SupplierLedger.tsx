@@ -18,9 +18,18 @@ interface SupplierLedgerProps {
     supplier: Supplier;
     onBack: () => void;
     onRefreshSupplier: () => void;
+    portal?: 'retail' | 'wholesale';
 }
 
-export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: SupplierLedgerProps) {
+export function SupplierLedger({ supplier, onBack, onRefreshSupplier, portal = 'retail' }: SupplierLedgerProps) {
+    const isWholesale = portal === 'wholesale';
+    const theme = {
+        primary: isWholesale ? 'sky-600' : 'purple-600',
+        hover: isWholesale ? 'hover:bg-sky-700' : 'hover:bg-purple-700',
+        active: isWholesale ? 'bg-sky-600' : 'bg-purple-600',
+        text: isWholesale ? 'text-sky-600' : 'text-purple-600',
+        shadow: isWholesale ? 'shadow-sky-100' : 'shadow-purple-100'
+    };
     const { user } = useAuth();
     const [transactions, setTransactions] = useState<SupplierTransaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -166,7 +175,7 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                 setEditingTransaction(null);
                                 setIsRecordOpen(true);
                             }}
-                            className="bg-purple-600 hover:bg-purple-700 rounded-xl font-bold gap-2 px-6 h-11"
+                            className={`${theme.active} ${theme.hover} rounded-xl font-bold gap-2 px-6 h-11 shadow-lg ${theme.shadow}`}
                         >
                             <PlusCircle className="w-5 h-5" />
                             Record Flow
@@ -322,7 +331,7 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-slate-100"
+                                                        className={`h-8 w-8 text-slate-400 hover:${theme.text} hover:bg-slate-100`}
                                                         onClick={() => {
                                                             setEditingTransaction(t);
                                                             setIsRecordOpen(true);
@@ -354,6 +363,7 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier }: Supplier
                 supplier={supplier}
                 open={isRecordOpen}
                 onOpenChange={setIsRecordOpen}
+                portal={portal}
                 onSuccess={() => {
                     fetchTransactions();
                     onRefreshSupplier();

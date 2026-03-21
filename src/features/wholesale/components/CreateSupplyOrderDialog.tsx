@@ -160,7 +160,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
                     <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <ShoppingCart className="w-5 h-5 text-blue-600" />
+                        <ShoppingCart className="w-5 h-5 text-sky-600" />
                         Create Supply Order
                     </h2>
                     <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
@@ -175,7 +175,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                         <select
                             value={selectedClientId}
                             onChange={(e) => setSelectedClientId(e.target.value)}
-                            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 outline-none"
                         >
                             <option value="">Select a client...</option>
                             {clients.map(c => (
@@ -196,7 +196,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                                     const product = products.find(p => p.id === e.target.value);
                                     if (product) handleAddProduct(product);
                                 }}
-                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 outline-none"
                             >
                                 <option value="">+ Add a product to order...</option>
                                 {products
@@ -290,7 +290,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                             </div>
                             <div className="flex items-center justify-between text-base font-bold border-t pt-3 border-slate-200">
                                 <span>Total</span>
-                                <span className="text-blue-700">Rs. {totalAmount.toLocaleString()}</span>
+                                <span className="text-sky-700">Rs. {totalAmount.toLocaleString()}</span>
                             </div>
 
                             <hr className="border-slate-100" />
@@ -307,7 +307,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                                             if (method === 'cash') setPaidAmount(String(totalAmount));
                                             if (method === 'credit') setPaidAmount('0');
                                         }}
-                                        className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm"
+                                        className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold focus:ring-sky-500 focus:border-sky-500"
                                     >
                                         <option value="cash">Full Cash</option>
                                         <option value="credit">Full Credit (Udhari)</option>
@@ -320,7 +320,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                                         type="number"
                                         value={paidAmount}
                                         onChange={(e) => setPaidAmount(e.target.value)}
-                                        className="h-11"
+                                        className="h-11 focus-visible:ring-sky-500 focus-visible:border-sky-500"
                                         min="0"
                                         max={totalAmount}
                                         disabled={paymentMethod === 'cash' || paymentMethod === 'credit'}
@@ -344,7 +344,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     placeholder="Any delivery notes..."
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 outline-none resize-none"
                                     rows={2}
                                 />
                             </div>
@@ -353,7 +353,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                             <button
                                 onClick={handleSubmit}
                                 disabled={orderMutation.isPending}
-                                className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-sm"
+                                className="w-full py-3 bg-sky-600 text-white rounded-xl font-bold text-sm hover:bg-sky-700 transition-colors disabled:opacity-50 shadow-sm"
                             >
                                 {orderMutation.isPending ? 'Processing...' : `Create Order — Rs. ${totalAmount.toLocaleString()}`}
                             </button>

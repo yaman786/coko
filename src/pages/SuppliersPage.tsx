@@ -13,7 +13,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 export function SuppliersPage() {
     const isWholesale = typeof window !== 'undefined' && window.location.pathname.startsWith('/wholesale');
+    const currentPortal = isWholesale ? 'wholesale' : 'retail';
     usePageTitle('Suppliers', isWholesale ? 'GOD' : 'Coko');
+
+    // Theme configuration
+    const theme = {
+        primary: isWholesale ? 'sky-600' : 'purple-600',
+        hover: isWholesale ? 'hover:bg-sky-700' : 'hover:bg-purple-700',
+        bg: isWholesale ? 'bg-sky-600' : 'bg-purple-600',
+        shadow: isWholesale ? 'shadow-sky-100' : 'shadow-purple-100',
+        text: isWholesale ? 'text-sky-600' : 'text-purple-600',
+        iconBg: isWholesale ? 'bg-sky-50' : 'bg-purple-50'
+    };
     
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -24,7 +35,7 @@ export function SuppliersPage() {
 
     const fetchSuppliers = async () => {
         try {
-            const data = await api.getSuppliers();
+            const data = await api.getSuppliers(currentPortal);
             setSuppliers(data);
         } catch (error) {
             console.error('Failed to fetch suppliers:', error);
@@ -64,6 +75,7 @@ export function SuppliersPage() {
                     supplier={selectedSupplier} 
                     onBack={() => setSelectedSupplier(null)}
                     onRefreshSupplier={fetchSuppliers}
+                    portal={currentPortal}
                 />
             </div>
         );
@@ -75,7 +87,7 @@ export function SuppliersPage() {
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-3">
-                        <Truck className="w-8 h-8 text-purple-600" />
+                        <Truck className={`w-8 h-8 ${theme.text}`} />
                         Suppliers
                     </h1>
                     <p className="text-slate-500 font-medium">Manage your vendor balances and financial history.</p>
@@ -98,24 +110,24 @@ export function SuppliersPage() {
 
             {/* Actions Bar */}
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full sm:max-w-md group">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
-                    <Input 
-                        placeholder="Search vendors or contacts..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 bg-white border-slate-200 focus:border-purple-400 focus:ring-purple-100 rounded-xl transition-all"
-                    />
-                </div>
+                    <div className="relative flex-1 sm:max-w-md">
+                        <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme.text}`} />
+                        <Input
+                            placeholder="Search suppliers by name, phone or email..."
+                            className={`pl-10 h-11 rounded-xl border-slate-200 bg-white/50 backdrop-blur-sm focus:border-${isWholesale ? 'sky-400' : 'purple-400'} focus:ring-${isWholesale ? 'sky-100' : 'purple-100'} transition-all font-medium`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 <Button 
                     onClick={() => {
                         setEditingSupplier(null);
                         setIsAddOpen(true);
                     }}
-                    className="w-full sm:w-auto h-11 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-100 flex items-center gap-2 font-bold"
+                    className={`w-full sm:w-auto h-11 px-6 rounded-xl ${theme.bg} ${theme.hover} shadow-lg ${theme.shadow} flex items-center gap-2 font-bold`}
                 >
                     <Plus className="w-5 h-5" />
-                    Add Vendor
+                    Add New Vendor
                 </Button>
             </div>
 
@@ -136,17 +148,17 @@ export function SuppliersPage() {
                         <Card 
                             key={supplier.id} 
                             onClick={() => setSelectedSupplier(supplier)}
-                            className="group hover:border-purple-200 transition-all hover:shadow-xl hover:shadow-purple-500/5 cursor-pointer relative overflow-hidden bg-white border-slate-200/80 rounded-2xl"
+                            className={`group hover:border-${isWholesale ? 'sky' : 'purple'}-200 transition-all hover:shadow-xl hover:shadow-${isWholesale ? 'sky' : 'purple'}-500/5 cursor-pointer relative overflow-hidden bg-white border-slate-200/80 rounded-2xl`}
                         >
                             <CardContent className="p-6 space-y-4">
                                 <div className="flex justify-between items-start">
-                                    <div className="space-y-1">
                                         <h3 className="font-bold text-lg text-slate-900">{supplier.name}</h3>
-                                        <p className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
-                                            <Building2 className="w-3.5 h-3.5" />
-                                            {supplier.contact_person || 'No contact person'}
-                                        </p>
-                                    </div>
+                                        <div className="flex flex-col gap-1.5 mt-1">
+                                            <p className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
+                                                <Building2 className={`w-3.5 h-3.5 ${theme.text}`} />
+                                                {supplier.contact_person || 'No contact person'}
+                                            </p>
+                                        </div>
                                     <div className={`px-2.5 py-1 rounded-lg text-xs font-bold tracking-tight ${
                                         supplier.current_balance > 0 
                                             ? 'bg-orange-50 text-orange-700 border border-orange-100' 
@@ -175,14 +187,14 @@ export function SuppliersPage() {
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
-                                        className="flex-1 rounded-lg font-bold border-slate-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 transition-all"
+                                        className={`flex-1 rounded-lg font-bold border-slate-200 hover:bg-${isWholesale ? 'sky' : 'purple'}-50 hover:text-${isWholesale ? 'sky' : 'purple'}-700 hover:border-${isWholesale ? 'sky' : 'purple'}-200 transition-all`}
                                     >
                                         View Ledger
                                     </Button>
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
-                                        className="flex-1 rounded-lg font-bold border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center justify-center gap-2"
+                                        className={`flex-1 rounded-lg font-bold border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-${isWholesale ? 'sky' : 'purple'}-600 transition-all flex items-center justify-center gap-2`}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingSupplier(supplier);
@@ -215,6 +227,7 @@ export function SuppliersPage() {
                 onOpenChange={setIsAddOpen} 
                 onSuccess={fetchSuppliers}
                 editingSupplier={editingSupplier}
+                portal={currentPortal}
             />
 
             <AlertDialog open={!!supplierToDelete} onOpenChange={() => setSupplierToDelete(null)}>

@@ -55,14 +55,14 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
     };
 
     // Dynamic Theme Classes
-    const activeBg = isRetail ? 'bg-purple-50' : 'bg-blue-50';
-    const activeText = isRetail ? 'text-purple-700' : 'text-blue-700';
-    const iconColor = isRetail ? 'text-purple-600' : 'text-blue-600';
-    const gradientFrom = isRetail ? 'from-purple-600' : 'from-blue-600';
+    const activeBg = isRetail ? 'bg-purple-50' : 'bg-sky-50';
+    const activeText = isRetail ? 'text-purple-700' : 'text-sky-700';
+    const iconColor = isRetail ? 'text-purple-600' : 'text-sky-600';
+    const gradientFrom = isRetail ? 'from-purple-600' : 'from-sky-600';
     const gradientTo = isRetail ? 'to-pink-500' : 'to-sky-500';
 
     return (
-        <div className={`flex bg-white h-screen overflow-hidden font-sans text-slate-900 selection:${isRetail ? 'bg-purple-100' : 'bg-blue-100'} relative`}>
+        <div className={`flex bg-white h-screen overflow-hidden font-sans text-slate-900 selection:${isRetail ? 'bg-purple-100' : 'bg-sky-100'} relative`}>
             {/* Mobile sidebar backdrop */}
             {isMobileMenuOpen && (
                 <div

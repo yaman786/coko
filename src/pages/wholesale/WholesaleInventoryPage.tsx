@@ -76,7 +76,7 @@ export function WholesaleInventoryPage() {
     if (isLoading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
             </div>
         );
     }
@@ -87,13 +87,13 @@ export function WholesaleInventoryPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black tracking-tight text-slate-800">
-                        Stock <span className="text-blue-600">Warehouse</span>
+                        Stock <span className="text-sky-600">Warehouse</span>
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">Manage wholesale inventory</p>
                 </div>
                 <button
                     onClick={handleAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl font-semibold text-sm hover:bg-sky-700 transition-colors shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
                     Add Product
@@ -105,7 +105,7 @@ export function WholesaleInventoryPage() {
                 <Card className="border-0 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Products</CardTitle>
-                        <Boxes className="w-4 h-4 text-blue-500" />
+                        <Boxes className="w-4 h-4 text-sky-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-slate-800">{activeProducts.length}</div>
@@ -123,7 +123,7 @@ export function WholesaleInventoryPage() {
                 <Card className="border-0 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Stock Value</CardTitle>
-                        <Package className="w-4 h-4 text-indigo-500" />
+                        <Package className="w-4 h-4 text-orange-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-slate-800">Rs. {totalStockValue.toLocaleString()}</div>
@@ -149,7 +149,7 @@ export function WholesaleInventoryPage() {
                     placeholder="Search products..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-11 bg-white"
+                    className="pl-10 h-11 bg-white focus-visible:ring-sky-500 focus-visible:border-sky-500"
                 />
             </div>
 
@@ -181,7 +181,7 @@ export function WholesaleInventoryPage() {
                                 filteredProducts.map((product) => (
                                     <tr
                                         key={product.id}
-                                        className="border-b border-slate-50 hover:bg-blue-50/30 transition-colors"
+                                        className="border-b border-slate-50 hover:bg-sky-50/30 transition-colors"
                                     >
                                         <td className="px-4 py-3">
                                             <div className="font-semibold text-slate-800">{product.name}</div>
@@ -190,7 +190,7 @@ export function WholesaleInventoryPage() {
                                             )}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700">
+                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-sky-50 text-sky-700">
                                                 {product.category}
                                             </span>
                                         </td>
@@ -206,14 +206,14 @@ export function WholesaleInventoryPage() {
                                         <td className="px-4 py-3 text-right text-sm font-medium text-slate-600">
                                             Rs. {product.cost_price.toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-bold text-blue-700">
+                                        <td className="px-4 py-3 text-right text-sm font-bold text-sky-700">
                                             Rs. {product.base_sell_price.toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <div className="flex items-center justify-center gap-1">
                                                 <button
                                                     onClick={() => handleEdit(product)}
-                                                    className="p-1.5 rounded-lg hover:bg-blue-100 text-slate-400 hover:text-blue-600 transition-colors"
+                                                    className="p-1.5 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
                                                     title="Edit"
                                                 >
                                                     <Pencil className="w-4 h-4" />

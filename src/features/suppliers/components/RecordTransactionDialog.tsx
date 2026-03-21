@@ -17,9 +17,15 @@ interface RecordTransactionDialogProps {
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
     editingTransaction?: SupplierTransaction | null;
+    portal?: 'retail' | 'wholesale';
 }
 
-export function RecordTransactionDialog({ supplier, open, onOpenChange, onSuccess, editingTransaction }: RecordTransactionDialogProps) {
+export function RecordTransactionDialog({ supplier, open, onOpenChange, onSuccess, editingTransaction, portal = 'retail' }: RecordTransactionDialogProps) {
+    const isWholesale = portal === 'wholesale';
+    const theme = {
+        primary: isWholesale ? 'sky-600' : 'purple-600',
+        text: isWholesale ? 'text-sky-600' : 'text-purple-600'
+    };
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -229,7 +235,7 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                     <div className="space-y-2">
                         <Label htmlFor="attachment" className="flex items-center gap-2">
                             Attachment (Bill/Receipt)
-                            {uploading && <Loader2 className="h-3 w-3 animate-spin text-purple-600" />}
+                            {uploading && <Loader2 className={`h-3 w-3 animate-spin ${theme.text}`} />}
                             {formData.attachment_url && <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter">✓ Attached</span>}
                         </Label>
                         <Input
