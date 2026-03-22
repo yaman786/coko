@@ -1,17 +1,37 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { wholesaleApi } from '../../services/wholesaleApi';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Search, Plus, FileText } from 'lucide-react';
+import { Search, Plus, FileText, Ban } from 'lucide-react';
 import { CreateSupplyOrderDialog } from '../../features/wholesale/components/CreateSupplyOrderDialog';
+import { toast } from 'sonner';
 
 export function WholesaleOrdersPage() {
     usePageTitle('Supply Orders', 'GOD');
+    const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [createOpen, setCreateOpen] = useState(false);
+
+    const handleCancelOrder = async (orderId: string, clientId: string, items: any) => {
+        if (!window.confirm("CRITICAL WARNING:\n\nAre you absolutely sure you want to cancel this order?\n\nThis will permanently reverse the inventory stock, delete the generated timeline debt, and wipe the order from the client's purchase history.")) {
+            return;
+        }
+
+        try {
+            await wholesaleApi.cancelSupplyOrder(orderId, clientId, items);
+            toast.success("Order cancelled securely. All inventory and ledger debts restored.");
+            queryClient.invalidateQueries({ queryKey: ['ws_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['ws_clients'] }); 
+            queryClient.invalidateQueries({ queryKey: ['ws_client_transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['ws_products'] });
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to cancel order.");
+        }
+    };
 
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ['ws_orders'],
@@ -23,16 +43,22 @@ export function WholesaleOrdersPage() {
             const matchesSearch =
                 o.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 o.order_number?.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesStatus = statusFilter === 'all' || o.payment_status === statusFilter;
+            
+            const matchesStatus = statusFilter === 'all' 
+                ? true 
+                : statusFilter === 'cancelled' 
+                    ? o.status === 'cancelled'
+                    : o.payment_status === statusFilter && o.status !== 'cancelled';
+                    
             return matchesSearch && matchesStatus;
         }),
         [orders, searchQuery, statusFilter]
     );
 
     const totalRevenue = useMemo(() =>
-        orders.reduce((sum, o) => sum + o.total_amount, 0), [orders]);
+        orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.total_amount, 0), [orders]);
     const totalReceived = useMemo(() =>
-        orders.reduce((sum, o) => sum + o.paid_amount, 0), [orders]);
+        orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.paid_amount, 0), [orders]);
     const totalPending = totalRevenue - totalReceived;
 
     if (isLoading) {
@@ -112,6 +138,7 @@ export function WholesaleOrdersPage() {
                     <option value="paid">Paid</option>
                     <option value="partial">Partial</option>
                     <option value="unpaid">Unpaid</option>
+                    <option value="cancelled">Cancelled</option>
                 </select>
             </div>
 
@@ -128,6 +155,7 @@ export function WholesaleOrdersPage() {
                                 <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Total</th>
                                 <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Paid</th>
                                 <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-16"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -163,13 +191,30 @@ export function WholesaleOrdersPage() {
                                             Rs. {order.paid_amount?.toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                                                order.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
-                                                order.payment_status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                                                'bg-red-100 text-red-700'
-                                            }`}>
-                                                {order.payment_status?.toUpperCase()}
-                                            </span>
+                                            {order.status === 'cancelled' ? (
+                                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 uppercase tracking-widest whitespace-nowrap">
+                                                    CANCELLED
+                                                </span>
+                                            ) : (
+                                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                                                    order.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
+                                                    order.payment_status === 'partial' ? 'bg-amber-100 text-amber-700' :
+                                                    'bg-slate-100 text-slate-700'
+                                                }`}>
+                                                    {order.payment_status?.toUpperCase()}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            {order.status !== 'cancelled' && (
+                                                <button
+                                                    onClick={() => handleCancelOrder(order.id, order.client_id, order.items)}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                                                    title="Cancel Order & Reverse Database Constraints"
+                                                >
+                                                    <Ban className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))

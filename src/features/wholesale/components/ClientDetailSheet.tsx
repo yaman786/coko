@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { wholesaleApi } from '../../../services/wholesaleApi';
-import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
 import { ClientPricingTable } from './ClientPricingTable';
 import { RecordClientPaymentDialog } from './RecordClientPaymentDialog';
-import type { WsClient } from '../../../types';
+import { EditTransactionDialog } from './EditTransactionDialog';
+import type { WsClient, WsClientTransaction } from '../../../types';
+import { toast } from 'sonner';
 
 interface Props {
     client: WsClient;
@@ -14,8 +16,26 @@ interface Props {
 
 export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'details' | 'ledger'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'ledger' | 'reports'>('details');
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+    
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editingTx, setEditingTx] = useState<WsClientTransaction | null>(null);
+
+    const handleDeleteTransaction = async (tx: WsClientTransaction) => {
+        if (!window.confirm(`Are you sure you want to delete this ${tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : 'Order Credit'} of Rs. ${tx.amount}?\n\nThis will automatically reverse the client's total balance to keep it accurate.`)) {
+            return;
+        }
+        try {
+            await wholesaleApi.deleteClientTransaction(tx.id, client.id, tx.amount, tx.type as any);
+            toast.success("Transaction deleted successfully");
+            queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
+            queryClient.invalidateQueries({ queryKey: ['ws_clients'] }); 
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete transaction");
+        }
+    };
 
     const { data: orders = [] } = useQuery({
         queryKey: ['ws_orders', 'client', client.id],
@@ -25,6 +45,11 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     const { data: transactions = [] } = useQuery({
         queryKey: ['ws_client_transactions', client.id],
         queryFn: () => wholesaleApi.getClientTransactions(client.id),
+    });
+
+    const { data: productInsights = [], isLoading: isLoadingInsights } = useQuery({
+        queryKey: ['ws_client_product_analytics', client.id],
+        queryFn: () => wholesaleApi.getClientProductAnalytics(client.id),
     });
 
     return (
@@ -73,6 +98,12 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                         className={`py-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ledger' ? 'border-sky-600 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
                     >
                         Ledger History
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('reports')}
+                        className={`py-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'reports' ? 'border-sky-600 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    >
+                        Purchase Report
                     </button>
                 </div>
 
@@ -198,7 +229,7 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                     </div>
                                 ) : (
                                     transactions.map(tx => (
-                                        <div key={tx.id} className="flex items-start gap-3.5 p-4 bg-white border border-slate-100 rounded-xl hover:border-slate-200 hover:shadow-sm transition-all shadow-sm">
+                                        <div key={tx.id} className="group flex items-start gap-3.5 p-4 bg-white border border-slate-100 rounded-xl hover:border-slate-200 hover:shadow-sm transition-all shadow-sm">
                                             <div className={`mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                                                 tx.type === 'PAYMENT_RECEIVED' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
                                             }`}>
@@ -209,9 +240,27 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                                     <p className="text-sm font-bold text-slate-800">
                                                         {tx.type === 'PAYMENT_RECEIVED' ? 'Payment Received' : 'Order Credit Added'}
                                                     </p>
-                                                    <p className={`text-sm font-bold whitespace-nowrap ${tx.type === 'PAYMENT_RECEIVED' ? 'text-green-600' : 'text-rose-600'}`}>
-                                                        {tx.type === 'PAYMENT_RECEIVED' ? '-' : '+'} Rs. {tx.amount.toLocaleString()}
-                                                    </p>
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <p className={`text-sm font-bold whitespace-nowrap ${tx.type === 'PAYMENT_RECEIVED' ? 'text-green-600' : 'text-rose-600'}`}>
+                                                            {tx.type === 'PAYMENT_RECEIVED' ? '-' : '+'} Rs. {tx.amount.toLocaleString()}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                onClick={() => { setEditingTx(tx); setEditDialogOpen(true); }}
+                                                                className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-md transition-colors"
+                                                                title="Edit Transaction"
+                                                            >
+                                                                <Pencil className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteTransaction(tx)}
+                                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                                                                title="Delete Transaction"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500 font-medium">
                                                     <span>{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
@@ -234,6 +283,65 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                             </div>
                         </div>
                     )}
+
+                    {activeTab === 'reports' && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                            <div className="flex items-center justify-between p-5 bg-sky-50 rounded-xl border border-sky-100">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-sky-600">Lifetime Purchase Value</p>
+                                    <p className="text-2xl font-black mt-0.5 text-sky-900">
+                                        Rs. {productInsights.reduce((sum, item) => sum + item.total_revenue, 0).toLocaleString()}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={() => window.print()}
+                                    className="flex items-center gap-2 px-3 py-2 bg-white border border-sky-200 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors text-xs font-bold shadow-sm print:hidden"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    Download PDF
+                                </button>
+                            </div>
+
+                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 mt-6">Top Purchased Products</h3>
+                            {isLoadingInsights ? (
+                                <div className="text-center py-8 text-slate-400">Crunching analytics...</div>
+                            ) : productInsights.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                                    <Package className="w-8 h-8 mx-auto mb-3 text-slate-300" />
+                                    <p className="text-sm font-semibold text-slate-500">No purchase history</p>
+                                    <p className="text-xs mt-1">This client hasn't bought anything yet.</p>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="text-left px-4 py-3 text-xs font-bold uppercase text-slate-500">Product</th>
+                                                <th className="text-right px-4 py-3 text-xs font-bold uppercase text-slate-500">Volume</th>
+                                                <th className="text-right px-4 py-3 text-xs font-bold uppercase text-slate-500">Revenue</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {productInsights.map((item, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        <span className="font-semibold text-slate-800">{item.name}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <span className="font-semibold text-slate-600">{Number(item.total_qty).toLocaleString()}</span>
+                                                        <span className="text-xs text-slate-400 ml-1">{item.unit}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <span className="font-bold text-slate-800">Rs. {Number(item.total_revenue).toLocaleString()}</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
             
@@ -245,6 +353,17 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
                     queryClient.invalidateQueries({ queryKey: ['ws_clients'] });
                     // Balance will be updated globally via query invalidation
+                }}
+            />
+
+            <EditTransactionDialog
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+                transaction={editingTx}
+                clientId={client.id}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
+                    queryClient.invalidateQueries({ queryKey: ['ws_clients'] }); 
                 }}
             />
         </div>

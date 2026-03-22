@@ -193,6 +193,7 @@ export interface WsOrder {
     order_number?: string;
     client_id: string;
     client_name: string;
+    status: string;
     items: WsOrderItem[];
     subtotal: number;
     discount: number;

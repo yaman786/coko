@@ -159,6 +159,77 @@ export const wholesaleApi = {
         await this.updateClientBalance(clientId, newBalance);
     },
 
+    async updateClientTransaction(
+        txId: string, 
+        clientId: string, 
+        newAmount: number, 
+        oldAmount: number, 
+        type: 'PAYMENT_RECEIVED' | 'ORDER_CREDIT', 
+        updates: Partial<WsClientTransaction>
+    ): Promise<void> {
+        const client = await this.getClientById(clientId);
+        if (!client) throw new Error("Client not found");
+
+        const difference = newAmount - oldAmount;
+
+        const { error: txError } = await supabase
+            .from('ws_client_transactions')
+            .update(updates)
+            .eq('id', txId);
+            
+        if (txError) throw txError;
+
+        if (difference !== 0) {
+            let newBalance = client.balance;
+            if (type === 'PAYMENT_RECEIVED') {
+                newBalance -= difference;
+            } else if (type === 'ORDER_CREDIT') {
+                newBalance += difference;
+            }
+            await this.updateClientBalance(clientId, newBalance);
+        }
+    },
+
+    async deleteClientTransaction(txId: string, clientId: string, amount: number, type: 'PAYMENT_RECEIVED' | 'ORDER_CREDIT'): Promise<void> {
+        const client = await this.getClientById(clientId);
+        if (!client) throw new Error("Client not found");
+
+        const { error: txError } = await supabase
+            .from('ws_client_transactions')
+            .update({ is_deleted: true })
+            .eq('id', txId);
+            
+        if (txError) throw txError;
+
+        let newBalance = client.balance;
+        if (type === 'PAYMENT_RECEIVED') {
+            newBalance += amount; 
+        } else if (type === 'ORDER_CREDIT') {
+            newBalance -= amount; 
+        }
+        
+        await this.updateClientBalance(clientId, newBalance);
+    },
+
+    /**
+     * Fetch aggregated product purchase insights for a specific client.
+     */
+    async getClientProductAnalytics(clientId: string): Promise<{
+        product_id: string;
+        name: string;
+        unit: string;
+        total_qty: number;
+        total_revenue: number;
+    }[]> {
+        const { data, error } = await supabase
+            .rpc('get_ws_client_product_analytics', {
+                p_client_id: clientId
+            });
+
+        if (error) throw error;
+        return data || [];
+    },
+
     // ─── Orders ───────────────────────────────────────────
 
     async getOrders(limit: number = 100): Promise<WsOrder[]> {
@@ -251,6 +322,48 @@ export const wholesaleApi = {
                     );
                 }
             }
+        }
+    },
+
+    /**
+     * Cancel a supply order: 
+     * 1. Revert Inventory (+qty for all items)
+     * 2. Delete the created ORDER_CREDIT from client timeline (which automatically reverses balance)
+     * 3. Change order status to 'cancelled' (so it drops from analytics)
+     */
+    async cancelSupplyOrder(orderId: string, clientId: string, items: { product_id: string; qty: number }[]): Promise<void> {
+        // 1. Mark Order as Cancelled
+        const { error: orderError } = await supabase
+            .from('ws_orders')
+            .update({ status: 'cancelled', updated_at: new Date() })
+            .eq('id', orderId);
+        if (orderError) throw orderError;
+
+        // 2. Revert Inventory (Add stock back)
+        for (const item of items) {
+            const product = await supabase
+                .from('ws_products')
+                .select('stock')
+                .eq('id', item.product_id)
+                .single();
+
+            if (product.data) {
+                const newStock = product.data.stock + item.qty;
+                await this.updateStock(item.product_id, newStock);
+            }
+        }
+
+        // 3. Revert Ledger Debt (Find the ORDER_CREDIT and delete it)
+        const { data: tx } = await supabase
+            .from('ws_client_transactions')
+            .select('id, amount, type')
+            .eq('reference_id', orderId)
+            .eq('client_id', clientId)
+            .eq('type', 'ORDER_CREDIT')
+            .maybeSingle();
+
+        if (tx) {
+            await this.deleteClientTransaction(tx.id, clientId, tx.amount, tx.type as any);
         }
     },
 
