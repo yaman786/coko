@@ -16,6 +16,8 @@ interface CartItem extends WsOrderItem {
     autoRate: number;       // client or base rate
     isOverride: boolean;    // user changed the price
     maxStock: number;       // available stock
+    qtyStr: string;         // prevents React input bug
+    rateStr: string;        // prevents React input bug
 }
 
 export function CreateSupplyOrderDialog({ open, onClose }: Props) {
@@ -82,15 +84,24 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
             autoRate: rate,
             isOverride: false,
             maxStock: product.stock,
+            qtyStr: '1',
+            rateStr: rate.toString(),
         }]);
     };
 
-    const updateCartItem = (productId: string, field: 'qty' | 'rate', value: number) => {
+    const updateCartItemString = (productId: string, field: 'qty' | 'rate', strValue: string) => {
         setCart(prev => prev.map(item => {
             if (item.product_id !== productId) return item;
-            const updated = { ...item, [field]: value };
+            
+            const numValue = Number(strValue) || 0;
+            const updated = { 
+                ...item, 
+                [`${field}Str`]: strValue,
+                [field]: numValue 
+            };
+            
             if (field === 'rate') {
-                updated.isOverride = value !== item.autoRate;
+                updated.isOverride = numValue !== item.autoRate;
             }
             updated.total = updated.qty * updated.rate;
             return updated;
@@ -237,8 +248,8 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                                             <td className="px-3 py-2.5">
                                                 <Input
                                                     type="number"
-                                                    value={item.qty}
-                                                    onChange={(e) => updateCartItem(item.product_id, 'qty', Number(e.target.value))}
+                                                    value={item.qtyStr}
+                                                    onChange={(e) => updateCartItemString(item.product_id, 'qty', e.target.value)}
                                                     min={1}
                                                     max={item.maxStock}
                                                     className="h-8 text-center text-sm w-full"
@@ -247,8 +258,8 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                                             <td className="px-3 py-2.5">
                                                 <Input
                                                     type="number"
-                                                    value={item.rate}
-                                                    onChange={(e) => updateCartItem(item.product_id, 'rate', Number(e.target.value))}
+                                                    value={item.rateStr}
+                                                    onChange={(e) => updateCartItemString(item.product_id, 'rate', e.target.value)}
                                                     min={0}
                                                     className="h-8 text-center text-sm w-full"
                                                 />
