@@ -203,8 +203,8 @@ export function InventoryTable() {
 
         const stockVal = parseInt(formData.stock);
         // Only validate stock override if editing
-        if (editingItem && (isNaN(stockVal) || stockVal < 0)) {
-            if (!hasError) toast.error('Validation Error', { description: 'Stock cannot be negative.' });
+        if (editingItem && isNaN(stockVal)) {
+            if (!hasError) toast.error('Validation Error', { description: 'Stock must be a valid number.' });
             newErrors.stock = true;
             hasError = true;
         }
