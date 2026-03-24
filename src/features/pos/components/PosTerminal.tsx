@@ -85,6 +85,9 @@ export function PosTerminal() {
             setPaymentMethod('Cash');
             setCashAmountInput('');
             setCardAmountInput('');
+            setComplimentaryAmountInput('0');
+            setOfferTitle('');
+            setOfferAmountInput('0');
             queryClient.invalidateQueries({ queryKey: ['products'] });
             queryClient.invalidateQueries({ queryKey: ['recentOrders'] });
 
