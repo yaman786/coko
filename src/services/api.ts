@@ -104,6 +104,7 @@ export const api = {
         complimentaryAmount?: number;
         offerTitle?: string;
         offerAmount?: number;
+        isWaste?: boolean;
         createdAt?: string; // Optional override
     }): Promise<void> {
         const { error } = await supabase.rpc('process_order', {
@@ -123,6 +124,7 @@ export const api = {
             p_offer_title: params.offerTitle || null,
             p_offer_amount: params.offerAmount || 0,
             p_complimentary_amount: params.complimentaryAmount || 0,
+            p_is_waste: params.isWaste || false,
             p_created_at: params.createdAt || null
         });
 

@@ -68,16 +68,20 @@ export function PosTerminal() {
             complimentaryAmount?: number;
             offerTitle?: string;
             offerAmount?: number;
+            isWaste?: boolean;
             createdAt?: string;
         }) => {
             return api.processOrder(orderData);
         },
         onSuccess: (_, variables) => {
-            toast.success('Payment Processed', {
-                description: `Order total: Nrs. ${variables.totalAmount.toFixed(2)}`
+            toast.success(variables.isWaste ? 'Waste Logged' : 'Payment Processed', {
+                description: variables.isWaste 
+                    ? `Inventory deducted for ${variables.items.length} items.`
+                    : `Order total: Nrs. ${variables.totalAmount.toFixed(2)}`
             });
             clearCart();
             setIsCheckoutModalOpen(false);
+            setIsWaste(false);
             setOverrideDate(new Date().toISOString().split('T')[0]);
             setDiscountInput('0');
             setLoyaltyInput('0');
@@ -91,15 +95,17 @@ export function PosTerminal() {
             queryClient.invalidateQueries({ queryKey: ['products'] });
             queryClient.invalidateQueries({ queryKey: ['recentOrders'] });
 
-            // Audit Trail: Log successful checkout
-            api.logActivity({
-                action: 'ORDER_PLACED',
-                category: 'POS',
-                description: `Order #${variables.id.slice(0, 8)} — Nrs. ${variables.totalAmount.toFixed(2)} (${variables.items.length} items)`,
-                metadata: { orderId: variables.id, total: variables.totalAmount, itemCount: variables.items.length },
-                actor_email: variables.cashierId,
-                actor_name: variables.cashierName,
-            });
+                // Audit Trail: Log successful checkout
+                api.logActivity({
+                    action: variables.isWaste ? 'WASTE_ENTRY' : 'ORDER_PLACED',
+                    category: 'POS',
+                    description: variables.isWaste
+                        ? `Waste/Spillage Logged — ${variables.items.length} items deducted.`
+                        : `Order #${variables.id.slice(0, 8)} — Nrs. ${variables.totalAmount.toFixed(2)} (${variables.items.length} items)`,
+                    metadata: { orderId: variables.id, total: variables.totalAmount, itemCount: variables.items.length, isWaste: variables.isWaste },
+                    actor_email: variables.cashierId,
+                    actor_name: variables.cashierName,
+                });
         },
         onError: (error) => {
             console.error("Checkout Failed:", error);
@@ -133,6 +139,8 @@ export function PosTerminal() {
         return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
     });
 
+    const [isWaste, setIsWaste] = useState(false);
+
     // Derived Financials
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const discountAmount = parseFloat(discountInput) || 0;
@@ -144,7 +152,7 @@ export function PosTerminal() {
     const isComplimentary = complimentaryDeduction > 0;
 
     // Financial Hierarchy: Sub -> Disc -> Loy + Vat -> Offer -> Comp
-    const grandTotal = Math.max(0, subtotal - discountAmount - loyaltyDeduction + vatAmount - offerDeduction - complimentaryDeduction);
+    const grandTotal = isWaste ? 0 : Math.max(0, subtotal - discountAmount - loyaltyDeduction + vatAmount - offerDeduction - complimentaryDeduction);
 
     const cashTender = paymentMethod === 'Cash' ? grandTotal : paymentMethod === 'Split' ? (parseFloat(cashAmountInput) || 0) : 0;
     const cardTender = paymentMethod === 'Card' ? grandTotal : paymentMethod === 'Split' ? (parseFloat(cardAmountInput) || 0) : 0;
@@ -226,15 +234,16 @@ export function PosTerminal() {
             discount: discountAmount,
             loyalty: loyaltyDeduction,
             vat: vatAmount,
-            paymentMethod: isComplimentary ? 'Other' : paymentMethod,
-            cashAmount: isComplimentary ? 0 : cashTender,
-            cardAmount: isComplimentary ? 0 : cardTender,
+            paymentMethod: (isWaste || isComplimentary) ? 'Other' : paymentMethod,
+            cashAmount: (isWaste || isComplimentary) ? 0 : cashTender,
+            cardAmount: (isWaste || isComplimentary) ? 0 : cardTender,
             cashierId: session?.user.email || 'Unknown',
             cashierName: session?.user.email?.split('@')[0] || 'Unknown',
             isComplimentary,
             complimentaryAmount: complimentaryDeduction,
             offerTitle: offerTitle || undefined,
             offerAmount: offerDeduction,
+            isWaste,
             createdAt: overrideDate === new Date().toISOString().split('T')[0] ? undefined : new Date(overrideDate).toISOString()
         });
     };
@@ -593,6 +602,30 @@ export function PosTerminal() {
 
                                 <Separator className="my-2" />
 
+                                <div className="p-3 bg-red-50 rounded-xl border border-red-100 mb-2">
+                                    <Button
+                                        variant={isWaste ? 'default' : 'outline'}
+                                        onClick={() => setIsWaste(!isWaste)}
+                                        className={`w-full justify-between h-10 px-4 transition-all ${
+                                            isWaste 
+                                            ? 'bg-red-600 hover:bg-red-700 text-white border-none shadow-md' 
+                                            : 'bg-white text-red-600 border-red-200 hover:bg-red-50'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Trash2 className={`w-4 h-4 ${isWaste ? 'animate-pulse' : ''}`} />
+                                            <span className="text-xs font-black uppercase tracking-widest">Log as Waste/Spillage</span>
+                                        </div>
+                                        {isWaste && <Badge className="bg-white/20 text-[10px] font-black uppercase tracking-tighter">Active</Badge>}
+                                    </Button>
+                                    {isWaste && (
+                                        <p className="text-[10px] text-red-600 mt-2 font-bold leading-tight px-1">
+                                            ⚠️ This will zero-out the price for inventory reconciliation. 
+                                            Standard stock deduction will still apply.
+                                        </p>
+                                    )}
+                                </div>
+
                                 <div className="p-3 bg-purple-50 rounded-lg border border-purple-100 space-y-3">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div className="space-y-1">
@@ -604,8 +637,9 @@ export function PosTerminal() {
                                                 type="number"
                                                 min="0"
                                                 value={complimentaryAmountInput}
+                                                disabled={isWaste}
                                                 onChange={(e) => setComplimentaryAmountInput(e.target.value)}
-                                                className="h-9 text-sm font-bold bg-white border-purple-200 focus-visible:ring-purple-500"
+                                                className="h-9 text-sm font-bold bg-white border-purple-200 focus-visible:ring-purple-500 disabled:opacity-50"
                                                 placeholder="Enter amount..."
                                             />
                                         </div>
@@ -653,7 +687,8 @@ export function PosTerminal() {
                                 <div className="grid grid-cols-3 gap-2">
                                     <Button
                                         variant={paymentMethod === 'Cash' ? 'default' : 'outline'}
-                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Cash' ? 'bg-emerald-600 hover:bg-emerald-700 border-none' : 'border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-700'}`}
+                                        disabled={isWaste}
+                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Cash' ? 'bg-emerald-600 hover:bg-emerald-700 border-none' : 'border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-700'} ${isWaste ? 'opacity-40' : ''}`}
                                         onClick={() => setPaymentMethod('Cash')}
                                     >
                                         <Banknote className="w-5 h-5" />
@@ -661,7 +696,8 @@ export function PosTerminal() {
                                     </Button>
                                     <Button
                                         variant={paymentMethod === 'Card' ? 'default' : 'outline'}
-                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Card' ? 'bg-blue-600 hover:bg-blue-700 border-none' : 'border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-700'}`}
+                                        disabled={isWaste}
+                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Card' ? 'bg-blue-600 hover:bg-blue-700 border-none' : 'border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-700'} ${isWaste ? 'opacity-40' : ''}`}
                                         onClick={() => setPaymentMethod('Card')}
                                     >
                                         <CreditCard className="w-5 h-5" />
@@ -669,7 +705,8 @@ export function PosTerminal() {
                                     </Button>
                                     <Button
                                         variant={paymentMethod === 'Split' ? 'default' : 'outline'}
-                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Split' ? 'bg-purple-600 hover:bg-purple-700 border-none' : 'border-slate-200 text-slate-500 hover:border-purple-300 hover:text-purple-700'}`}
+                                        disabled={isWaste}
+                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Split' ? 'bg-purple-600 hover:bg-purple-700 border-none' : 'border-slate-200 text-slate-500 hover:border-purple-300 hover:text-purple-700'} ${isWaste ? 'opacity-40' : ''}`}
                                         onClick={() => setPaymentMethod('Split')}
                                     >
                                         <SplitSquareHorizontal className="w-5 h-5" />

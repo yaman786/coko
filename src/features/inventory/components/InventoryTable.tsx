@@ -17,7 +17,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from '../../../components/ui/alert-dialog';
-import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes, ChevronRight, ChevronDown, Info } from 'lucide-react';
+import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes, ChevronRight, ChevronDown, Info, SlidersHorizontal, Gauge } from 'lucide-react';
 
 import { Separator } from '../../../components/ui/separator';
 import { api } from '../../../services/api';
@@ -49,6 +49,11 @@ export function InventoryTable() {
     const [restockTubCost, setRestockTubCost] = useState('');
     const [restockPopcornWeight, setRestockPopcornWeight] = useState('');
     const [restockPopcornBoxes, setRestockPopcornBoxes] = useState('');
+
+    // ── Adjustment state ──
+    const [adjustmentItem, setAdjustmentItem] = useState<Product | null>(null);
+    const [adjustmentQty, setAdjustmentQty] = useState('');
+    const [adjustmentNotes, setAdjustmentNotes] = useState('');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -506,6 +511,57 @@ export function InventoryTable() {
                 }
             );
         }
+    };
+
+    // ── Adjustment handlers ──
+    const handleOpenAdjustment = (item: Product) => {
+        setAdjustmentItem(item);
+        setAdjustmentQty(item.stock.toString());
+        setAdjustmentNotes('');
+    };
+
+    const handleConfirmAdjustment = () => {
+        if (!adjustmentItem) return;
+        
+        const newStock = parseFloat(adjustmentQty);
+        if (isNaN(newStock)) {
+            toast.error('Invalid quantity', { description: 'Please enter a valid number.' });
+            return;
+        }
+
+        const oldStock = adjustmentItem.stock;
+        const variance = newStock - oldStock;
+
+        upsertMutation.mutate(
+            { ...adjustmentItem, stock: newStock },
+            {
+                onSuccess: () => {
+                    const varianceText = variance > 0 ? `+${variance}` : `${variance}`;
+                    const type = variance > 0 ? 'Gain' : 'Loss';
+                    
+                    toast.success('Stock Adjusted', {
+                        description: `Variance Logged: ${varianceText} (${type})`,
+                    });
+
+                    api.logActivity({
+                        action: 'STOCK_ADJUSTMENT',
+                        category: 'INVENTORY',
+                        description: `Manual stock adjustment for "${adjustmentItem.name}": ${oldStock} → ${newStock} (Variance: ${varianceText})`,
+                        metadata: { 
+                            productId: adjustmentItem.id, 
+                            name: adjustmentItem.name, 
+                            previousStock: oldStock, 
+                            newStock: newStock, 
+                            variance: variance,
+                            notes: adjustmentNotes 
+                        },
+                        actor_email: user?.email || 'unknown',
+                        actor_name: user?.email?.split('@')[0] || 'Unknown',
+                    });
+                    setAdjustmentItem(null);
+                }
+            }
+        );
     };
 
     const filteredInventory = useMemo(() => {
@@ -1011,7 +1067,8 @@ export function InventoryTable() {
                                                     ) : (
                                                         <>
                                                             <Button variant="ghost" size="sm" onClick={() => setLedgerProduct(item)} className="text-purple-600 hover:text-purple-700 hover:bg-purple-50" title="View Daily Ledger"><History className="w-4 h-4" /></Button>
-                                                            <Button variant="ghost" size="sm" onClick={() => handleOpenRestock(item)} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Quick Restock"><PackagePlus className="w-4 h-4" /></Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => handleOpenAdjustment(item)} className="text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Manual Adjustment"><Gauge className="w-4 h-4" /></Button>
+                                                             <Button variant="ghost" size="sm" onClick={() => handleOpenRestock(item)} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Quick Restock"><PackagePlus className="w-4 h-4" /></Button>
                                                             <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)} title="Edit Item"><Edit3 className="w-4 h-4" /></Button>
                                                             <Button variant="ghost" size="sm" onClick={() => handleDeleteItem(item)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
                                                         </>
@@ -1196,6 +1253,112 @@ export function InventoryTable() {
                                 {upsertMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                 Confirm Restock
                             </Button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Manual Adjustment Dialog ── */}
+            <Dialog open={!!adjustmentItem} onOpenChange={(open) => { if (!open) setAdjustmentItem(null); }}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-700">
+                            <Gauge className="w-5 h-5" />
+                            Manual Stock Adjustment: {adjustmentItem?.name}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {adjustmentItem && (
+                        <div className="space-y-6 py-4">
+                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System Thought</span>
+                                    <p className="text-lg font-black text-slate-500">{adjustmentItem.stock} {adjustmentItem.unit || 'pcs'}</p>
+                                </div>
+                                <div className="space-y-1 border-l pl-4 border-slate-200">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Physical Truth</span>
+                                    <p className="text-lg font-black text-amber-600">{adjustmentQty || '0'} {adjustmentItem.unit || 'pcs'}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700">Actual Quantity in Freezer/Stock</Label>
+                                <Input
+                                    type="number"
+                                    value={adjustmentQty}
+                                    onChange={(e) => setAdjustmentQty(e.target.value)}
+                                    placeholder="Enter physical count..."
+                                    className="h-12 text-xl font-bold border-2 focus:ring-amber-500 focus:border-amber-500"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Live Variance Math */}
+                            {adjustmentQty !== '' && !isNaN(parseFloat(adjustmentQty)) && (
+                                <div className={`p-4 rounded-xl border transition-colors ${
+                                    (parseFloat(adjustmentQty) - adjustmentItem.stock) >= 0 
+                                        ? 'bg-emerald-50 border-emerald-100' 
+                                        : 'bg-red-50 border-red-100'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                                (parseFloat(adjustmentQty) - adjustmentItem.stock) >= 0 
+                                                    ? 'bg-emerald-100 text-emerald-700' 
+                                                    : 'bg-red-100 text-red-700'
+                                            }`}>
+                                                {(parseFloat(adjustmentQty) - adjustmentItem.stock) >= 0 ? <Plus className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-tight">Estimated Variance</p>
+                                                <p className={`text-lg font-black ${
+                                                    (parseFloat(adjustmentQty) - adjustmentItem.stock) >= 0 
+                                                        ? 'text-emerald-700' 
+                                                        : 'text-red-700'
+                                                }`}>
+                                                    {(parseFloat(adjustmentQty) - adjustmentItem.stock) > 0 ? '+' : ''}
+                                                    {(parseFloat(adjustmentQty) - adjustmentItem.stock)} {adjustmentItem.unit || 'pcs'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Badge className={`px-2 py-1 ${
+                                            (parseFloat(adjustmentQty) - adjustmentItem.stock) >= 0 
+                                                ? 'bg-emerald-600 text-white' 
+                                                : 'bg-red-600 text-white'
+                                        }`}>
+                                            {(parseFloat(adjustmentQty) - adjustmentItem.stock) >= 0 ? 'Inventory Gain' : 'Inventory Loss'}
+                                        </Badge>
+                                    </div>
+                                    <p className="mt-3 text-[11px] text-slate-500 italic leading-relaxed">
+                                        {(parseFloat(adjustmentQty) - adjustmentItem.stock) >= 0 
+                                            ? "This will be logged as an Over-yield/Profit. The computer underestimated your real physical stock." 
+                                            : "This will be logged as Spillage/Waste/Theft. You have less physically than the computer expects."}
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700">Reason / Notes (Optional)</Label>
+                                <Input
+                                    value={adjustmentNotes}
+                                    onChange={(e) => setAdjustmentNotes(e.target.value)}
+                                    placeholder="e.g. Correcting over-yield, Spillage, Mid-day count..."
+                                    className="h-10"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <Button variant="outline" className="flex-1 h-12" onClick={() => setAdjustmentItem(null)}>
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    className="flex-[2] h-12 bg-amber-600 hover:bg-amber-700 text-white font-bold gap-2"
+                                    onClick={handleConfirmAdjustment}
+                                    disabled={upsertMutation.isPending}
+                                >
+                                    {upsertMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <SlidersHorizontal className="w-5 h-5" />}
+                                    Confirm Adjustment
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </DialogContent>
