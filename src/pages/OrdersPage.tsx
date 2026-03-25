@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import {
     Search, ChevronDown, ChevronUp, Receipt, Clock,
-    Loader2, Calendar, User, Pencil, Trash2, Tag, Gift, AlertTriangle
+    Loader2, Calendar, User, Pencil, Trash2, Tag, Gift, AlertTriangle, FlaskConical
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -44,6 +44,7 @@ interface Order {
     complimentaryAmount?: number;
     offerTitle?: string;
     offerAmount?: number;
+    isWaste?: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -94,6 +95,7 @@ export function OrdersPage() {
                 complimentaryAmount: Number(o.complimentaryAmount || 0),
                 offerTitle: o.offerTitle as string | undefined,
                 offerAmount: Number(o.offerAmount || 0),
+                isWaste: !!o.isWaste,
                 createdAt: o.createdAt as string,
                 updatedAt: o.updatedAt as string,
             }));
@@ -197,8 +199,10 @@ export function OrdersPage() {
         });
     }, [orders, searchQuery, dateFrom, dateTo]);
 
-    // Summary stats
-    const totalRevenue = filteredOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+    // Strategic Totals: Exclude Waste from Revenue but show total items including waste
+    const salesOrders = filteredOrders.filter(o => !o.isWaste);
+    const wasteOrders = filteredOrders.filter(o => o.isWaste);
+    const totalRevenue = salesOrders.reduce((sum, o) => sum + o.totalAmount, 0);
     const totalItems = filteredOrders.reduce((sum, o) =>
         sum + o.items.reduce((s, i) => s + i.quantity, 0),
         0);
@@ -227,23 +231,32 @@ export function OrdersPage() {
     return (
         <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-6">
             {/* Header */}
-            <div>
-                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gray-900">Order History</h1>
-                <p className="text-gray-500 text-sm">Complete record of all transactions.</p>
+            <div className="flex justify-between items-end">
+                <div>
+                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gray-900">Order History</h1>
+                    <p className="text-gray-500 text-sm">Complete record of every transaction and spillage.</p>
+                </div>
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Orders</p>
-                    <p className="text-2xl font-black text-gray-900 mt-1">{filteredOrders.length}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sales Orders</p>
+                    <p className="text-2xl font-black text-gray-900 mt-1">{salesOrders.length}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Revenue</p>
-                    <p className="text-2xl font-black text-purple-700 mt-1">Nrs. {totalRevenue.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Revenue</p>
+                    <p className="text-2xl font-black text-emerald-600 mt-1">Nrs. {totalRevenue.toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Items Sold</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Waste Events</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-2xl font-black text-rose-600">{wasteOrders.length}</p>
+                        <Badge className="bg-rose-50 text-rose-600 border-rose-100 text-[10px] h-5">- {wasteOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0)} items</Badge>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Inventory Out</p>
                     <p className="text-2xl font-black text-gray-900 mt-1">{totalItems}</p>
                 </div>
             </div>
@@ -306,12 +319,11 @@ export function OrdersPage() {
                                             {dateStr}
                                         </h3>
                                         <Badge variant="secondary" className="text-[10px] bg-white text-gray-600 border border-gray-200 shadow-sm font-bold">
-                                            {ordersForDay.length} {ordersForDay.length === 1 ? 'Order' : 'Orders'}
+                                            {ordersForDay.length} {ordersForDay.length === 1 ? 'Entry' : 'Entries'}
                                         </Badge>
                                     </div>
                                     <div className="divide-y divide-gray-100">
                                         {ordersForDay.map((order, idx) => {
-                                            // The list is newest-first. Oldest order of the day gets #1.
                                             const dailyOrderNumber = ordersForDay.length - idx;
                                             const isExpanded = expandedOrderId === order.id;
                                             const orderDate = new Date(order.createdAt);
@@ -324,13 +336,13 @@ export function OrdersPage() {
                                                         className="w-full flex items-center justify-between px-4 sm:px-6 py-4 text-left"
                                                     >
                                                         <div className="flex items-center gap-4 min-w-0 flex-1">
-                                                            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-purple-50 border border-purple-100 shadow-sm text-purple-700 font-black text-xl">
+                                                            <div className={`flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl border shadow-sm font-black text-xl ${order.isWaste ? 'bg-rose-50 border-rose-100 text-rose-700' : 'bg-purple-50 border-purple-100 text-purple-700'}`}>
                                                                 #{dailyOrderNumber}
                                                             </div>
                                                             <div className="min-w-0 flex-1">
                                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                                                                    <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider h-5 border-none text-white ${order.paymentMethod === 'Cash' ? 'bg-emerald-500' : order.paymentMethod === 'Card' ? 'bg-blue-500' : order.paymentMethod === 'Split' ? 'bg-purple-500' : 'bg-gray-500'}`}>
-                                                                        {order.paymentMethod || 'Cash'}
+                                                                    <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider h-5 border-none text-white ${order.isWaste ? 'bg-rose-600' : order.paymentMethod === 'Cash' ? 'bg-emerald-500' : order.paymentMethod === 'Card' ? 'bg-blue-500' : order.paymentMethod === 'Split' ? 'bg-purple-500' : 'bg-gray-500'}`}>
+                                                                        {order.isWaste ? 'Waste/Spillage' : (order.paymentMethod || 'Cash')}
                                                                     </Badge>
                                                                     {order.isComplimentary && (
                                                                         <Badge variant="outline" className="text-[10px] h-5 border-none bg-purple-700 text-white font-black uppercase tracking-widest">
@@ -358,8 +370,8 @@ export function OrdersPage() {
                                                         </div>
                                                         <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                                                             <div className="text-right">
-                                                                <p className={`text-sm font-black ${order.status === 'cancelled' ? 'text-gray-400 line-through' : 'text-purple-700'}`}>
-                                                                    Nrs. {order.totalAmount.toLocaleString()}
+                                                                <p className={`text-sm font-black ${order.status === 'cancelled' ? 'text-gray-400 line-through' : order.isWaste ? 'text-rose-600' : 'text-purple-700'}`}>
+                                                                    {order.isWaste ? 'Rs. 0' : `Nrs. ${order.totalAmount.toLocaleString()}`}
                                                                 </p>
                                                                 <p className="text-[10px] text-gray-400 font-medium">
                                                                     {order.items.reduce((s, i) => s + i.quantity, 0)} items
@@ -382,21 +394,26 @@ export function OrdersPage() {
                                                     {/* Expanded Detail */}
                                                     {isExpanded && (
                                                         <div className="px-6 pb-4 pt-0">
-                                                            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-                                                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-                                                                    Order Details
-                                                                </h4>
+                                                            <div className={`rounded-xl border p-4 ${order.isWaste ? 'bg-rose-50 border-rose-100' : 'bg-gray-50 border-gray-200'}`}>
+                                                                <div className="flex justify-between items-center mb-3">
+                                                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                                                                        {order.isWaste ? 'Spillage reconciliation' : 'Order Details'}
+                                                                    </h4>
+                                                                    {order.isWaste && (
+                                                                        <FlaskConical className="w-4 h-4 text-rose-500 animate-bounce" />
+                                                                    )}
+                                                                </div>
                                                                 <div className="space-y-2">
                                                                     {order.items.map((item, idx) => (
                                                                         <div key={idx} className="flex items-center justify-between text-sm">
                                                                             <div className="flex items-center gap-2">
-                                                                                <span className="bg-purple-100 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">
+                                                                                <span className={`${order.isWaste ? 'bg-rose-100 text-rose-700' : 'bg-purple-100 text-purple-700'} text-xs font-bold px-1.5 py-0.5 rounded`}>
                                                                                     ×{item.quantity}
                                                                                 </span>
                                                                                 <span className="text-gray-700 font-medium">{item.name}</span>
                                                                             </div>
                                                                             <span className="text-gray-600 font-semibold">
-                                                                                Nrs. {(item.price * item.quantity).toLocaleString()}
+                                                                                {order.isWaste ? 'Wasted' : `Nrs. ${(item.price * item.quantity).toLocaleString()}`}
                                                                             </span>
                                                                         </div>
                                                                     ))}
@@ -443,28 +460,32 @@ export function OrdersPage() {
                                                                         </div>
                                                                     )}
                                                                     <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-200 border-dashed">
-                                                                        <span className="text-sm font-black uppercase tracking-wider text-purple-700">Grand Total</span>
-                                                                        <span className="text-xl font-black text-purple-700">
-                                                                            Nrs. {order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        <span className={`text-sm font-black uppercase tracking-wider ${order.isWaste ? 'text-rose-700' : 'text-purple-700'}`}>
+                                                                            {order.isWaste ? 'Inventory Loss Value' : 'Grand Total'}
+                                                                        </span>
+                                                                        <span className={`text-xl font-black ${order.isWaste ? 'text-rose-700' : 'text-purple-700'}`}>
+                                                                            {order.isWaste ? 'Rs. 0' : `Nrs. ${order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                                                                         </span>
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="mt-4 pt-3 border-t-2 border-slate-200 flex flex-col items-end gap-1">
-                                                                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Payment Breakdown ({order.paymentMethod})</span>
-                                                                    <div className="flex gap-4 text-xs font-bold mt-1">
-                                                                        {order.paymentMethod === 'Split' ? (
-                                                                            <>
-                                                                                <span className="text-emerald-600">Cash: Nrs. {order.cashAmount.toLocaleString()}</span>
-                                                                                <span className="text-blue-600">Card: Nrs. {order.cardAmount.toLocaleString()}</span>
-                                                                            </>
-                                                                        ) : order.paymentMethod === 'Card' ? (
-                                                                            <span className="text-blue-600">Card: Nrs. {order.totalAmount.toLocaleString()}</span>
-                                                                        ) : (
-                                                                            <span className="text-emerald-600">Cash: Nrs. {order.totalAmount.toLocaleString()}</span>
-                                                                        )}
+                                                                {!order.isWaste && (
+                                                                    <div className="mt-4 pt-3 border-t-2 border-slate-200 flex flex-col items-end gap-1">
+                                                                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Payment Breakdown ({order.paymentMethod})</span>
+                                                                        <div className="flex gap-4 text-xs font-bold mt-1">
+                                                                            {order.paymentMethod === 'Split' ? (
+                                                                                <>
+                                                                                    <span className="text-emerald-600">Cash: Nrs. {order.cashAmount.toLocaleString()}</span>
+                                                                                    <span className="text-blue-600">Card: Nrs. {order.cardAmount.toLocaleString()}</span>
+                                                                                </>
+                                                                            ) : order.paymentMethod === 'Card' ? (
+                                                                                <span className="text-blue-600">Card: Nrs. {order.totalAmount.toLocaleString()}</span>
+                                                                            ) : (
+                                                                                <span className="text-emerald-600">Cash: Nrs. {order.totalAmount.toLocaleString()}</span>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )}

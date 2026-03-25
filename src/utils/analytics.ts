@@ -21,6 +21,8 @@ export interface DashboardMetrics {
         productsDeltaPct: number;
     };
     totalExpenses: number;
+    wasteValue: number;
+    wasteCount: number;
 }
 
 export interface RevenueData {
@@ -91,14 +93,17 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     ]);
 
     // Current Period Metrics
-    const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    // Revenue is already Rs. 0 for waste, but we exclude waste from order counts and AOV
+    const validOrders = orders.filter(o => !o.isWaste);
+    const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
-    const totalOrders = orders.length;
+    const totalOrders = validOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Previous Period Metrics
-    const prevTotalRevenue = prevOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-    const prevTotalOrders = prevOrders.length;
+    const validPrevOrders = prevOrders.filter(o => !o.isWaste);
+    const prevTotalRevenue = prevOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    const prevTotalOrders = validPrevOrders.length;
     const prevAverageOrderValue = prevTotalOrders > 0 ? prevTotalRevenue / prevTotalOrders : 0;
 
     const totalProductsSold = orders.reduce((sum, order) => {
@@ -139,6 +144,9 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     const totalComplimentary = orders.reduce((sum, order) => sum + (order.complimentaryAmount || 0), 0);
     const totalLoyalty = orders.reduce((sum, order) => sum + (order.loyalty || 0), 0);
 
+    const wasteValue = orders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
+    const wasteCount = orders.filter(o => o.isWaste).length;
+
     return {
         totalRevenue,
         totalOrders,
@@ -152,6 +160,8 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         totalComplimentary,
         totalLoyalty,
         totalExpenses,
+        wasteValue,
+        wasteCount,
         trends: {
             revenueDeltaPct,
             ordersDeltaPct,

@@ -91,6 +91,7 @@ export interface Order {
     complimentaryAmount?: number;
     offerTitle?: string;
     offerAmount?: number;
+    isWaste?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

@@ -10,7 +10,7 @@ import {
     getTopProducts,
     getRecentOrders
 } from '../utils/analytics';
-import { Activity, DollarSign, Package, TrendingUp, ShieldAlert, RefreshCw, Globe, Loader2, Download, FileText, TableProperties, Gift, Heart, Percent, CreditCard, Wallet, Receipt } from 'lucide-react';
+import { Activity, DollarSign, Package, TrendingUp, ShieldAlert, RefreshCw, Globe, Loader2, Download, FileText, TableProperties, Gift, Heart, Percent, CreditCard, Wallet, Receipt, FlaskConical } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { exportToCSV, exportDashboardToPDF } from '../utils/export';
@@ -71,11 +71,6 @@ function DashboardContent() {
 
     const queryKeyDatePart = typeof dateFilter === 'number' ? dateFilter : `${customFrom}_${customTo}`;
 
-    // Diagnostic Log for developers
-    if (period === 'custom') {
-        console.log('[Dashboard] Custom Filter Active:', { customFrom, customTo, dateFilter, queryKeyDatePart });
-    }
-
     // 1. Concurrent and Cached Data Fetching — ALL queries use the `dateFilter` period
     const { data: metrics, isLoading: metricsLoading } = useQuery({
         queryKey: ['dashboardMetrics', queryKeyDatePart],
@@ -103,8 +98,6 @@ function DashboardContent() {
         queryKey: ['recentOrders'],
         queryFn: () => getRecentOrders(10),
     });
-
-    // Stock Health Data (Optional - currently hidden for simplicity)
 
     // --- Export Logic ---
     const getDateRangeLabel = () => {
@@ -224,7 +217,7 @@ function DashboardContent() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                 <StatCard
                     title="Total Revenue"
                     value={`Nrs. ${metrics.totalRevenue.toLocaleString()}`}
@@ -248,18 +241,6 @@ function DashboardContent() {
                     value={metrics.totalProductsSold.toString()}
                     icon={Package}
                     trend={{ value: Math.abs(Number(metrics.trends.productsDeltaPct.toFixed(1))), isPositive: metrics.trends.productsDeltaPct >= 0 }}
-                />
-                <StatCard
-                    title="Products Sold"
-                    value={metrics.totalProductsSold.toString()}
-                    icon={Package}
-                    trend={{ value: Math.abs(Number(metrics.trends.productsDeltaPct.toFixed(1))), isPositive: metrics.trends.productsDeltaPct >= 0 }}
-                />
-                <StatCard
-                    title="Net Profit"
-                    value={`Nrs. ${(metrics.totalRevenue - metrics.totalExpenses).toLocaleString()}`}
-                    icon={DollarSign}
-                    description={`Sales - Expenses`}
                 />
             </div>
 
@@ -321,6 +302,15 @@ function DashboardContent() {
                                 Shop Expenses
                             </div>
                             <span className="font-semibold text-red-600">- Nrs. {metrics.totalExpenses.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm pt-1">
+                            <div className="flex items-center gap-2 text-gray-600">
+                                <div className="p-1.5 bg-rose-50 text-rose-600 rounded-md">
+                                    <FlaskConical className="w-4 h-4" />
+                                </div>
+                                Waste & Spillage (Loss)
+                            </div>
+                            <span className="font-semibold text-rose-600">- Nrs. {metrics.wasteValue.toLocaleString()}</span>
                         </div>
                         <div className="pt-3 border-t border-dashed border-gray-100 flex justify-between items-center">
                             <span className="text-base font-bold text-gray-900">Actual Net Profit</span>
