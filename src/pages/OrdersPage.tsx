@@ -200,10 +200,14 @@ export function OrdersPage() {
     }, [orders, searchQuery, dateFrom, dateTo]);
 
     // Strategic Totals: Exclude Waste from Revenue but show total items including waste
-    const salesOrders = filteredOrders.filter(o => !o.isWaste);
-    const wasteOrders = filteredOrders.filter(o => o.isWaste);
+    // IMPORTANT: Exclude CANCELLED orders from all summary totals (case-insensitive check)
+    const activeOrders = filteredOrders.filter(o => 
+        o.status?.toString().toLowerCase().trim() !== 'cancelled'
+    );
+    const salesOrders = activeOrders.filter(o => !o.isWaste);
+    const wasteOrders = activeOrders.filter(o => o.isWaste);
     const totalRevenue = salesOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-    const totalItems = filteredOrders.reduce((sum, o) =>
+    const totalItems = activeOrders.reduce((sum, o) =>
         sum + o.items.reduce((s, i) => s + i.quantity, 0),
         0);
 

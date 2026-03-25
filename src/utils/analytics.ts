@@ -93,9 +93,10 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     ]);
 
     // Current Period Metrics
-    // Revenue is already Rs. 0 for waste, but we exclude waste from order counts and AOV
-    const validOrders = orders.filter(o => !o.isWaste);
-    const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    // Revenue is already Rs. 0 for waste, but we exclude waste and cancelled from order counts and AOV
+    const validOrders = orders.filter(o => !o.isWaste && o.status !== 'cancelled');
+    const activeOrders = orders.filter(o => o.status !== 'cancelled');
+    const totalRevenue = activeOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
     const totalOrders = validOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -144,8 +145,8 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     const totalComplimentary = orders.reduce((sum, order) => sum + (order.complimentaryAmount || 0), 0);
     const totalLoyalty = orders.reduce((sum, order) => sum + (order.loyalty || 0), 0);
 
-    const wasteValue = orders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
-    const wasteCount = orders.filter(o => o.isWaste).length;
+    const wasteValue = activeOrders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
+    const wasteCount = activeOrders.filter(o => o.isWaste).length;
 
     return {
         totalRevenue,
@@ -187,8 +188,8 @@ export async function getRevenueTrend(period: number | { start: Date; end: Date 
 
         return {
             date: dateStr,
-            revenue: dayOrders.reduce((sum, order) => sum + order.totalAmount, 0),
-            orders: dayOrders.length
+            revenue: dayOrders.reduce((sum, order) => order.status !== 'cancelled' ? sum + order.totalAmount : sum, 0),
+            orders: dayOrders.filter(o => o.status !== 'cancelled').length
         };
     });
 }
