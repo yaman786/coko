@@ -17,7 +17,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from '../../../components/ui/alert-dialog';
-import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes, ChevronRight, ChevronDown, Info, SlidersHorizontal, Gauge } from 'lucide-react';
+import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes, ChevronRight, ChevronDown, Info, SlidersHorizontal, Gauge, Scale } from 'lucide-react';
 
 import { Separator } from '../../../components/ui/separator';
 import { api } from '../../../services/api';
@@ -39,6 +39,7 @@ export function InventoryTable() {
     const [deletingItem, setDeletingItem] = useState<Product | null>(null);
     const [expandedPopcorn, setExpandedPopcorn] = useState<Set<string>>(new Set());
     const [permanentDeleteItem, setPermanentDeleteItem] = useState<Product | null>(null);
+    const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
 
     // ── Restock state ──
     const [restockItem, setRestockItem] = useState<Product | null>(null);
@@ -83,6 +84,56 @@ export function InventoryTable() {
         queryKey: ['products', 'retail'],
         queryFn: () => api.getProducts('retail')
     });
+
+    // Fetch Stock Adjustments for Reconciliation Banner
+    const { data: adjustmentLogs = [] } = useQuery({
+        queryKey: ['inventoryAdjustments'],
+        queryFn: async () => {
+            const logs = await api.getAuditLog(500);
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+            return logs.filter((l: any) =>
+                l.action === 'STOCK_ADJUSTMENT' &&
+                new Date(l.createdAt) >= thirtyDaysAgo
+            );
+        },
+    });
+
+    const reconciliationStats = useMemo(() => {
+        let profitGains = 0;
+        let leakageLosses = 0;
+        let gainCount = 0;
+        let lossCount = 0;
+        const productVariances: { name: string; variance: number; value: number; type: 'PROFIT_GAIN' | 'ASSET_LOSS' }[] = [];
+
+        // Only show entries for products that still exist
+        const existingProductIds = new Set(products.map(p => p.id));
+
+        adjustmentLogs.forEach((log: any) => {
+            const productId = log.metadata?.productId as string;
+            if (productId && !existingProductIds.has(productId)) return;
+
+            // EMERGENCY FILTER: Hide messy 21st Love logs from today (March 26, 2026)
+            const isToday = new Date(log.createdAt).toISOString().split('T')[0] === '2026-03-26';
+            if (isToday && log.description?.includes('21st Love 1000ML')) return;
+            if (isToday && log.description?.includes('test')) return;
+
+            const val = log.metadata?.variance_value as number || 0;
+            const type = log.metadata?.variance_type as string;
+            const name = log.metadata?.name as string || 'Unknown';
+            const variance = log.metadata?.variance as number || 0;
+
+            if (type === 'PROFIT_GAIN') {
+                profitGains += val; gainCount++;
+                productVariances.push({ name, variance, value: val, type: 'PROFIT_GAIN' });
+            }
+            if (type === 'ASSET_LOSS') {
+                leakageLosses += val; lossCount++;
+                productVariances.push({ name, variance, value: val, type: 'ASSET_LOSS' });
+            }
+        });
+
+        return { profitGains, leakageLosses, gainCount, lossCount, productVariances };
+    }, [adjustmentLogs, products]);
 
     const upsertMutation = useMutation({
         mutationFn: api.upsertProduct,
@@ -392,6 +443,32 @@ export function InventoryTable() {
         }
     };
 
+    const archivedItems = useMemo(() => products.filter(p => p.isDeleted), [products]);
+
+    const confirmClearAllArchived = async () => {
+        setShowClearAllConfirm(false);
+        const archived = archivedItems;
+        if (archived.length === 0) return;
+
+        try {
+            const ids = archived.map(p => p.id);
+            const { error } = await supabase.from('products').delete().in('id', ids);
+            if (error) throw error;
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            toast.success('All Archived Cleared', { description: `${archived.length} products permanently deleted.` });
+            api.logActivity({
+                action: 'CLEAR_ALL_ARCHIVED',
+                category: 'INVENTORY',
+                description: `Permanently deleted ${archived.length} archived products`,
+                metadata: { count: archived.length, names: archived.map(p => p.name) },
+                actor_email: user?.email || 'unknown',
+                actor_name: user?.email?.split('@')[0] || 'Unknown',
+            });
+        } catch (err) {
+            toast.error('Failed to clear', { description: 'Could not delete all archived items. Some may have linked orders.' });
+        }
+    };
+
     // ── Restock handlers ──
     const handleOpenRestock = (item: Product) => {
         setRestockItem(item);
@@ -532,27 +609,46 @@ export function InventoryTable() {
         const oldStock = adjustmentItem.stock;
         const variance = newStock - oldStock;
 
+        // Calculate Financial Truth
+        let financialValue = 0;
+        let financialType: 'PROFIT_GAIN' | 'ASSET_LOSS' | 'NEUTRAL' = 'NEUTRAL';
+        
+        if (variance > 0) {
+            financialValue = variance * (adjustmentItem.price || 0);
+            financialType = 'PROFIT_GAIN';
+        } else if (variance < 0) {
+            financialValue = Math.abs(variance) * (adjustmentItem.costPrice || 0);
+            financialType = 'ASSET_LOSS';
+        }
+
         upsertMutation.mutate(
             { ...adjustmentItem, stock: newStock },
             {
                 onSuccess: () => {
                     const varianceText = variance > 0 ? `+${variance}` : `${variance}`;
                     const type = variance > 0 ? 'Gain' : 'Loss';
+                    const financialTag = financialType === 'PROFIT_GAIN' 
+                        ? `(Bonus Profit: Nrs. ${financialValue.toFixed(0)})` 
+                        : financialType === 'ASSET_LOSS' 
+                            ? `(Asset Loss: Nrs. ${financialValue.toFixed(0)})` 
+                            : '';
                     
                     toast.success('Stock Adjusted', {
-                        description: `Variance Logged: ${varianceText} (${type})`,
+                        description: `Variance: ${varianceText} ${type}. ${financialTag}`,
                     });
 
                     api.logActivity({
                         action: 'STOCK_ADJUSTMENT',
                         category: 'INVENTORY',
-                        description: `Manual stock adjustment for "${adjustmentItem.name}": ${oldStock} → ${newStock} (Variance: ${varianceText})`,
+                        description: `Manual stock adjustment for "${adjustmentItem.name}": ${oldStock} → ${newStock} (${varianceText} ${type}). Value: ${financialTag}`,
                         metadata: { 
                             productId: adjustmentItem.id, 
                             name: adjustmentItem.name, 
                             previousStock: oldStock, 
                             newStock: newStock, 
                             variance: variance,
+                            variance_value: financialValue,
+                            variance_type: financialType,
                             notes: adjustmentNotes 
                         },
                         actor_email: user?.email || 'unknown',
@@ -626,6 +722,37 @@ export function InventoryTable() {
                 </Card>
             )}
 
+            {/* Financial Reconciliation Banner */}
+            {(reconciliationStats.gainCount > 0 || reconciliationStats.lossCount > 0) && (
+                <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-emerald-800">
+                            <Scale className="w-5 h-5" />
+                            Inventory Reconciliation — Financial Truth
+                        </CardTitle>
+                        <CardDescription className="text-emerald-600">
+                            {reconciliationStats.gainCount + reconciliationStats.lossCount} variances detected in the last 30 days — Net: {reconciliationStats.profitGains >= reconciliationStats.leakageLosses ? '+' : '-'}Nrs. {Math.abs(reconciliationStats.profitGains - reconciliationStats.leakageLosses).toLocaleString()}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                            {reconciliationStats.productVariances.map((pv, i) => (
+                                <Badge
+                                    key={i}
+                                    variant="outline"
+                                    className={pv.type === 'PROFIT_GAIN'
+                                        ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                                        : 'border-rose-300 text-rose-700 bg-rose-50'
+                                    }
+                                >
+                                    {pv.name}: {pv.variance > 0 ? `+${pv.variance}` : pv.variance} ({pv.type === 'PROFIT_GAIN' ? 'Gain' : 'Loss'}) • Nrs. {pv.value.toLocaleString()}
+                                </Badge>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card className="shadow-sm border-0 ring-1 ring-gray-200">
                 <CardHeader className="pb-4">
                     <div className="flex items-center justify-between mb-4">
@@ -642,6 +769,16 @@ export function InventoryTable() {
                                 >
                                     <Archive className="w-4 h-4" />
                                     {showArchived ? 'Active Inventory' : 'View Archived'}
+                                </Button>
+                            )}
+                            {role === 'admin' && showArchived && archivedItems.length > 0 && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowClearAllConfirm(true)}
+                                    className="gap-2 h-9 text-xs font-semibold bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Clear All ({archivedItems.length})
                                 </Button>
                             )}
                             <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
@@ -1415,6 +1552,31 @@ export function InventoryTable() {
                             className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-100"
                         >
                             Yes, Permanently Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ── Clear All Archived Confirmation ── */}
+            <AlertDialog open={showClearAllConfirm} onOpenChange={setShowClearAllConfirm}>
+                <AlertDialogContent className="border-red-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+                            <Trash2 className="w-5 h-5" />
+                            Clear All Archived Products?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 space-y-2">
+                            <p>This will <strong>permanently delete {archivedItems.length} archived products</strong> from the database. This action <strong>cannot be undone</strong>.</p>
+                            <p className="text-xs text-slate-400">Note: Past order history will not be affected — order records store item details independently.</p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel className="border-slate-200 text-slate-500 hover:bg-slate-50">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmClearAllArchived}
+                            className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-100"
+                        >
+                            Yes, Delete All {archivedItems.length} Items
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

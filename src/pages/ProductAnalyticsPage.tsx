@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp, ChevronRight, Layers, List, AlertTriangle, Flame, AlertCircle, TrendingDown, CheckCircle2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Download, FileText, TableProperties, Loader2, ArrowLeft, History, TrendingUp, ChevronRight, Layers, List, AlertTriangle, Flame, AlertCircle, TrendingDown, CheckCircle2, Scale, Gem } from 'lucide-react';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { getTopProducts } from '../utils/analytics';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -12,6 +12,8 @@ import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Link } from 'react-router-dom';
+import { api } from '../services/api';
+import type { AuditLogEntry } from '../types';
 import { ProductDailyLedgerDialog } from '../features/inventory/components/ProductDailyLedgerDialog';
 import {
     BarChart,
@@ -64,6 +66,55 @@ export function ProductAnalyticsPage() {
         queryKey: ['allProductAnalytics', queryKeyDatePart],
         queryFn: () => getTopProducts(999999, dateFilter),
     });
+
+    const { data: adjustments = [] } = useQuery({
+        queryKey: ['stockAdjustments', queryKeyDatePart],
+        queryFn: async () => {
+            const logs: AuditLogEntry[] = await api.getAuditLog(1000);
+            const start = typeof dateFilter === 'number' ? new Date(Date.now() - dateFilter * 86400000) : dateFilter.start;
+            const end = typeof dateFilter === 'number' ? new Date() : dateFilter.end;
+            
+            return logs.filter((l: AuditLogEntry) => 
+                l.action === 'STOCK_ADJUSTMENT' && 
+                new Date(l.createdAt) >= start &&
+                new Date(l.createdAt) <= end
+            );
+        },
+    });
+
+    const reconciliationStats = useMemo(() => {
+        let profitGains = 0;
+        let leakageLosses = 0;
+        let gainCount = 0;
+        let lossCount = 0;
+        
+        // Only show entries for products that still exist
+        const existingProductIds = new Set(rawProducts.map((p: any) => p.id));
+
+        adjustments.forEach((log: AuditLogEntry) => {
+            const productId = log.metadata?.productId as string;
+            if (productId && !existingProductIds.has(productId)) return;
+
+            // EMERGENCY FILTER: Hide messy 21st Love logs from today (March 26, 2026)
+            const isToday = new Date(log.createdAt).toISOString().split('T')[0] === '2026-03-26';
+            if (isToday && log.description?.includes('21st Love 1000ML')) return;
+            if (isToday && log.description?.includes('test')) return;
+
+            const val = log.metadata?.variance_value as number || 0;
+            const type = log.metadata?.variance_type as string;
+            
+            if (type === 'PROFIT_GAIN') {
+                profitGains += val;
+                gainCount++;
+            }
+            if (type === 'ASSET_LOSS') {
+                leakageLosses += val;
+                lossCount++;
+            }
+        });
+        
+        return { profitGains, leakageLosses, gainCount, lossCount };
+    }, [adjustments, rawProducts]);
 
     // Process Date Label
     const getDateRangeLabel = () => {
@@ -294,6 +345,66 @@ export function ProductAnalyticsPage() {
                     />
                 </div>
             </div>
+
+            {/* Financial Reconciliation Section — Top Banner */}
+            {!isLoading && (reconciliationStats.gainCount > 0 || reconciliationStats.lossCount > 0) && (
+                <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 shadow-sm">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-emerald-800">
+                            <Scale className="w-5 h-5" />
+                            Inventory Reconciliation — Financial Truth
+                        </CardTitle>
+                        <CardDescription className="text-emerald-600">
+                            {reconciliationStats.gainCount + reconciliationStats.lossCount} reconciliations performed via Speedo Meter this period
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Gains */}
+                            <div className="flex items-center gap-3 bg-white/80 border border-emerald-200 rounded-xl p-4">
+                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                    <Gem className="w-5 h-5 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Found Revenue (Gains)</p>
+                                    <p className="text-xl font-black text-emerald-700">Nrs. {reconciliationStats.profitGains.toLocaleString()}</p>
+                                    <p className="text-[11px] text-emerald-600">{reconciliationStats.gainCount} over-yield events</p>
+                                </div>
+                            </div>
+                            {/* Losses */}
+                            <div className="flex items-center gap-3 bg-white/80 border border-rose-200 rounded-xl p-4">
+                                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                                    <TrendingDown className="w-5 h-5 text-rose-600" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">Asset Leakage (Losses)</p>
+                                    <p className="text-xl font-black text-rose-700">Nrs. {reconciliationStats.leakageLosses.toLocaleString()}</p>
+                                    <p className="text-[11px] text-rose-600">{reconciliationStats.lossCount} negative variances</p>
+                                </div>
+                            </div>
+                            {/* Net */}
+                            <div className="flex items-center gap-3 bg-white/80 border border-slate-200 rounded-xl p-4">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                    reconciliationStats.profitGains >= reconciliationStats.leakageLosses ? 'bg-emerald-100' : 'bg-rose-100'
+                                }`}>
+                                    <Scale className={`w-5 h-5 ${
+                                        reconciliationStats.profitGains >= reconciliationStats.leakageLosses ? 'text-emerald-600' : 'text-rose-600'
+                                    }`} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Net Inventory Impact</p>
+                                    <p className={`text-xl font-black ${
+                                        reconciliationStats.profitGains >= reconciliationStats.leakageLosses ? 'text-emerald-700' : 'text-rose-700'
+                                    }`}>
+                                        {reconciliationStats.profitGains >= reconciliationStats.leakageLosses ? '+' : '-'}Nrs. {Math.abs(reconciliationStats.profitGains - reconciliationStats.leakageLosses).toLocaleString()}
+                                    </p>
+                                    <p className="text-[11px] text-slate-500">{reconciliationStats.profitGains >= reconciliationStats.leakageLosses ? 'Net Positive' : 'Net Negative'} impact</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Visual Analytics - Pareto Chart */}
             <Card className="border-t-4 border-t-purple-600 shadow-md">

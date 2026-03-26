@@ -177,26 +177,47 @@ export function PosTerminal() {
             }
         });
 
-        // 2. Validate Claims
+        // 2. Validate Claims with -5 Safety Buffer
         const outOfStockItems: string[] = [];
+        const negativeWarningItems: string[] = [];
 
         // Check Standalone
         Object.entries(standaloneStockClaims).forEach(([id, qty]) => {
             const product = products.find(p => p.id === id);
-            if (product && product.stock < qty) outOfStockItems.push(product.name);
+            if (!product) return;
+            
+            const resultingStock = product.stock - qty;
+            if (resultingStock < -5) {
+                outOfStockItems.push(product.name);
+            } else if (resultingStock < 0) {
+                negativeWarningItems.push(product.name);
+            }
         });
 
         // Check Parent Pools
         Object.entries(parentStockClaims).forEach(([parentId, qty]) => {
             const parent = products.find(p => p.id === parentId);
-            if (parent && parent.stock < qty) outOfStockItems.push(parent.name);
+            if (!parent) return;
+
+            const resultingStock = parent.stock - qty;
+            if (resultingStock < -5) {
+                outOfStockItems.push(parent.name);
+            } else if (resultingStock < 0) {
+                negativeWarningItems.push(parent.name);
+            }
         });
 
         if (outOfStockItems.length > 0) {
-            toast.error('Stock Insufficient', {
-                description: `${outOfStockItems.join(', ')} — not enough stock available.`
+            toast.error('Stock Depleted', {
+                description: `${outOfStockItems.join(', ')} — -5 scoop safety limit reached. Please log restock.`
             });
             return;
+        }
+
+        if (negativeWarningItems.length > 0) {
+            toast.warning('Selling Extra Yield', {
+                description: `Negative stock for: ${negativeWarningItems.join(', ')}. Manager audit required later.`
+            });
         }
 
         setIsCheckoutModalOpen(true);
@@ -257,10 +278,48 @@ export function PosTerminal() {
         [products, searchQuery]
     );
 
-    const categories = useMemo(() =>
-        Array.from(new Set(products.map(item => item.category))),
-        [products]
-    );
+    const CATEGORY_ORDER = [
+        'Scoops',
+        'BIO PRODUCT',
+        'OTHERS',
+        'DRINKS',
+        'POPCORN'
+    ];
+
+    const SCOOPS_SUBCATEGORY_ORDER = [
+        'Classic',
+        'Exotic',
+        'Signature',
+        'Fantasy'
+    ];
+
+    const BIO_SUBCATEGORY_ORDER = [
+        '100ML CUP',
+        'BAR',
+        '500ML',
+        '1000ML'
+    ];
+
+    const categories = useMemo(() => {
+        const uniqueCategories = Array.from(new Set(products.map(item => item.category || 'Others')));
+        return uniqueCategories.sort((a, b) => {
+            const getIndex = (name: string) => {
+                const n = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                return CATEGORY_ORDER.findIndex(o => {
+                    const target = o.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    return n.includes(target) || target.includes(n);
+                });
+            };
+            
+            const indexA = getIndex(a);
+            const indexB = getIndex(b);
+            
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.localeCompare(b);
+        });
+    }, [products]);
 
     if (productsLoading) {
         return (
@@ -294,7 +353,7 @@ export function PosTerminal() {
                             </div>
                         )}
                         {categories.map(category => {
-                            const categoryItems = filteredItems.filter(item => item.category === category);
+                            const categoryItems = filteredItems.filter(item => (item.category || 'Others') === category);
                             if (categoryItems.length === 0) return null;
 
                             const renderProductCard = (item: Product) => {
@@ -352,7 +411,7 @@ export function PosTerminal() {
                                             {categoryItems.length}
                                         </Badge>
                                     </div>
-                                    {['Scoops', 'Bio-products', 'Drinks'].includes(category) ? (
+                                    {['Scoops', 'Bio-products', 'DRINKS', 'Tea Babrage', 'Drinks'].includes(category) ? (
                                         <div className="space-y-6">
                                             {(() => {
                                                 // Group items case-insensitively first
@@ -368,11 +427,41 @@ export function PosTerminal() {
                                                     groupsMap.get(key)!.push(item);
                                                 });
 
-                                                // Now map over the grouped lists
-                                                return Array.from(groupsMap.entries()).map(([key, items]) => {
-                                                    // Pick the capitalized version of the name from the first item as the display header
+                                                // Now map over the grouped lists, sorting by specific orders
+                                                const sortedEntries = Array.from(groupsMap.entries()).sort((a, b) => {
+                                                    const subA = (a[1][0].subcategory?.trim() || '').toLowerCase();
+                                                    const subB = (b[1][0].subcategory?.trim() || '').toLowerCase();
+                                                    
+                                                    const getSubIndex = (name: string, orderList: string[]) => {
+                                                        return orderList.findIndex(o => name.includes(o.toLowerCase()));
+                                                    };
+
+                                                    if (category === 'Scoops') {
+                                                        const idxA = getSubIndex(subA, SCOOPS_SUBCATEGORY_ORDER);
+                                                        const idxB = getSubIndex(subB, SCOOPS_SUBCATEGORY_ORDER);
+                                                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                                                        if (idxA !== -1) return -1;
+                                                        if (idxB !== -1) return 1;
+                                                    } else if (category.toLowerCase().includes('bio')) {
+                                                        const idxA = getSubIndex(subA, BIO_SUBCATEGORY_ORDER);
+                                                        const idxB = getSubIndex(subB, BIO_SUBCATEGORY_ORDER);
+                                                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                                                        if (idxA !== -1) return -1;
+                                                        if (idxB !== -1) return 1;
+                                                    }
+                                                    
+                                                    return a[0].localeCompare(b[0]);
+                                                });
+
+                                                return sortedEntries.map(([key, items]) => {
+                                                    // Pick the original version from the first item
                                                     const displayHeader = items[0].subcategory?.trim() || `Other ${category}`;
                                                     
+                                                    // Sort individual flavors alphabetically (Requested for Scoops only)
+                                                    if (category === 'Scoops') {
+                                                        items.sort((a, b) => a.name.localeCompare(b.name));
+                                                    }
+
                                                     return (
                                                         <div key={key}>
                                                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center mb-3">
@@ -394,6 +483,8 @@ export function PosTerminal() {
                                 </div>
                             );
                         })}
+
+
                     </div>
                 </div>
 
