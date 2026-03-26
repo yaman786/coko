@@ -312,9 +312,21 @@ function DashboardContent() {
                             </div>
                             <span className="font-semibold text-rose-600">- Nrs. {metrics.wasteValue.toLocaleString()}</span>
                         </div>
+                        <div className="flex justify-between items-center text-sm pt-1">
+                            <div className="flex items-center gap-2 text-gray-600">
+                                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md">
+                                    <TrendingUp className="w-4 h-4" />
+                                </div>
+                                Over-yield (Gain)
+                            </div>
+                            <span className="font-semibold text-emerald-600 font-black">+ Nrs. {metrics.overYieldValue.toLocaleString()}</span>
+                        </div>
                         <div className="pt-3 border-t border-dashed border-gray-100 flex justify-between items-center">
-                            <span className="text-base font-bold text-gray-900">Actual Net Profit</span>
-                            <span className="text-lg font-bold text-purple-600">Nrs. {(metrics.totalRevenue - metrics.totalExpenses).toLocaleString()}</span>
+                            <div className="flex flex-col">
+                                <span className="text-base font-bold text-gray-900">Actual Net Profit</span>
+                                <span className="text-[10px] text-gray-400 font-medium">Reconciled Financial Truth</span>
+                            </div>
+                            <span className="text-lg font-bold text-purple-600">Nrs. {(metrics.totalRevenue - metrics.totalExpenses - metrics.wasteValue + metrics.overYieldValue).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>

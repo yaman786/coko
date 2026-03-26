@@ -177,7 +177,7 @@ export function PosTerminal() {
             }
         });
 
-        // 2. Validate Claims with -5 Safety Buffer
+        // 2. Validate Claims with safety buffer
         const outOfStockItems: string[] = [];
         const negativeWarningItems: string[] = [];
 
@@ -186,8 +186,11 @@ export function PosTerminal() {
             const product = products.find(p => p.id === id);
             if (!product) return;
             
+            const isScoop = product.category === 'Scoops';
+            const safetyLimit = isScoop ? -10 : 0;
             const resultingStock = product.stock - qty;
-            if (resultingStock < -5) {
+
+            if (resultingStock < safetyLimit) {
                 outOfStockItems.push(product.name);
             } else if (resultingStock < 0) {
                 negativeWarningItems.push(product.name);
@@ -199,8 +202,11 @@ export function PosTerminal() {
             const parent = products.find(p => p.id === parentId);
             if (!parent) return;
 
+            const isScoop = parent.category === 'Scoops';
+            const safetyLimit = isScoop ? -10 : 0;
             const resultingStock = parent.stock - qty;
-            if (resultingStock < -5) {
+
+            if (resultingStock < safetyLimit) {
                 outOfStockItems.push(parent.name);
             } else if (resultingStock < 0) {
                 negativeWarningItems.push(parent.name);
@@ -209,7 +215,7 @@ export function PosTerminal() {
 
         if (outOfStockItems.length > 0) {
             toast.error('Stock Depleted', {
-                description: `${outOfStockItems.join(', ')} — -5 scoop safety limit reached. Please log restock.`
+                description: `${outOfStockItems.join(', ')} — Standard limit reached. Please log restock.`
             });
             return;
         }
@@ -234,7 +240,6 @@ export function PosTerminal() {
                 const product = products.find(p => p.id === item.id);
                 let finalCost = item.costPrice || 0;
 
-                // If it's a variant, use Parent's WACC * Multiplier for maximum accuracy
                 if (product?.parentId) {
                     const parent = products.find(p => p.id === product.parentId);
                     if (parent) {
@@ -357,9 +362,11 @@ export function PosTerminal() {
                             if (categoryItems.length === 0) return null;
 
                             const renderProductCard = (item: Product) => {
+                                const isScoop = item.category === 'Scoops';
+                                const safetyLimit = isScoop ? -10 : 0;
+                                const isOutOfStock = item.trackInventory !== false && item.stock <= safetyLimit;
+                                const isLowStock = item.trackInventory !== false && item.stock > safetyLimit && item.stock <= 5;
                                 const isParent = products.some(p => p.parentId === item.id);
-                                const isOutOfStock = item.trackInventory !== false && item.stock <= 0;
-                                const isLowStock = item.trackInventory !== false && item.stock > 0 && item.stock <= 5;
 
                                 const handleClick = () => {
                                     if (isOutOfStock) return;
@@ -414,27 +421,18 @@ export function PosTerminal() {
                                     {['Scoops', 'Bio-products', 'DRINKS', 'Tea Babrage', 'Drinks'].includes(category) ? (
                                         <div className="space-y-6">
                                             {(() => {
-                                                // Group items case-insensitively first
                                                 const groupsMap = new Map<string, Product[]>();
                                                 categoryItems.forEach(item => {
                                                     const rawSub = item.subcategory?.trim() || `Other ${category}`;
-                                                    // Normalize key for grouping (e.g. "bubble tea" === "Bubble Tea")
                                                     const key = rawSub.toLowerCase();
-
-                                                    if (!groupsMap.has(key)) {
-                                                        groupsMap.set(key, []);
-                                                    }
+                                                    if (!groupsMap.has(key)) groupsMap.set(key, []);
                                                     groupsMap.get(key)!.push(item);
                                                 });
 
-                                                // Now map over the grouped lists, sorting by specific orders
                                                 const sortedEntries = Array.from(groupsMap.entries()).sort((a, b) => {
                                                     const subA = (a[1][0].subcategory?.trim() || '').toLowerCase();
                                                     const subB = (b[1][0].subcategory?.trim() || '').toLowerCase();
-                                                    
-                                                    const getSubIndex = (name: string, orderList: string[]) => {
-                                                        return orderList.findIndex(o => name.includes(o.toLowerCase()));
-                                                    };
+                                                    const getSubIndex = (name: string, orderList: string[]) => orderList.findIndex(o => name.includes(o.toLowerCase()));
 
                                                     if (category === 'Scoops') {
                                                         const idxA = getSubIndex(subA, SCOOPS_SUBCATEGORY_ORDER);
@@ -449,19 +447,12 @@ export function PosTerminal() {
                                                         if (idxA !== -1) return -1;
                                                         if (idxB !== -1) return 1;
                                                     }
-                                                    
                                                     return a[0].localeCompare(b[0]);
                                                 });
 
                                                 return sortedEntries.map(([key, items]) => {
-                                                    // Pick the original version from the first item
                                                     const displayHeader = items[0].subcategory?.trim() || `Other ${category}`;
-                                                    
-                                                    // Sort individual flavors alphabetically (Requested for Scoops only)
-                                                    if (category === 'Scoops') {
-                                                        items.sort((a, b) => a.name.localeCompare(b.name));
-                                                    }
-
+                                                    if (category === 'Scoops') items.sort((a, b) => a.name.localeCompare(b.name));
                                                     return (
                                                         <div key={key}>
                                                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center mb-3">
@@ -483,8 +474,6 @@ export function PosTerminal() {
                                 </div>
                             );
                         })}
-
-
                     </div>
                 </div>
 
@@ -496,7 +485,7 @@ export function PosTerminal() {
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-800 leading-none">Current Order</h3>
-                                <p className="text-xs text-slate-500 mt-1 font-medium">{cart.reduce((total, item) => total + item.quantity, 0)} items</p>
+                                <p className="text-xs text-slate-500 mt-1 font-medium">{cartItemCount} items</p>
                             </div>
                         </div>
                         {cart.length > 0 && (
@@ -528,12 +517,7 @@ export function PosTerminal() {
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
                                             <div className="flex items-center bg-slate-100/80 rounded-lg border border-slate-200 h-9 p-0.5">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-full px-2.5 text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm transition-all rounded-md"
-                                                    onClick={() => updateQuantity(item.id, -1)}
-                                                >
+                                                <Button size="sm" variant="ghost" className="h-full px-2.5 text-slate-500 rounded-md" onClick={() => updateQuantity(item.id, -1)}>
                                                     <Minus className="w-3.5 h-3.5" />
                                                 </Button>
                                                 <input
@@ -542,35 +526,19 @@ export function PosTerminal() {
                                                     value={item.quantity || ''}
                                                     onChange={(e) => {
                                                         const val = parseInt(e.target.value);
-                                                        if (!isNaN(val) && val > 0) {
-                                                            setQuantity(item.id, val);
-                                                        } else if (e.target.value === '') {
-                                                            setQuantity(item.id, 0);
-                                                        }
+                                                        if (!isNaN(val) && val > 0) setQuantity(item.id, val);
+                                                        else if (e.target.value === '') setQuantity(item.id, 0);
                                                     }}
                                                     onBlur={(e) => {
-                                                        if (!e.target.value || parseInt(e.target.value) < 1) {
-                                                            setQuantity(item.id, 1);
-                                                        }
+                                                        if (!e.target.value || parseInt(e.target.value) < 1) setQuantity(item.id, 1);
                                                     }}
-                                                    className="w-10 md:w-12 h-8 text-center text-sm font-black text-slate-700 bg-transparent border border-slate-200 rounded-md focus:ring-2 focus:ring-purple-500 hide-number-spinners mx-1"
-                                                    style={{ MozAppearance: 'textfield' }}
+                                                    className="w-10 md:w-12 h-8 text-center text-sm font-black text-slate-700 bg-transparent border border-slate-200 rounded-md mx-1"
                                                 />
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-full px-2.5 text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm transition-all rounded-md"
-                                                    onClick={() => updateQuantity(item.id, 1)}
-                                                >
+                                                <Button size="sm" variant="ghost" className="h-full px-2.5 text-slate-500 rounded-md" onClick={() => updateQuantity(item.id, 1)}>
                                                     <Plus className="w-3.5 h-3.5" />
                                                 </Button>
                                             </div>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-9 w-9 p-0 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg border border-transparent hover:border-red-100 transition-all"
-                                                onClick={() => removeFromCart(item.id)}
-                                            >
+                                            <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-slate-400 hover:text-red-600 rounded-lg" onClick={() => removeFromCart(item.id)}>
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
@@ -584,64 +552,46 @@ export function PosTerminal() {
                         <div className="space-y-3 pt-2">
                             <div className="flex justify-between text-slate-500 font-medium text-sm">
                                 <span>Subtotal</span>
-                                <span>Nrs. {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span>Nrs. {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
-                            {taxRate > 0 && (
-                                <div className="flex justify-between text-slate-500 font-medium text-sm">
-                                    <span>Base VAT Suggestion ({(taxRate * 100).toFixed(0)}%)</span>
-                                    <span>Nrs. {(subtotal * taxRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                            )}
                             <Separator className="bg-slate-100 my-4" />
                             <div className="flex flex-col items-end gap-1">
                                 <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Estimated Total</span>
-                                <span className="text-purple-600 font-black text-3xl tracking-tight leading-none">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="text-purple-600 font-black text-3xl tracking-tight leading-none">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                         </div>
-                        <Button
-                            className="w-full h-12 text-base font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-[0_4px_14px_0_rgba(147,51,234,0.39)] hover:shadow-[0_6px_20px_rgba(147,51,234,0.23)] hover:-translate-y-0.5 transition-all mt-4 disabled:opacity-70 disabled:pointer-events-none hidden md:flex"
-                            disabled={cart.length === 0}
-                            onClick={handleCheckoutInit}
-                        >
+                        <Button className="w-full h-12 text-base font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md mt-4 disabled:opacity-70 hidden md:flex" disabled={cart.length === 0} onClick={handleCheckoutInit}>
                             Open Tender Modal
                         </Button>
                     </div>
                 </div>
             </div>
 
-            {/* Mobile sticky checkout bar — always visible at bottom */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 py-3">
+            {/* Mobile Checkout Bar */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3">
                 <div className="flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-500 font-medium">
-                            {cartItemCount > 0 ? `${cartItemCount} item${cartItemCount > 1 ? 's' : ''} in cart` : 'Cart is empty'}
-                        </p>
-                        <p className="text-lg font-black text-slate-800 leading-tight">
-                            Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </p>
+                        <p className="text-xs text-slate-500 font-medium">{cartItemCount} items</p>
+                        <p className="text-lg font-black text-slate-800 leading-tight">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString()}</p>
                     </div>
-                    <Button
-                        className="h-11 px-6 text-sm font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-[0_4px_14px_0_rgba(147,51,234,0.39)] transition-all disabled:opacity-50 disabled:pointer-events-none rounded-xl"
-                        disabled={cart.length === 0}
-                        onClick={handleCheckoutInit}
-                    >
+                    <Button className="h-11 px-6 text-sm font-bold bg-purple-600 text-white rounded-xl" disabled={cart.length === 0} onClick={handleCheckoutInit}>
                         Checkout
                     </Button>
                 </div>
             </div>
 
+            {/* Tender Modal */}
             <Dialog open={isCheckoutModalOpen} onOpenChange={setIsCheckoutModalOpen}>
-                <DialogContent className="max-w-3xl w-full h-full md:h-auto md:w-[95vw] lg:max-w-3xl max-h-[100dvh] md:max-h-[85vh] p-0 bg-slate-50 flex flex-col gap-0 border-none shadow-2xl overflow-hidden [&>button]:top-4 [&>button]:right-4">
-                    <DialogHeader className="p-4 md:p-6 pb-4 bg-white border-b border-slate-100 flex-none shrink-0 m-0">
-                        <DialogTitle className="text-xl md:text-2xl font-black text-slate-800 pr-8">Complete Order</DialogTitle>
-                        <DialogDescription className="text-xs md:text-sm">Review financials and select payment method.</DialogDescription>
+                <DialogContent className="max-w-3xl w-full h-full md:h-auto md:w-[95vw] lg:max-w-3xl max-h-[100dvh] md:max-h-[85vh] p-0 bg-slate-50 flex flex-col gap-0 border-none shadow-2xl overflow-hidden">
+                    <DialogHeader className="p-4 md:p-6 pb-4 bg-white border-b border-slate-100 flex-none sticky top-0 z-20">
+                        <DialogTitle className="text-xl md:text-2xl font-black text-slate-800">Complete Order</DialogTitle>
+                        <DialogDescription className="text-xs md:text-sm">Review financials and finalize.</DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0 bg-slate-50/50">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 min-h-max pb-8">
-                            {/* Left Side: Financial Breakdown */}
                             <div className="space-y-4">
-                                <h3 className="font-bold text-slate-700 uppercase tracking-widest text-xs mb-2 text-purple-600">Financial Breakdown</h3>
+                                <h3 className="font-bold text-slate-700 uppercase tracking-widest text-xs mb-2 text-purple-600">Financial Details</h3>
 
                                 {role?.toLowerCase() === 'admin' && (
                                     <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-100 shadow-sm mb-4 space-y-3">
@@ -650,261 +600,190 @@ export function PosTerminal() {
                                                 <Calendar className="w-4 h-4" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest">Historical Override</span>
                                             </div>
-                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100/50 rounded-full text-[9px] font-bold text-amber-800 uppercase tracking-tight">
-                                                <Clock className="w-3 h-3" />
-                                                Admin Only
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 rounded-full text-[9px] font-bold text-amber-800 uppercase">
+                                                <Clock className="w-3 h-3" /> Admin
                                             </div>
                                         </div>
-                                        
-                                        <div className="relative group">
-                                            <Input 
-                                                type="datetime-local" 
-                                                value={overrideDate} 
-                                                onChange={(e) => setOverrideDate(e.target.value)}
-                                                className="h-10 text-sm font-bold bg-white border-amber-200 focus-visible:ring-amber-500 rounded-lg pr-10 transition-all hover:border-amber-300"
-                                            />
-                                        </div>
-                                        <p className="text-[10px] text-amber-600/80 font-medium leading-tight">
-                                            Specify exact date/time for past corrections. 
-                                            <span className="block mt-0.5 opacity-60 italic">Defaults to current time if left unchanged.</span>
-                                        </p>
+                                        <Input type="datetime-local" value={overrideDate} onChange={(e) => setOverrideDate(e.target.value)} className="h-10 text-sm font-bold bg-white border-amber-200 focus-visible:ring-amber-500 rounded-lg" />
                                     </div>
                                 )}
 
-                                <div className="flex justify-between text-sm font-medium text-slate-600">
-                                    <span>Subtotal</span>
-                                    <span>Nrs. {subtotal.toLocaleString()}</span>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-500">Discount (Nrs)</label>
-                                    <Input type="number" min="0" value={discountInput} onChange={(e) => setDiscountInput(e.target.value)} className="h-9 font-medium" />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-500">Loyalty Deduction (Nrs)</label>
-                                    <Input type="number" min="0" value={loyaltyInput} onChange={(e) => setLoyaltyInput(e.target.value)} className="h-9 font-medium" />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-500">Vat / Taxes (Nrs) - Default {taxRate * 100}%</label>
-                                    <Input type="number" min="0" value={vatInput} onChange={(e) => setVatInput(e.target.value)} className="h-9 font-medium bg-amber-50" />
-                                </div>
-
-                                <Separator className="my-2" />
-
-                                <div className="p-3 bg-red-50 rounded-xl border border-red-100 mb-2">
+                                <div className={`p-4 rounded-xl border transition-all mb-4 ${isWaste ? 'bg-red-50 border-red-200 shadow-sm' : 'bg-white border-slate-200'}`}>
                                     <Button
                                         variant={isWaste ? 'default' : 'outline'}
-                                        onClick={() => setIsWaste(!isWaste)}
-                                        className={`w-full justify-between h-10 px-4 transition-all ${
-                                            isWaste 
-                                            ? 'bg-red-600 hover:bg-red-700 text-white border-none shadow-md' 
-                                            : 'bg-white text-red-600 border-red-200 hover:bg-red-50'
-                                        }`}
+                                        onClick={() => {
+                                            setIsWaste(!isWaste);
+                                            if (!isWaste) {
+                                                setDiscountInput('0');
+                                                setLoyaltyInput('0');
+                                                setVatInput('0');
+                                                setComplimentaryAmountInput('0');
+                                                setOfferAmountInput('0');
+                                            }
+                                        }}
+                                        className={`w-full justify-between h-12 px-4 transition-all ${isWaste ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-600'}`}
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Trash2 className={`w-4 h-4 ${isWaste ? 'animate-pulse' : ''}`} />
-                                            <span className="text-xs font-black uppercase tracking-widest">Log as Waste/Spillage</span>
+                                            <Trash2 className="w-5 h-5" />
+                                            <span className="text-sm font-black uppercase tracking-widest">{isWaste ? 'Waste Mode Active' : 'Log as Waste/Spillage'}</span>
                                         </div>
-                                        {isWaste && <Badge className="bg-white/20 text-[10px] font-black uppercase tracking-tighter">Active</Badge>}
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isWaste ? 'bg-white text-red-600' : 'bg-slate-100 text-slate-400'}`}>
+                                            {isWaste ? '✓' : ''}
+                                        </div>
                                     </Button>
                                     {isWaste && (
-                                        <p className="text-[10px] text-red-600 mt-2 font-bold leading-tight px-1">
-                                            ⚠️ This will zero-out the price for inventory reconciliation. 
-                                            Standard stock deduction will still apply.
-                                        </p>
+                                        <p className="text-[10px] text-red-600 mt-2 font-bold px-1 uppercase tracking-tight">⚠️ Standard stock deduction applies. No revenue.</p>
                                     )}
                                 </div>
 
-                                <div className="p-3 bg-purple-50 rounded-lg border border-purple-100 space-y-3">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {!isWaste ? (
+                                    <>
+                                        <div className="flex justify-between text-sm font-medium text-slate-600 px-1">
+                                            <span>Subtotal</span>
+                                            <span>Nrs. {subtotal.toLocaleString()}</span>
+                                        </div>
                                         <div className="space-y-1">
-                                            <div className="flex items-center gap-2 text-purple-700">
-                                                <Gift className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Complimentary (Nrs)</span>
-                                            </div>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={complimentaryAmountInput}
-                                                disabled={isWaste}
-                                                onChange={(e) => setComplimentaryAmountInput(e.target.value)}
-                                                className="h-9 text-sm font-bold bg-white border-purple-200 focus-visible:ring-purple-500 disabled:opacity-50"
-                                                placeholder="Enter amount..."
-                                            />
+                                            <label className="text-xs font-semibold text-slate-500">Discount (Nrs)</label>
+                                            <Input type="number" min="0" value={discountInput} onChange={(e) => setDiscountInput(e.target.value)} className="h-9 font-medium" />
                                         </div>
-
                                         <div className="space-y-1">
-                                            <div className="flex items-center gap-2 text-purple-700">
-                                                <Tag className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Offer Title</span>
+                                            <label className="text-xs font-semibold text-slate-500">Loyalty Deduction (Nrs)</label>
+                                            <Input type="number" min="0" value={loyaltyInput} onChange={(e) => setLoyaltyInput(e.target.value)} className="h-9 font-medium" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-slate-500">Vat / Taxes (Nrs)</label>
+                                            <Input type="number" min="0" value={vatInput} onChange={(e) => setVatInput(e.target.value)} className="h-9 font-medium bg-amber-50" />
+                                        </div>
+                                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-100 grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-purple-700 uppercase">Complimentary</label>
+                                                <Input type="number" min="0" value={complimentaryAmountInput} onChange={(e) => setComplimentaryAmountInput(e.target.value)} className="h-9 text-sm font-bold bg-white" />
                                             </div>
-                                            <Input
-                                                placeholder="e.g. BOGO"
-                                                value={offerTitle}
-                                                onChange={(e) => setOfferTitle(e.target.value)}
-                                                className="h-9 text-xs bg-white border-purple-200 focus-visible:ring-purple-500"
-                                            />
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-purple-700 uppercase">Offer Title</label>
+                                                <Input placeholder="BOGO" value={offerTitle} onChange={(e) => setOfferTitle(e.target.value)} className="h-9 text-xs bg-white" />
+                                            </div>
+                                            <div className="col-span-2 space-y-1 pt-1 border-t border-purple-100">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Offer Amount</label>
+                                                    <Input type="number" min="0" value={offerAmountInput} onChange={(e) => setOfferAmountInput(e.target.value)} className="h-8 w-24 text-xs bg-white" />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-
-                                    <div className="space-y-1 pt-1 border-t border-purple-100">
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Offer Deduction (Nrs)</label>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={offerAmountInput}
-                                                onChange={(e) => setOfferAmountInput(e.target.value)}
-                                                className="h-8 w-24 text-xs bg-white border-purple-200 focus-visible:ring-purple-500"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <Separator className="my-2" />
-
-                                <div className="flex justify-between items-end">
-                                    <span className="font-medium text-slate-500 uppercase tracking-widest text-xs">Grand Total</span>
-                                    <span className="font-black text-3xl text-purple-700 tracking-tighter">Nrs. {grandTotal.toLocaleString()}</span>
-                                </div>
-                            </div>
-
-                            {/* Right Side: Tender Type */}
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-slate-700 uppercase tracking-widest text-xs mb-2 text-purple-600">Payment Method</h3>
-
-                                <div className="grid grid-cols-3 gap-2">
-                                    <Button
-                                        variant={paymentMethod === 'Cash' ? 'default' : 'outline'}
-                                        disabled={isWaste}
-                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Cash' ? 'bg-emerald-600 hover:bg-emerald-700 border-none' : 'border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-700'} ${isWaste ? 'opacity-40' : ''}`}
-                                        onClick={() => setPaymentMethod('Cash')}
-                                    >
-                                        <Banknote className="w-5 h-5" />
-                                        <span className="text-xs font-bold">Cash</span>
-                                    </Button>
-                                    <Button
-                                        variant={paymentMethod === 'Card' ? 'default' : 'outline'}
-                                        disabled={isWaste}
-                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Card' ? 'bg-blue-600 hover:bg-blue-700 border-none' : 'border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-700'} ${isWaste ? 'opacity-40' : ''}`}
-                                        onClick={() => setPaymentMethod('Card')}
-                                    >
-                                        <CreditCard className="w-5 h-5" />
-                                        <span className="text-xs font-bold">Card</span>
-                                    </Button>
-                                    <Button
-                                        variant={paymentMethod === 'Split' ? 'default' : 'outline'}
-                                        disabled={isWaste}
-                                        className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Split' ? 'bg-purple-600 hover:bg-purple-700 border-none' : 'border-slate-200 text-slate-500 hover:border-purple-300 hover:text-purple-700'} ${isWaste ? 'opacity-40' : ''}`}
-                                        onClick={() => setPaymentMethod('Split')}
-                                    >
-                                        <SplitSquareHorizontal className="w-5 h-5" />
-                                        <span className="text-xs font-bold">Split</span>
-                                    </Button>
-                                </div>
-
-                                {paymentMethod === 'Split' && (
-                                    <div className="space-y-3 pt-4 p-4 bg-purple-50 rounded-xl border border-purple-100">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-emerald-800 uppercase tracking-widest flex items-center justify-between">
-                                                <span>Cash Amount</span>
-                                                {cashTender > 0 && <span className="text-emerald-600">Nrs. {cashTender}</span>}
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                placeholder="0.00"
-                                                className="h-10 font-bold text-lg border-emerald-200 focus-visible:ring-emerald-500 bg-white"
-                                                value={cashAmountInput}
-                                                onChange={(e) => setCashAmountInput(e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-blue-800 uppercase tracking-widest flex items-center justify-between">
-                                                <span>Card Amount</span>
-                                                {cardTender > 0 && <span className="text-blue-600">Nrs. {cardTender}</span>}
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                placeholder="0.00"
-                                                className="h-10 font-bold text-lg border-blue-200 focus-visible:ring-blue-500 bg-white"
-                                                value={cardAmountInput}
-                                                onChange={(e) => setCardAmountInput(e.target.value)}
-                                            />
-                                        </div>
-                                        <div className={`mt-2 text-xs font-bold flex justify-between rounded p-2 ${isSplitValid ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                                            <span>Sum: Nrs. {cashTender + cardTender}</span>
-                                            <span>Target: Nrs. {grandTotal}</span>
-                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="p-4 bg-slate-100/50 rounded-xl border border-dashed border-slate-200 text-center">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sale Fields Hidden</p>
                                     </div>
                                 )}
 
+                                <Separator />
+
+                                <div className="flex justify-between items-end mt-2 px-1">
+                                    <span className="font-bold text-slate-500 uppercase tracking-widest text-xs">{isWaste ? 'Wasted Value' : 'Grand Total'}</span>
+                                    <span className={`font-black text-3xl tracking-tighter ${isWaste ? 'text-red-600' : 'text-purple-700'}`}>
+                                        Nrs. {isWaste ? subtotal.toLocaleString() : grandTotal.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {isWaste ? (
+                                    <div className="p-8 bg-white rounded-3xl border-2 border-red-100 flex flex-col items-center justify-center text-center space-y-6 h-full shadow-sm">
+                                        <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center relative">
+                                            <Trash2 className="w-10 h-10 text-red-600 relative z-10" />
+                                            <div className="absolute inset-0 bg-red-200 rounded-full animate-ping opacity-20"></div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <h4 className="text-xl font-black text-red-700 uppercase tracking-tighter">Waste Logging</h4>
+                                            <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                                                Deducting <span className="text-red-600 font-bold">{cartItemCount} units</span> from inventory.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <h3 className="font-bold text-slate-700 uppercase tracking-widest text-xs mb-2 text-purple-600">Payment</h3>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <Button variant={paymentMethod === 'Cash' ? 'default' : 'outline'} className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Cash' ? 'bg-emerald-600 hover:bg-emerald-700 border-none text-white' : ''}`} onClick={() => setPaymentMethod('Cash')}>
+                                                <Banknote className="w-5 h-5" /> <span className="text-xs font-bold">Cash</span>
+                                            </Button>
+                                            <Button variant={paymentMethod === 'Card' ? 'default' : 'outline'} className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Card' ? 'bg-blue-600 hover:bg-blue-700 border-none text-white' : ''}`} onClick={() => setPaymentMethod('Card')}>
+                                                <CreditCard className="w-5 h-5" /> <span className="text-xs font-bold">Card</span>
+                                            </Button>
+                                            <Button variant={paymentMethod === 'Split' ? 'default' : 'outline'} className={`h-16 flex-col gap-1 rounded-xl ${paymentMethod === 'Split' ? 'bg-purple-600 hover:bg-purple-700 border-none text-white' : ''}`} onClick={() => setPaymentMethod('Split')}>
+                                                <SplitSquareHorizontal className="w-5 h-5" /> <span className="text-xs font-bold">Split</span>
+                                            </Button>
+                                        </div>
+                                        {paymentMethod === 'Split' && (
+                                            <div className="space-y-3 pt-4 p-4 bg-purple-50 rounded-xl border border-purple-100">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-bold text-emerald-800 uppercase flex justify-between">
+                                                        <span>Cash</span> {cashTender > 0 && <span>Nrs. {cashTender}</span>}
+                                                    </label>
+                                                    <Input type="number" value={cashAmountInput} onChange={(e) => setCashAmountInput(e.target.value)} className="h-10 font-bold bg-white" />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-bold text-blue-800 uppercase flex justify-between">
+                                                        <span>Card</span> {cardTender > 0 && <span>Nrs. {cardTender}</span>}
+                                                    </label>
+                                                    <Input type="number" value={cardAmountInput} onChange={(e) => setCardAmountInput(e.target.value)} className="h-10 font-bold bg-white" />
+                                                </div>
+                                                <div className={`mt-2 text-[10px] font-black flex justify-between rounded p-2 tracking-tighter ${isSplitValid ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                                                    <span>Sum: {cashTender + cardTender}</span>
+                                                    <span>Target: {grandTotal}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="p-4 md:p-6 pb-[env(safe-area-inset-bottom)] md:pb-6 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 flex-none shrink-0 m-0 z-10 shadow-[0_-4px_15px_-5px_rgba(0,0,0,0.05)]">
-                        <Button variant="ghost" className="w-full sm:w-auto font-semibold text-slate-500 hover:bg-slate-100" onClick={() => setIsCheckoutModalOpen(false)}>Cancel</Button>
+                    <DialogFooter className="p-4 md:p-6 bg-white border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 z-20">
+                        <Button variant="ghost" onClick={() => setIsCheckoutModalOpen(false)}>Cancel</Button>
                         <Button
-                            className="w-full sm:w-auto h-11 px-8 font-black text-white bg-purple-600 hover:bg-purple-700 shadow-md transition-all shrink-0 min-w-[140px]"
-                            disabled={!isSplitValid || isCheckingOut}
+                            className={`h-11 px-8 font-black text-white shadow-md transition-all ${isWaste ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700'}`}
+                            disabled={!isSplitValid || isCheckingOut || (isWaste && cart.length === 0)}
                             onClick={handleFinalizeCheckout}
                         >
                             {isCheckingOut ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                            {isCheckingOut ? 'Processing...' : 'Complete Payment'}
+                            {isCheckingOut ? 'Processing...' : (isWaste ? 'Confirm Waste Log' : 'Complete Payment')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
+            {/* Variant Selection Modal */}
             <Dialog open={!!selectedParent} onOpenChange={(open) => !open && setSelectedParent(null)}>
                 <DialogContent className="max-w-md w-[95vw] rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="p-6 bg-gradient-to-br from-purple-600 to-indigo-700 text-white pb-8">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                                <Plus className="w-6 h-6" />
-                            </div>
-                            <DialogTitle className="text-2xl font-black tracking-tight">{selectedParent?.name}</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-purple-100 font-medium">Please select an option below</DialogDescription>
+                    <DialogHeader className="p-6 bg-gradient-to-br from-purple-600 to-indigo-700 text-white">
+                        <DialogTitle className="text-2xl font-black">{selectedParent?.name}</DialogTitle>
+                        <DialogDescription className="text-purple-100 font-medium">Select an option below</DialogDescription>
                     </DialogHeader>
-
-                    <div className="p-6 bg-slate-50 space-y-3 -mt-4 rounded-t-3xl relative z-10 border-t border-white/10 backdrop-blur-sm">
+                    <div className="p-6 bg-slate-50 space-y-3">
                         {selectedParent && products
                             .filter(p => p.parentId === selectedParent.id && !p.isDeleted)
                             .map(variant => {
                                 const parentProduct = products.find(p => p.id === variant.parentId);
-                                const availableUnits = variant.parentId && parentProduct
-                                    ? Math.floor(parentProduct.stock / (variant.stockMultiplier || 1))
-                                    : variant.stock;
+                                const availableUnits = (variant.parentId && parentProduct) ? Math.floor(parentProduct.stock / (variant.stockMultiplier || 1)) : variant.stock;
                                 const isOutOfStock = variant.trackInventory !== false && availableUnits <= 0;
                                 return (
                                     <Button
                                         key={variant.id}
                                         variant="outline"
                                         disabled={isOutOfStock}
-                                        onClick={() => {
-                                            addToCart(variant);
-                                            setSelectedParent(null);
-                                        }}
-                                        className="w-full h-16 justify-between px-6 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all border-slate-200 shadow-sm rounded-xl group"
+                                        onClick={() => { addToCart(variant); setSelectedParent(null); }}
+                                        className="w-full h-16 justify-between px-6 bg-white hover:bg-purple-50 group border-slate-200 rounded-xl"
                                     >
                                         <div className="text-left">
-                                            <span className="block font-bold text-slate-800 group-hover:text-purple-700 transition-colors uppercase tracking-tight">
+                                            <span className="block font-bold text-slate-800 group-hover:text-purple-700 uppercase tracking-tight">
                                                 {variant.name.replace(`${selectedParent.name} - `, '').replace(`${selectedParent.name} (`, '').replace(')', '')}
                                             </span>
-                                            {variant.trackInventory !== false && (
-                                                <span className={`text-[10px] font-bold uppercase tracking-widest ${availableUnits <= 5 ? 'text-amber-600' : 'text-slate-400'}`}>
-                                                    {availableUnits} portions left
-                                                </span>
-                                            )}
+                                            {variant.trackInventory !== false && <span className={`text-[10px] font-bold ${availableUnits <= 5 ? 'text-amber-600' : 'text-slate-400'}`}>{availableUnits} portions left</span>}
                                         </div>
-                                        <div className="text-right">
-                                            <span className="block font-black text-lg text-purple-600 group-hover:scale-110 transition-transform">Nrs. {variant.price.toLocaleString()}</span>
-                                        </div>
+                                        <span className="block font-black text-lg text-purple-600">Nrs. {variant.price.toLocaleString()}</span>
                                     </Button>
                                 );
                             })

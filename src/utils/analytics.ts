@@ -23,6 +23,8 @@ export interface DashboardMetrics {
     totalExpenses: number;
     wasteValue: number;
     wasteCount: number;
+    overYieldValue: number;
+    overYieldCount: number;
 }
 
 export interface RevenueData {
@@ -86,10 +88,11 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
 
     console.log(`[Analytics] Fetching Metrics Range: ${format(start, 'yyyy-MM-dd HH:mm:ss')} to ${format(end, 'yyyy-MM-dd HH:mm:ss')}`);
     
-    const [orders, prevOrders, expenses] = await Promise.all([
+    const [orders, prevOrders, expenses, logs] = await Promise.all([
         api.getOrdersByDateRange(start, end),
         api.getOrdersByDateRange(prevStart, prevEnd),
-        api.getExpenses(start, end)
+        api.getExpenses(start, end),
+        api.getAuditLog(1000)
     ]);
 
     // Current Period Metrics
@@ -145,8 +148,44 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     const totalComplimentary = orders.reduce((sum, order) => sum + (order.complimentaryAmount || 0), 0);
     const totalLoyalty = orders.reduce((sum, order) => sum + (order.loyalty || 0), 0);
 
-    const wasteValue = activeOrders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
-    const wasteCount = activeOrders.filter(o => o.isWaste).length;
+    // --- Unified Waste & Over-yield Calculation ---
+    // 1. POS-logged Waste
+    let posWasteValue = activeOrders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
+    let posWasteCount = activeOrders.filter(o => o.isWaste).length;
+
+    // 2. Manual Inventory Adjustments from Audit Log
+    let manualWasteValue = 0;
+    let manualWasteCount = 0;
+    let overYieldValue = 0;
+    let overYieldCount = 0;
+
+    logs.forEach(log => {
+        const logDate = new Date(log.createdAt);
+        if (logDate >= start && logDate <= end && log.action === 'STOCK_ADJUSTMENT') {
+            const varianceVal = Number(log.metadata?.variance_value) || 0;
+            const type = log.metadata?.variance_type;
+            const reason = log.metadata?.reason;
+
+            // Only count variances that are real operational Losses or Gains.
+            // Ignore "Miscount / Correction" as it's just fixing system data.
+            if (type === 'ASSET_LOSS') {
+                const isLossReason = ['Spillage / Shop Damage', 'Melted / Quality Issue', 'Theft / Missing'].includes(reason);
+                if (isLossReason) {
+                    manualWasteValue += varianceVal;
+                    manualWasteCount++;
+                }
+            } else if (type === 'PROFIT_GAIN') {
+                const isGainReason = ['Over-yield Gain'].includes(reason);
+                if (isGainReason) {
+                    overYieldValue += varianceVal;
+                    overYieldCount++;
+                }
+            }
+        }
+    });
+
+    const totalWasteValue = posWasteValue + manualWasteValue;
+    const totalWasteCount = posWasteCount + manualWasteCount;
 
     return {
         totalRevenue,
@@ -161,8 +200,10 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         totalComplimentary,
         totalLoyalty,
         totalExpenses,
-        wasteValue,
-        wasteCount,
+        wasteValue: totalWasteValue,
+        wasteCount: totalWasteCount,
+        overYieldValue,
+        overYieldCount,
         trends: {
             revenueDeltaPct,
             ordersDeltaPct,
