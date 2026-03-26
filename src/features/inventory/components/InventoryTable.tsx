@@ -575,7 +575,7 @@ export function InventoryTable() {
 
 
     const filteredInventory = useMemo(() => {
-        let filtered = showArchived ? products : products.filter(p => !p.isDeleted);
+        let filtered = showArchived ? products.filter(p => p.isDeleted) : products.filter(p => !p.isDeleted);
 
         // Hide popcorn child variants — they'll be rendered as sub-rows under their parent
         filtered = filtered.filter(p => !(p.category === 'Popcorn' && p.parentId));
