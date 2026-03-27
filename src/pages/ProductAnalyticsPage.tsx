@@ -116,6 +116,27 @@ export function ProductAnalyticsPage() {
         return { profitGains, leakageLosses, gainCount, lossCount };
     }, [adjustments, rawProducts]);
 
+    const reconciliationList = useMemo(() => {
+        const existingProductIds = new Set(rawProducts.map((p: any) => p.id));
+        return adjustments
+            .filter((log: AuditLogEntry) => {
+                const productId = log.metadata?.productId as string;
+                return productId && existingProductIds.has(productId);
+            })
+            .map((log: AuditLogEntry) => ({
+                id: log.id,
+                productId: log.metadata?.productId as string,
+                productName: log.metadata?.name || 'Unknown',
+                type: log.metadata?.variance_type as 'PROFIT_GAIN' | 'ASSET_LOSS',
+                variance: log.metadata?.variance as number || 0,
+                value: log.metadata?.variance_value as number || 0,
+                reason: log.metadata?.reason || 'Adjustment',
+                timestamp: log.createdAt
+            }))
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 20);
+    }, [adjustments, rawProducts]);
+
     // Process Date Label
     const getDateRangeLabel = () => {
         if (period === 'today') return 'Today';
@@ -402,6 +423,45 @@ export function ProductAnalyticsPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Detailed Reconciliation List */}
+                        {reconciliationList.length > 0 && (
+                            <div className="mt-6 pt-6 border-t border-emerald-100">
+                                <div className="flex items-center justify-between mb-3 px-1">
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-emerald-800">Individual Adjustments (Recent)</h4>
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tight">Audit Trail</span>
+                                </div>
+                                <div className="space-y-2 max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-100 pr-1">
+                                    {reconciliationList.map((log) => (
+                                        <div key={log.id} className="flex items-center justify-between p-2.5 bg-white border border-emerald-50 rounded-lg hover:border-emerald-200 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                                    log.type === 'PROFIT_GAIN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                                                }`}>
+                                                    {log.type === 'PROFIT_GAIN' ? <Gem className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-900">{log.productName}</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">
+                                                        {log.reason} • {format(new Date(log.timestamp), 'MMM d, h:mm a')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={`text-xs font-black ${
+                                                    log.type === 'PROFIT_GAIN' ? 'text-emerald-700' : 'text-rose-700'
+                                                }`}>
+                                                    {log.type === 'PROFIT_GAIN' ? '+' : '-'}{log.value.toLocaleString()} Nrs
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                                                    {log.variance > 0 ? '+' : ''}{log.variance} Units
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}
