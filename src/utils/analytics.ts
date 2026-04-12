@@ -164,7 +164,7 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         if (logDate >= start && logDate <= end && log.action === 'STOCK_ADJUSTMENT') {
             const varianceVal = Number(log.metadata?.variance_value) || 0;
             const type = log.metadata?.variance_type;
-            const reason = log.metadata?.reason;
+            const reason = (log.metadata?.reason as string) || '';
 
             // Only count variances that are real operational Losses or Gains.
             // Ignore "Miscount / Correction" as it's just fixing system data.

@@ -7,8 +7,6 @@ import {
   CreditCard, 
   ShoppingBag, 
   Loader2, 
-  Gift, 
-  Tag, 
   Plus, 
   Minus,
   Banknote,

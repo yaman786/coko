@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    /* 
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'apple-touch-icon.png', 'mask-icon.svg'],
@@ -50,5 +51,6 @@ export default defineConfig({
         ]
       }
     })
+    */
   ],
 });

@@ -126,11 +126,11 @@ export function ProductAnalyticsPage() {
             .map((log: AuditLogEntry) => ({
                 id: log.id,
                 productId: log.metadata?.productId as string,
-                productName: log.metadata?.name || 'Unknown',
+                productName: (log.metadata?.name as string) || 'Unknown',
                 type: log.metadata?.variance_type as 'PROFIT_GAIN' | 'ASSET_LOSS',
-                variance: log.metadata?.variance as number || 0,
-                value: log.metadata?.variance_value as number || 0,
-                reason: log.metadata?.reason || 'Adjustment',
+                variance: Number(log.metadata?.variance) || 0,
+                value: Number(log.metadata?.variance_value) || 0,
+                reason: (log.metadata?.reason as string) || 'Adjustment',
                 timestamp: log.createdAt
             }))
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -500,7 +500,7 @@ export function ProductAnalyticsPage() {
                                     formatter={(value: any) => [`Nrs. ${Number(value).toLocaleString()}`, 'Gross Profit']}
                                     cursor={{ fill: 'rgba(147, 51, 234, 0.08)' }}
                                 />
-                                <Legend verticalAlign="top" height={36} formatter={() => <span style={{ color: '#7c3aed', fontWeight: 600 }}>Gross Profit</span>} />
+                                <Legend verticalAlign="top" height={36} />
                                 <Bar
                                     name="Gross Profit"
                                     dataKey="profit"
