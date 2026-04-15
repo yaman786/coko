@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck, Warehouse, Boxes, Users, Wallet } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { ShiftReminderModal } from '../components/shift/ShiftReminderModal';
 
 interface MainLayoutProps {
     mode?: 'retail' | 'wholesale';
@@ -188,6 +189,7 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 </div>
             </main>
 
+            {isRetail && <ShiftReminderModal />}
             <Toaster position="top-right" richColors theme="light" />
         </div>
     );

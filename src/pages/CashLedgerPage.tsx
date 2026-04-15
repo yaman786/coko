@@ -82,6 +82,26 @@ export function CashLedgerPage() {
         }
     });
 
+    // ── Fetch Shift for Selected Date (historical) ──
+    const { data: selectedDateShift } = useQuery<Shift | null>({
+        queryKey: ['shift-for-date', selectedDate],
+        queryFn: async () => {
+            const start = new Date(selectedDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(selectedDate);
+            end.setHours(23, 59, 59, 999);
+            const { data } = await supabase
+                .from('shifts')
+                .select('*')
+                .gte('startTime', start.toISOString())
+                .lte('startTime', end.toISOString())
+                .order('startTime', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            return data || null;
+        }
+    });
+
     // ── Fetch Completed Orders for Selected Date ──
     const { data: orders = [] } = useQuery({
         queryKey: ['ledger-orders', selectedDate],
@@ -175,7 +195,10 @@ export function CashLedgerPage() {
 
         const netCash = cashIn - cashExpenses;
         const netCard = cardIn - cardExpenses;
-        const expectedDrawer = (activeShift?.startingCash || 0) + netCash;
+        // Use selectedDateShift for historical, activeShift for today
+        const shiftForCalc = isToday ? activeShift : selectedDateShift;
+        const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
+        const hasShiftData = !!shiftForCalc;
 
         return {
             cashIn, cardIn, cashExpenses, cardExpenses,
@@ -183,10 +206,11 @@ export function CashLedgerPage() {
             totalRevenue: cashIn + cardIn,
             totalExpenses: cashExpenses + cardExpenses,
             expectedDrawer,
+            hasShiftData,
             totalOrders,
             totalExpenseCount
         };
-    }, [orders, expenses, activeShift]);
+    }, [orders, expenses, activeShift, selectedDateShift, isToday]);
 
     // ── Transaction Feed ──
     const transactions = useMemo<TransactionItem[]>(() => {
@@ -355,6 +379,42 @@ export function CashLedgerPage() {
                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 font-black">
                         Expected Drawer: Nrs. {financials.expectedDrawer.toLocaleString()}
                     </Badge>
+                </div>
+            )}
+
+            {/* Historical: No Shift Data Banner */}
+            {!isToday && !financials.hasShiftData && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-slate-400 flex-none" />
+                    <div>
+                        <p className="text-sm font-bold text-slate-600">No shift data for this date</p>
+                        <p className="text-[11px] text-slate-400 font-medium">Drawer tracking was not active on this day. Cash vs Card sales data is still accurate.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Historical: Closed Shift Banner */}
+            {!isToday && selectedDateShift && (
+                <div className={`rounded-2xl p-4 flex items-center justify-between border ${
+                    (selectedDateShift.variance ?? 0) === 0 ? 'bg-emerald-50 border-emerald-200' :
+                    (selectedDateShift.variance ?? 0) < 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
+                }`}>
+                    <div>
+                        <p className="text-sm font-black text-slate-700">
+                            Shift: {new Date(selectedDateShift.startTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → {selectedDateShift.endTime ? new Date(selectedDateShift.endTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Not closed'}
+                        </p>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                            Float: Nrs. {selectedDateShift.startingCash.toLocaleString()} • By: {selectedDateShift.cashierName}
+                        </p>
+                    </div>
+                    {selectedDateShift.variance !== null && (
+                        <Badge className={`font-black ${
+                            selectedDateShift.variance === 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                            selectedDateShift.variance < 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'
+                        }`}>
+                            Variance: {selectedDateShift.variance > 0 ? '+' : ''}{selectedDateShift.variance.toLocaleString()}
+                        </Badge>
+                    )}
                 </div>
             )}
 
