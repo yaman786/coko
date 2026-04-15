@@ -19,6 +19,7 @@ export interface Product {
     isDeleted?: boolean;
     user_id?: string;
     portal?: 'retail' | 'wholesale';
+    isLoyaltyEligible?: boolean;
 }
 
 export interface Expense {

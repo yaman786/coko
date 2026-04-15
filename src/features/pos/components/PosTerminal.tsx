@@ -10,7 +10,8 @@ import {
   Plus, 
   Minus,
   Banknote,
-  SplitSquareHorizontal
+  SplitSquareHorizontal,
+  Gift
 } from 'lucide-react';
 import { api } from '../../../services/api';
 import type { OrderItemPayload } from '../../../services/api';
@@ -82,7 +83,7 @@ export function PosTerminal() {
             setIsWaste(false);
             setOverrideDate(new Date().toISOString().split('T')[0]);
             setDiscountInput('0');
-            setLoyaltyInput('0');
+            setLoyaltyItemIds(new Set());
             setVatInput('0');
             setPaymentMethod('Cash');
             setCashAmountInput('');
@@ -119,7 +120,7 @@ export function PosTerminal() {
     // Tender Engine State
     const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
     const [discountInput, setDiscountInput] = useState<string>('0');
-    const [loyaltyInput, setLoyaltyInput] = useState<string>('0');
+    const [loyaltyItemIds, setLoyaltyItemIds] = useState<Set<string>>(new Set());
     const [vatInput, setVatInput] = useState<string>('0');
     const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Card' | 'Split'>('Cash');
     const [cashAmountInput, setCashAmountInput] = useState<string>('');
@@ -142,7 +143,15 @@ export function PosTerminal() {
     // Derived Financials
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const discountAmount = parseFloat(discountInput) || 0;
-    const loyaltyDeduction = parseFloat(loyaltyInput) || 0;
+    // Loyalty deduction is now computed from the selected loyalty items
+    const loyaltyDeduction = useMemo(() => {
+        let total = 0;
+        loyaltyItemIds.forEach(id => {
+            const cartItem = cart.find(ci => ci.id === id);
+            if (cartItem) total += cartItem.price; // 1 unit redeemed per selection
+        });
+        return total;
+    }, [loyaltyItemIds, cart]);
     const vatAmount = parseFloat(vatInput) || 0;
     const offerDeduction = parseFloat(offerAmountInput) || 0;
     const complimentaryDeduction = parseFloat(complimentaryAmountInput) || 0;
@@ -613,7 +622,7 @@ export function PosTerminal() {
                                             setIsWaste(!isWaste);
                                             if (!isWaste) {
                                                 setDiscountInput('0');
-                                                setLoyaltyInput('0');
+                                                setLoyaltyItemIds(new Set());
                                                 setVatInput('0');
                                                 setComplimentaryAmountInput('0');
                                                 setOfferAmountInput('0');
@@ -644,9 +653,76 @@ export function PosTerminal() {
                                             <label className="text-xs font-semibold text-slate-500">Discount (Nrs)</label>
                                             <Input type="number" min="0" value={discountInput} onChange={(e) => setDiscountInput(e.target.value)} className="h-9 font-medium" />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-semibold text-slate-500">Loyalty Deduction (Nrs)</label>
-                                            <Input type="number" min="0" value={loyaltyInput} onChange={(e) => setLoyaltyInput(e.target.value)} className="h-9 font-medium" />
+                                        {/* Item-Based Loyalty Redemption */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                                                    <Gift className="w-3.5 h-3.5 text-amber-500" />
+                                                    Loyalty Redemption
+                                                </label>
+                                                {loyaltyDeduction > 0 && (
+                                                    <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                                        -Nrs. {loyaltyDeduction.toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {(() => {
+                                                const eligibleItems = cart.filter(ci => {
+                                                    const product = products.find(p => p.id === ci.id);
+                                                    if (!product) return false;
+                                                    // Check if this specific product is loyalty eligible
+                                                    if (product.isLoyaltyEligible) return true;
+                                                    // Check if its parent is loyalty eligible (for child variants)
+                                                    if (product.parentId) {
+                                                        const parent = products.find(p => p.id === product.parentId);
+                                                        if (parent?.isLoyaltyEligible) return true;
+                                                    }
+                                                    return false;
+                                                });
+                                                if (eligibleItems.length === 0) {
+                                                    return (
+                                                        <div className="p-3 bg-slate-50 rounded-lg border border-dashed border-slate-200 text-center">
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No loyalty-eligible items in cart</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return (
+                                                    <div className="space-y-1.5">
+                                                        {eligibleItems.map(ci => {
+                                                            const isSelected = loyaltyItemIds.has(ci.id);
+                                                            return (
+                                                                <button
+                                                                    key={ci.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const next = new Set(loyaltyItemIds);
+                                                                        if (isSelected) next.delete(ci.id);
+                                                                        else next.add(ci.id);
+                                                                        setLoyaltyItemIds(next);
+                                                                    }}
+                                                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all ${
+                                                                        isSelected
+                                                                            ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-200'
+                                                                            : 'bg-white border-slate-200 hover:border-amber-200 hover:bg-amber-50/30'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                                                                            isSelected ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-300 bg-white'
+                                                                        }`}>
+                                                                            {isSelected && <span className="text-xs font-black">✓</span>}
+                                                                        </div>
+                                                                        <span className={`text-xs font-bold ${isSelected ? 'text-amber-800' : 'text-slate-600'}`}>{ci.name}</span>
+                                                                    </div>
+                                                                    <span className={`text-xs font-black ${isSelected ? 'text-amber-600 line-through' : 'text-slate-500'}`}>
+                                                                        Nrs. {ci.price.toLocaleString()}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-xs font-semibold text-slate-500">Vat / Taxes (Nrs)</label>

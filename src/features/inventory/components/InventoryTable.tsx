@@ -75,6 +75,7 @@ export function InventoryTable() {
         halfPrice: '',
         fullServingSize: '',
         fullPrice: '',
+        isLoyaltyEligible: false,
     });
 
     // 1. Data Fetching
@@ -119,7 +120,8 @@ export function InventoryTable() {
             price: '', costPrice: '', stock: '', lowStockThreshold: '10',
             tubsReceived: '', tubCost: '', tubYield: '24',
             trackInventory: true, parentId: '', stockMultiplier: '1', unit: 'pcs',
-            boxWeight: '', popcornInitialStock: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: ''
+            boxWeight: '', popcornInitialStock: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: '',
+            isLoyaltyEligible: false,
         });
         setEditingItem(null);
         setFormErrors({});
@@ -163,6 +165,7 @@ export function InventoryTable() {
                 halfPrice: half ? half.price.toString() : '',
                 fullServingSize: full ? full.stockMultiplier?.toString() || '' : '',
                 fullPrice: full ? full.price.toString() : '',
+                isLoyaltyEligible: master?.isLoyaltyEligible || false,
             });
         } else {
             setFormData({
@@ -180,7 +183,8 @@ export function InventoryTable() {
                 parentId: item.parentId || '',
                 stockMultiplier: item.stockMultiplier?.toString() || '1',
                 unit: item.unit || 'pcs',
-                boxWeight: '', popcornInitialStock: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: ''
+                boxWeight: '', popcornInitialStock: '', halfServingSize: '', halfPrice: '', fullServingSize: '', fullPrice: '',
+                isLoyaltyEligible: item.isLoyaltyEligible || false,
             });
         }
         setIsAddDialogOpen(true);
@@ -248,6 +252,7 @@ export function InventoryTable() {
                     lowStockThreshold: parseInt(formData.lowStockThreshold) || 5,
                     trackInventory: true,
                     unit: 'g',
+                    isLoyaltyEligible: formData.isLoyaltyEligible,
                     updatedAt: new Date(),
                     user_id: user?.id,
                     isDeleted: false
@@ -269,6 +274,7 @@ export function InventoryTable() {
                     stock: 0,
                     unit: 'pcs',
                     trackInventory: true,
+                    isLoyaltyEligible: formData.isLoyaltyEligible,
                     updatedAt: new Date(),
                     user_id: user?.id,
                     isDeleted: false
@@ -286,6 +292,7 @@ export function InventoryTable() {
                     stock: 0,
                     unit: 'pcs',
                     trackInventory: true,
+                    isLoyaltyEligible: formData.isLoyaltyEligible,
                     updatedAt: new Date(),
                     user_id: user?.id,
                     isDeleted: false
@@ -328,6 +335,7 @@ export function InventoryTable() {
             stockMultiplier: parseFloat(formData.stockMultiplier) || 1,
             unit: formData.unit,
             parentId: formData.parentId || undefined,
+            isLoyaltyEligible: formData.isLoyaltyEligible,
             updatedAt: new Date(),
             isDeleted: editingItem?.isDeleted || false,
             user_id: user?.id
@@ -937,6 +945,37 @@ export function InventoryTable() {
                                                 )}
                                             </>
                                         )}
+
+                                        {/* Loyalty Eligibility Toggle */}
+                                        <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/60 shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                                        <span className="text-base">🎁</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-amber-900">Accepts Loyalty Redemption</p>
+                                                        <p className="text-[10px] text-amber-600 font-medium">Customers can use punch cards on this item</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    role="switch"
+                                                    aria-checked={formData.isLoyaltyEligible}
+                                                    onClick={() => setFormData({ ...formData, isLoyaltyEligible: !formData.isLoyaltyEligible })}
+                                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
+                                                        formData.isLoyaltyEligible ? 'bg-amber-500' : 'bg-gray-200'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                                            formData.isLoyaltyEligible ? 'translate-x-5' : 'translate-x-0'
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <Button onClick={handleSaveItem} disabled={upsertMutation.isPending} className="w-full bg-purple-600">
                                             {upsertMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                             {editingItem ? 'Save Changes' : 'Add Item'}
