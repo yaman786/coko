@@ -22,6 +22,7 @@ const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(m => ({ defa
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const CashLedgerPage = lazy(() => import('./pages/CashLedgerPage').then(m => ({ default: m.CashLedgerPage })));
 
 function PageLoader() {
   return (
@@ -94,6 +95,7 @@ export function App() {
                   <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                   <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
                   <Route path="analytics" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
+                  <Route path="ledger" element={<AdminRoute><CashLedgerPage /></AdminRoute>} />
                   <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
                 </Route>
 

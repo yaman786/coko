@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck, Warehouse, Boxes, Users } from 'lucide-react';
+import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck, Warehouse, Boxes, Users, Wallet } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -29,6 +29,7 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 { name: 'Analytics', href: '/pos/analytics', icon: TrendingUp },
                 { name: 'Suppliers', href: '/pos/suppliers', icon: Truck },
                 { name: 'Expenses', href: '/pos/expenses', icon: Receipt },
+                { name: 'Cash Ledger', href: '/pos/ledger', icon: Wallet },
                 { name: 'Settings', href: '/pos/settings', icon: Settings }
             ];
         } else {
