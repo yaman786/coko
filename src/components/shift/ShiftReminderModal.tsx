@@ -42,7 +42,12 @@ export function ShiftReminderModal() {
     const [showCloseEveningModal, setShowCloseEveningModal] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
-    const [hasBeenDismissed, setHasBeenDismissed] = useState(false);
+
+    const isSnoozed = useCallback(() => {
+        const snoozeUntil = localStorage.getItem('shift-snooze-until');
+        if (!snoozeUntil) return false;
+        return Date.now() < parseInt(snoozeUntil, 10);
+    }, []);
 
     // ── Fetch Active Shift ──
     const { data: activeShift, isLoading } = useQuery<Shift | null>({
@@ -115,39 +120,46 @@ export function ShiftReminderModal() {
     useEffect(() => {
         if (isLoading || !user) return;
 
-        // Priority 1: Stale shift from previous day
+        // Priority 1: Stale shift from previous day (CANNOT BE SNOOZED)
         if (isStaleShift()) {
             setShowCloseStaleModal(true);
             return;
         }
+
+        if (isSnoozed()) return;
 
         // Priority 2: No active shift → prompt to open
         if (!activeShift) {
             setShowOpenModal(true);
             return;
         }
-    }, [isLoading, activeShift, user, isStaleShift]);
 
-    // ── 30-Minute Reminder Loop ──
+        // Priority 3: Evening nag
+        if (activeShift && isEvening()) {
+            setShowCloseEveningModal(true);
+        }
+    }, [isLoading, activeShift, user, isStaleShift, isEvening, isSnoozed]);
+
+    // ── Reminder Loop (Checks every minute) ──
     useEffect(() => {
         if (isLoading) return;
 
         const interval = setInterval(() => {
-            // If no shift and they previously dismissed
-            if (!activeShift && !isStaleShift()) {
-                setHasBeenDismissed(false);
+            if (isStaleShift() || isSnoozed()) return;
+
+            // If no shift
+            if (!activeShift && !showOpenModal) {
                 setShowOpenModal(true);
             }
 
             // If shift is active and it's evening
-            if (activeShift && !isStaleShift() && isEvening()) {
-                setHasBeenDismissed(false);
+            if (activeShift && isEvening() && !showCloseEveningModal) {
                 setShowCloseEveningModal(true);
             }
-        }, REMINDER_INTERVAL_MS);
+        }, 60000);
 
         return () => clearInterval(interval);
-    }, [activeShift, isLoading, isStaleShift, isEvening]);
+    }, [activeShift, isLoading, isStaleShift, isEvening, isSnoozed, showOpenModal, showCloseEveningModal]);
 
     // ── Open Shift Mutation ──
     const openShiftMutation = useMutation({
@@ -224,10 +236,10 @@ export function ShiftReminderModal() {
     const handleSkip = () => {
         setShowOpenModal(false);
         setShowCloseEveningModal(false);
-        setHasBeenDismissed(true);
+        localStorage.setItem('shift-snooze-until', (Date.now() + REMINDER_INTERVAL_MS).toString());
     };
 
-    if (isLoading || hasBeenDismissed) return null;
+    if (isLoading) return null;
 
     return (
         <>
