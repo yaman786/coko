@@ -52,14 +52,20 @@ interface TransactionItem {
 }
 
 export function CashLedgerPage() {
-    const { user } = useAuth();
+    const { user, role } = useAuth();
     const queryClient = useQueryClient();
 
     // State
     const [isStartDialogOpen, setIsStartDialogOpen] = useState(false);
     const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
+    const [isBackdateDialogOpen, setIsBackdateDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
+    const [backdateStartingCash, setBackdateStartingCash] = useState('');
+    const [backdateClosingCash, setBackdateClosingCash] = useState('');
+    const [editStartingCash, setEditStartingCash] = useState('');
+    const [editClosingCash, setEditClosingCash] = useState('');
     const [selectedDate, setSelectedDate] = useState(() => {
         const now = new Date();
         return now.toISOString().split('T')[0];
@@ -314,6 +320,74 @@ export function CashLedgerPage() {
         onError: (err: Error) => toast.error('Failed to close shift', { description: err.message })
     });
 
+    // ── Backdate Shift Mutation (Historical) ──
+    const addHistoricalShiftMutation = useMutation({
+        mutationFn: async () => {
+            const start = parseFloat(backdateStartingCash) || 0;
+            const actual = parseFloat(backdateClosingCash) || 0;
+            const expected = start + financials.netCash; // netCash is based on selectedDate
+            const variance = actual - expected;
+
+            const shiftStart = new Date(selectedDate);
+            shiftStart.setHours(9, 0, 0, 0); // Pretend it started at 9 AM
+            const shiftEnd = new Date(selectedDate);
+            shiftEnd.setHours(21, 0, 0, 0); // Pretend it ended at 9 PM
+
+            const { error } = await supabase.from('shifts').insert({
+                cashierId: user?.email || 'unknown',
+                cashierName: user?.email?.split('@')[0] || 'Unknown',
+                startTime: shiftStart.toISOString(),
+                endTime: shiftEnd.toISOString(),
+                startingCash: start,
+                expectedClosingCash: expected,
+                actualClosingCash: actual,
+                variance,
+                status: 'closed',
+                user_id: user?.id
+            });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['shift-for-date'] });
+            queryClient.invalidateQueries({ queryKey: ['shift-history'] });
+            setIsBackdateDialogOpen(false);
+            setBackdateStartingCash('');
+            setBackdateClosingCash('');
+            toast.success('Historical Shift Added', { description: 'Past date successfully backdated.' });
+        },
+        onError: (err: Error) => toast.error('Failed to backdate shift', { description: err.message })
+    });
+
+    // ── Edit Shift Mutation (Correction) ──
+    const editShiftMutation = useMutation({
+        mutationFn: async () => {
+            if (!selectedDateShift) throw new Error('No shift to edit');
+            const start = parseFloat(editStartingCash) || 0;
+            const actual = parseFloat(editClosingCash) || 0;
+            const expected = start + financials.netCash;
+            const variance = actual - expected;
+
+            const { error } = await supabase
+                .from('shifts')
+                .update({
+                    startingCash: start,
+                    expectedClosingCash: expected,
+                    actualClosingCash: actual,
+                    variance,
+                })
+                .eq('id', selectedDateShift.id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['shift-for-date'] });
+            queryClient.invalidateQueries({ queryKey: ['shift-history'] });
+            if (isToday) queryClient.invalidateQueries({ queryKey: ['active-shift'] });
+            setIsEditDialogOpen(false);
+            toast.success('Shift Updated', { description: 'Values successfully corrected.' });
+        },
+        onError: (err: Error) => toast.error('Failed to edit shift', { description: err.message })
+    });
+
     if (shiftLoading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
@@ -384,12 +458,24 @@ export function CashLedgerPage() {
 
             {/* Historical: No Shift Data Banner */}
             {!isToday && !financials.hasShiftData && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-slate-400 flex-none" />
-                    <div>
-                        <p className="text-sm font-bold text-slate-600">No shift data for this date</p>
-                        <p className="text-[11px] text-slate-400 font-medium">Drawer tracking was not active on this day. Cash vs Card sales data is still accurate.</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-slate-400 flex-none" />
+                        <div>
+                            <p className="text-sm font-bold text-slate-600">No shift data for this date</p>
+                            <p className="text-[11px] text-slate-400 font-medium">Drawer tracking was not active on this day. Cash vs Card sales data is still accurate.</p>
+                        </div>
                     </div>
+                    {role === 'admin' && (
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="flex-none font-bold text-slate-600 border-slate-300"
+                            onClick={() => setIsBackdateDialogOpen(true)}
+                        >
+                            Backdate Shift
+                        </Button>
+                    )}
                 </div>
             )}
 
@@ -403,8 +489,20 @@ export function CashLedgerPage() {
                         <p className="text-sm font-black text-slate-700">
                             Shift: {new Date(selectedDateShift.startTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → {selectedDateShift.endTime ? new Date(selectedDateShift.endTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Not closed'}
                         </p>
-                        <p className="text-[11px] text-slate-500 font-medium">
+                        <p className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
                             Float: Nrs. {selectedDateShift.startingCash.toLocaleString()} • By: {selectedDateShift.cashierName}
+                            {role === 'admin' && (
+                                <button 
+                                    onClick={() => {
+                                        setEditStartingCash(String(selectedDateShift.startingCash));
+                                        setEditClosingCash(String(selectedDateShift.actualClosingCash ?? 0));
+                                        setIsEditDialogOpen(true);
+                                    }}
+                                    className="text-indigo-600 hover:text-indigo-800 underline font-bold px-2 ml-1"
+                                >
+                                    Edit
+                                </button>
+                            )}
                         </p>
                     </div>
                     {selectedDateShift.variance !== null && (
@@ -752,6 +850,106 @@ export function CashLedgerPage() {
                         >
                             {closeShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Close & Lock Drawer
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Backdate Dialog */}
+            <Dialog open={isBackdateDialogOpen} onOpenChange={setIsBackdateDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-black">
+                            Backdate Historical Shift
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
+                        <p className="text-sm text-slate-500">
+                            Create a missing shift record for <strong>{new Date(selectedDate).toLocaleDateString()}</strong>.
+                        </p>
+                        <div className="p-3 bg-slate-50 rounded-xl space-y-1">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Calculated Cash In</span>
+                                <span className="font-bold text-emerald-600">+{financials.cashIn.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Calculated Cash Out</span>
+                                <span className="font-bold text-orange-600">-{financials.cashExpenses.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-slate-400 border-t pt-1 mt-1">
+                                <span>Net Difference</span>
+                                <span>{financials.netCash > 0 ? '+' : ''}{financials.netCash.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-black text-slate-600 uppercase">Starting Cash (Float)</label>
+                                <Input
+                                    type="number"
+                                    value={backdateStartingCash}
+                                    onChange={(e) => setBackdateStartingCash(e.target.value)}
+                                    placeholder="Enter opening amount"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-600 uppercase">Actual Closing Cash</label>
+                                <Input
+                                    type="number"
+                                    value={backdateClosingCash}
+                                    onChange={(e) => setBackdateClosingCash(e.target.value)}
+                                    placeholder="Enter final count"
+                                />
+                            </div>
+                        </div>
+                        <Button
+                            onClick={() => addHistoricalShiftMutation.mutate()}
+                            disabled={!backdateStartingCash || !backdateClosingCash || addHistoricalShiftMutation.isPending}
+                            className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm relative overflow-hidden"
+                        >
+                            {addHistoricalShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin relative z-10" />}
+                            <span className="relative z-10">Save Backdated Shift</span>
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-black text-indigo-700">
+                            Edit Shift Record
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
+                        <p className="text-sm text-slate-500">
+                            <strong>Admin Only:</strong> Correct a typo in the shift values. This will permanently update the variance.
+                        </p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-black text-slate-600 uppercase">Corrected Starting Cash</label>
+                                <Input
+                                    type="number"
+                                    value={editStartingCash}
+                                    onChange={(e) => setEditStartingCash(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-600 uppercase">Corrected Closing Cash</label>
+                                <Input
+                                    type="number"
+                                    value={editClosingCash}
+                                    onChange={(e) => setEditClosingCash(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <Button
+                            onClick={() => editShiftMutation.mutate()}
+                            disabled={!editStartingCash || !editClosingCash || editShiftMutation.isPending}
+                            className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm relative overflow-hidden"
+                        >
+                            {editShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin relative z-10" />}
+                            <span className="relative z-10">Update Shift</span>
                         </Button>
                     </div>
                 </DialogContent>
