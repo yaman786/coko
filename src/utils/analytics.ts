@@ -25,6 +25,7 @@ export interface DashboardMetrics {
     wasteCount: number;
     overYieldValue: number;
     overYieldCount: number;
+    totalCOGS: number;
 }
 
 export interface RevenueData {
@@ -148,6 +149,13 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     const totalComplimentary = orders.reduce((sum, order) => sum + (order.complimentaryAmount || 0), 0);
     const totalLoyalty = orders.reduce((sum, order) => sum + (order.loyalty || 0), 0);
 
+    const totalCOGS = activeOrders.reduce((sum, order) => {
+        return sum + order.items.reduce((itemSum, item: any) => {
+            const cost = item.costPrice || item.cost_price || 0;
+            return itemSum + (cost * item.quantity);
+        }, 0);
+    }, 0);
+
     // --- Unified Waste & Over-yield Calculation ---
     // 1. POS-logged Waste
     let posWasteValue = activeOrders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
@@ -200,6 +208,7 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         totalComplimentary,
         totalLoyalty,
         totalExpenses,
+        totalCOGS,
         wasteValue: totalWasteValue,
         wasteCount: totalWasteCount,
         overYieldValue,

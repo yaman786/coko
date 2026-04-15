@@ -67,9 +67,13 @@ export interface DashboardExportData {
     totalOffers: number;
     totalComplimentary: number;
     totalLoyalty: number;
+    totalCOGS: number;
     grossRevenue: number;
     ordersCount: number;
     aov: number;
+    totalExpenses: number;
+    wasteValue: number;
+    overYieldValue: number;
     topProducts: { name: string; quantity: number }[];
     dateRangeLabel: string;
     adminName: string;
@@ -118,7 +122,11 @@ export const exportDashboardToPDF = (data: DashboardExportData) => {
             ['Complimentary Items', formatCurrency(data.totalComplimentary)],
             ['Loyalty Redeemed', formatCurrency(data.totalLoyalty)],
             ['Discounts Provided', formatCurrency(data.discounts)],
-            ['Net Revenue', formatCurrency(data.revenue)],
+            ['Cost of Goods Sold (COGS)', formatCurrency(data.totalCOGS)],
+            ['Shop Expenses', formatCurrency(data.totalExpenses)],
+            ['Waste & Spillage', formatCurrency(data.wasteValue)],
+            ['Over-yield (Gain)', '+' + formatCurrency(data.overYieldValue)],
+            ['Actual Net Profit', formatCurrency(data.revenue - data.totalCOGS - data.totalExpenses - data.wasteValue + data.overYieldValue)],
             ['---', '---'],
             ['Total Orders', data.ordersCount.toString()],
             ['Avg. Order Value', formatCurrency(data.aov)],

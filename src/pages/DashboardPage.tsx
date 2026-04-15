@@ -118,6 +118,10 @@ function DashboardContent() {
             totalOffers: metrics.totalOffers,
             totalComplimentary: metrics.totalComplimentary,
             totalLoyalty: metrics.totalLoyalty,
+            totalCOGS: metrics.totalCOGS,
+            totalExpenses: metrics.totalExpenses,
+            wasteValue: metrics.wasteValue,
+            overYieldValue: metrics.overYieldValue,
             ordersCount: metrics.totalOrders,
             aov: metrics.averageOrderValue,
             topProducts: topProducts.slice(0, 10).map(p => ({ name: p.name, quantity: p.quantity })),
@@ -296,6 +300,15 @@ function DashboardContent() {
                         </div>
                         <div className="flex justify-between items-center text-sm pt-2 border-t border-slate-100">
                             <div className="flex items-center gap-2 text-gray-600">
+                                <div className="p-1.5 bg-slate-100 text-slate-500 rounded-md">
+                                    <Package className="w-4 h-4" />
+                                </div>
+                                Cost of Goods Sold (COGS)
+                            </div>
+                            <span className="font-semibold text-slate-500">- Nrs. {Math.round(metrics.totalCOGS).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm pt-2 border-t border-slate-100">
+                            <div className="flex items-center gap-2 text-gray-600">
                                 <div className="p-1.5 bg-red-50 text-red-600 rounded-md">
                                     <Receipt className="w-4 h-4" />
                                 </div>
@@ -326,7 +339,7 @@ function DashboardContent() {
                                 <span className="text-base font-bold text-gray-900">Actual Net Profit</span>
                                 <span className="text-[10px] text-gray-400 font-medium">Reconciled Financial Truth</span>
                             </div>
-                            <span className="text-lg font-bold text-purple-600">Nrs. {(metrics.totalRevenue - metrics.totalExpenses - metrics.wasteValue + metrics.overYieldValue).toLocaleString()}</span>
+                            <span className="text-lg font-bold text-purple-600">Nrs. {Math.round(metrics.totalRevenue - metrics.totalCOGS - metrics.totalExpenses - metrics.wasteValue + metrics.overYieldValue).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
