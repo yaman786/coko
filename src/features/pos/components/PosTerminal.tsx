@@ -348,13 +348,18 @@ export function PosTerminal() {
         <div className="h-[calc(100vh-theme(spacing.20))] md:h-[calc(100vh-theme(spacing.16))] flex flex-col pt-6 pb-6 pr-6 pl-0 md:pl-6 -mt-6 md:mt-0 relative overflow-hidden">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 h-full transition-all overflow-y-auto md:overflow-hidden pb-28 md:pb-0">
                 <div className="md:col-span-7 xl:col-span-8 flex flex-col max-h-[55vh] md:max-h-none md:min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 flex-none bg-slate-50/50">
-                        <Input
-                            placeholder="Search menu items..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="max-w-sm h-11 bg-white"
-                        />
+                    <div className="p-4 flex-none bg-white border-b border-slate-100 z-10 sticky top-0">
+                        <div className="relative">
+                            <Input
+                                placeholder="Search menu items..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full h-12 bg-slate-50/60 backdrop-blur-md border-slate-200/60 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 rounded-full pl-11 shadow-sm font-['DM_Sans',sans-serif]"
+                            />
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <ShoppingBag className="w-4 h-4 text-slate-400" />
+                            </div>
+                        </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
                         {filteredItems.length === 0 && searchQuery && (
@@ -385,43 +390,55 @@ export function PosTerminal() {
                                 };
 
                                 return (
-                                    <Button
+                                    <div
                                         key={item.id}
-                                        variant="outline"
-                                        disabled={isOutOfStock}
-                                        className={`h-auto flex-col items-start p-3 md:p-4 transition-all active:scale-[0.98] shadow-sm text-left border-slate-200 group relative ${isOutOfStock
-                                            ? 'bg-slate-50 opacity-60 cursor-not-allowed border-slate-100'
-                                            : isLowStock
-                                                ? 'bg-amber-50/30 hover:bg-amber-50 border-amber-200 hover:border-amber-300'
-                                                : 'bg-white hover:bg-purple-50 hover:border-purple-300'
-                                            }`}
+                                        role="button"
+                                        aria-disabled={isOutOfStock}
+                                        className={`flex flex-col h-full min-h-[110px] md:min-h-[130px] p-4 rounded-2xl transition-all duration-300 ease-out text-left relative group ${
+                                            isOutOfStock
+                                                ? 'bg-slate-50/50 opacity-50 cursor-not-allowed border border-slate-100/50'
+                                                : isLowStock
+                                                    ? 'bg-amber-50/30 hover:bg-amber-50 border border-amber-200 hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer'
+                                                    : 'bg-white/90 backdrop-blur-xl border border-slate-200/60 hover:border-indigo-300 hover:shadow-xl hover:-translate-y-1 shadow-sm cursor-pointer'
+                                        }`}
                                         onClick={handleClick}
                                     >
-                                        {isOutOfStock && (
-                                            <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Sold Out</span>
-                                        )}
-                                        {isLowStock && (
-                                            <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">{item.stock} left</span>
-                                        )}
-                                        <span className={`text-xs md:text-sm font-semibold leading-tight mb-1.5 md:mb-2 transition-colors text-wrap h-auto min-h-[1.5rem] md:min-h-[2.5rem] ${isOutOfStock ? 'text-slate-400' : 'text-slate-700 group-hover:text-purple-700'
-                                            }`}>{item.name.replace(' (STOCK)', '')}</span>
-                                        <div className="flex items-center justify-between w-full mt-auto">
-                                            <span className={`font-bold px-1.5 md:px-2 py-0.5 rounded text-[11px] md:text-xs transition-colors ${isOutOfStock
-                                                ? 'bg-slate-100 text-slate-400'
-                                                : 'text-purple-600 bg-purple-50 group-hover:bg-purple-100'
-                                                }`}>
-                                                {isParent ? 'View Options' : `Nrs. ${item.price.toLocaleString()}`}
-                                            </span>
+                                        <div className="flex-1">
+                                            {isOutOfStock && (
+                                                <span className="absolute top-2.5 right-2.5 text-[9px] font-bold uppercase tracking-wider bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded-md font-['DM_Sans',sans-serif]">Sold Out</span>
+                                            )}
+                                            {isLowStock && (
+                                                <span className="absolute top-2.5 right-2.5 text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md font-['DM_Sans',sans-serif]">{item.stock} left</span>
+                                            )}
+                                            <h4 className={`text-sm md:text-[15px] font-bold leading-snug mb-2 transition-colors pr-10 font-['DM_Sans',sans-serif] ${
+                                                isOutOfStock ? 'text-slate-400' : 'text-slate-800 group-hover:text-indigo-700'
+                                            }`}>
+                                                {item.name.replace(' (STOCK)', '')}
+                                            </h4>
                                         </div>
-                                    </Button>
+                                        <div className="flex items-center justify-between w-full mt-auto pt-2">
+                                            <span className={`font-black px-2.5 py-1 rounded-lg text-xs transition-colors ${
+                                                isOutOfStock
+                                                    ? 'bg-slate-100 text-slate-400'
+                                                    : 'text-indigo-700 bg-indigo-50/80 group-hover:bg-indigo-100'
+                                            } font-['DM_Sans',sans-serif]`}>
+                                                {isParent ? 'Options' : `Nrs. ${item.price.toLocaleString()}`}
+                                            </span>
+                                            {!isOutOfStock && (
+                                                <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all group-hover:bg-indigo-600 duration-300 translate-x-2 group-hover:translate-x-0">
+                                                    <Plus className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 );
                             };
 
                             return (
                                 <div key={category} className="mb-8 last:mb-0">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <h2 className="text-xl font-black text-slate-800 tracking-tight">{category}</h2>
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-bold px-2 py-0 h-5">
+                                    <div className="flex items-center gap-2 mb-4 mt-2">
+                                        <h2 className="text-xs font-bold tracking-[0.2em] text-slate-400 uppercase font-['DM_Sans',sans-serif]">{category}</h2>
+                                        <Badge variant="secondary" className="bg-indigo-50 text-indigo-600/80 font-bold px-1.5 h-4 text-[10px]">
                                             {categoryItems.length}
                                         </Badge>
                                     </div>
@@ -484,19 +501,19 @@ export function PosTerminal() {
                     </div>
                 </div>
 
-                <div className="md:col-span-5 xl:col-span-4 flex flex-col min-h-[200px] md:min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 flex-none bg-slate-50/50 flex items-center justify-between">
+                <div className="md:col-span-5 xl:col-span-4 flex flex-col min-h-[200px] md:min-h-0 bg-white/95 backdrop-blur-2xl rounded-xl shadow-[-5px_0_30px_-15px_rgba(0,0,0,0.1)] border-l border-indigo-50 overflow-hidden relative z-20">
+                    <div className="p-4 border-b border-indigo-50/50 flex-none bg-indigo-50/30 flex items-center justify-between backdrop-blur-md">
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                <ShoppingBag className="w-4 h-4 text-purple-700" />
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <ShoppingBag className="w-4 h-4 text-indigo-700" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 leading-none">Current Order</h3>
-                                <p className="text-xs text-slate-500 mt-1 font-medium">{cartItemCount} items</p>
+                                <h3 className="font-bold text-slate-800 leading-none font-['DM_Sans',sans-serif]">Current Order</h3>
+                                <p className="text-xs text-slate-500 mt-1 font-medium font-['DM_Sans',sans-serif]">{cartItemCount} items</p>
                             </div>
                         </div>
                         {cart.length > 0 && (
-                            <Button variant="ghost" size="sm" onClick={clearCart} className="text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 px-2">
+                            <Button variant="ghost" size="sm" onClick={clearCart} className="text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 px-2 font-['DM_Sans',sans-serif]">
                                 Clear
                             </Button>
                         )}
@@ -512,14 +529,14 @@ export function PosTerminal() {
                         ) : (
                             <div className="space-y-3">
                                 {cart.map(item => (
-                                    <div key={item.id} className="flex flex-col gap-3 p-4 rounded-xl bg-white border border-slate-100 shadow-sm transition-all hover:border-purple-200">
+                                    <div key={item.id} className="flex flex-col gap-3 p-4 rounded-xl bg-white border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-all hover:border-indigo-200 hover:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.1)]">
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-bold text-slate-800 leading-tight">{item.name}</p>
-                                                <p className="text-xs text-slate-500 mt-1 font-medium">Nrs. {item.price.toLocaleString()} each</p>
+                                                <p className="text-sm font-bold text-slate-800 leading-tight font-['DM_Sans',sans-serif]">{item.name}</p>
+                                                <p className="text-xs text-slate-500 mt-1 font-medium font-['DM_Sans',sans-serif]">Nrs. {item.price.toLocaleString()} each</p>
                                             </div>
                                             <div className="text-right flex-none">
-                                                <p className="text-sm font-black text-purple-700">Nrs. {(item.price * item.quantity).toLocaleString()}</p>
+                                                <p className="text-sm font-black text-indigo-700 font-['DM_Sans',sans-serif]">Nrs. {(item.price * item.quantity).toLocaleString()}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
@@ -555,19 +572,19 @@ export function PosTerminal() {
                         )}
                     </div>
 
-                    <div className="p-4 border-t border-slate-100 flex-none bg-white space-y-4">
+                    <div className="p-4 border-t border-slate-100 flex-none bg-white/60 backdrop-blur-md space-y-4">
                         <div className="space-y-3 pt-2">
-                            <div className="flex justify-between text-slate-500 font-medium text-sm">
+                            <div className="flex justify-between text-slate-500 font-medium text-sm font-['DM_Sans',sans-serif]">
                                 <span>Subtotal</span>
                                 <span>Nrs. {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                             <Separator className="bg-slate-100 my-4" />
                             <div className="flex flex-col items-end gap-1">
-                                <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Estimated Total</span>
-                                <span className="text-purple-600 font-black text-3xl tracking-tight leading-none">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <span className="text-slate-400 font-bold text-xs uppercase tracking-widest font-['DM_Sans',sans-serif]">Estimated Total</span>
+                                <span className="text-indigo-600 font-black text-3xl tracking-tight leading-none font-['DM_Sans',sans-serif]">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                         </div>
-                        <Button className="w-full h-12 text-base font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md mt-4 disabled:opacity-70 hidden md:flex" disabled={cart.length === 0} onClick={handleCheckoutInit}>
+                        <Button className="w-full h-12 text-base font-bold font-['DM_Sans',sans-serif] bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 border-0 hover:scale-[1.02] transition-all duration-300 text-white shadow-xl shadow-indigo-500/25 mt-4 disabled:opacity-70 disabled:hover:scale-100 hidden md:flex" disabled={cart.length === 0} onClick={handleCheckoutInit}>
                             Open Tender Modal
                         </Button>
                     </div>
@@ -575,13 +592,13 @@ export function PosTerminal() {
             </div>
 
             {/* Mobile Checkout Bar */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3">
+            <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-2xl shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] border-t border-indigo-50 px-4 py-3">
                 <div className="flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-500 font-medium">{cartItemCount} items</p>
-                        <p className="text-lg font-black text-slate-800 leading-tight">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString()}</p>
+                        <p className="text-xs text-slate-500 font-medium font-['DM_Sans',sans-serif]">{cartItemCount} items</p>
+                        <p className="text-lg font-black text-slate-800 leading-tight font-['DM_Sans',sans-serif]">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString()}</p>
                     </div>
-                    <Button className="h-11 px-6 text-sm font-bold bg-purple-600 text-white rounded-xl" disabled={cart.length === 0} onClick={handleCheckoutInit}>
+                    <Button className="h-11 px-6 text-sm font-bold bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] shadow-lg shadow-indigo-500/20 border-0 transition-all rounded-xl text-white font-['DM_Sans',sans-serif]" disabled={cart.length === 0} onClick={handleCheckoutInit}>
                         Checkout
                     </Button>
                 </div>
