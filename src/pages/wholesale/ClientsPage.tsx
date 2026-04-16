@@ -58,10 +58,10 @@ export function ClientsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-800">
+                    <h1 className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">
                         Client <span className="text-sky-600">Ledger</span>
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1">Manage cafes, restaurants & their balances</p>
+                    <p className="text-sm text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1">Manage cafe and restaurant relationships & their financial balances</p>
                 </div>
                 <button
                     onClick={handleAdd}
@@ -74,33 +74,33 @@ export function ClientsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="border-0 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Clients</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Total Clients</CardTitle>
                         <Users className="w-4 h-4 text-sky-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-800">{clients.length}</div>
+                        <div className="text-2xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">{clients.length}</div>
                     </CardContent>
                 </Card>
-                <Card className={`border-0 shadow-sm ${totalOutstanding > 0 ? 'ring-2 ring-amber-200' : ''}`}>
+                <Card className={`bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl ${totalOutstanding > 0 ? 'ring-2 ring-amber-500/20' : ''}`}>
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Outstanding</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Total Outstanding</CardTitle>
                         <DollarSign className={`w-4 h-4 ${totalOutstanding > 0 ? 'text-amber-500' : 'text-green-500'}`} />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${totalOutstanding > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                        <div className={`text-2xl font-black tracking-tight font-['DM_Sans',sans-serif] ${totalOutstanding > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                             Rs. {totalOutstanding.toLocaleString()}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-0 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Clear Balance</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Clear Balance</CardTitle>
                         <Users className="w-4 h-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">
+                        <div className="text-2xl font-black text-green-600 tracking-tight font-['DM_Sans',sans-serif]">
                             {clients.filter(c => c.balance <= 0).length}
                         </div>
                     </CardContent>
@@ -109,12 +109,12 @@ export function ClientsPage() {
 
             {/* Search */}
             <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                     placeholder="Search clients..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-11 bg-white focus-visible:ring-sky-500 focus-visible:border-sky-500"
+                    className="pl-10 h-11 bg-white/50 backdrop-blur-sm border-slate-200/60 rounded-full focus:ring-2 focus:ring-sky-500/20 font-medium font-['DM_Sans',sans-serif]"
                 />
             </div>
 
@@ -132,22 +132,22 @@ export function ClientsPage() {
                     {filteredClients.map((client) => (
                         <Card
                             key={client.id}
-                            className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:ring-2 hover:ring-sky-100"
+                            className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:ring-2 hover:ring-sky-100 rounded-2xl"
                             onClick={() => setSelectedClient(client)}
                         >
                             <CardContent className="p-5">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1">
-                                        <h3 className="font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
+                                        <h3 className="font-black text-slate-800 group-hover:text-sky-600 transition-colors font-['DM_Sans',sans-serif] tracking-tight text-lg">
                                             {client.name}
                                         </h3>
                                         {client.contact_person && (
-                                            <p className="text-sm text-slate-500 mt-0.5">{client.contact_person}</p>
+                                            <p className="text-sm text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-0.5">{client.contact_person}</p>
                                         )}
                                     </div>
                                     <div className={`text-right ${client.balance > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                                        <p className="text-xs font-semibold uppercase text-slate-400">Balance</p>
-                                        <p className="text-lg font-bold">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-['DM_Sans',sans-serif]">Balance</p>
+                                        <p className="text-xl font-black font-['DM_Sans',sans-serif] tracking-tight">
                                             Rs. {Math.abs(client.balance).toLocaleString()}
                                         </p>
                                     </div>

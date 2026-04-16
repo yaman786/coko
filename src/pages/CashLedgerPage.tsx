@@ -519,95 +519,105 @@ export function CashLedgerPage() {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Cash In */}
-                <Card className="border-0 shadow-md shadow-slate-100 bg-gradient-to-br from-green-50 to-emerald-50">
+                <Card className="border border-emerald-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between mb-2">
-                            <Banknote className="w-5 h-5 text-emerald-600" />
+                            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                <Banknote className="w-4 h-4 text-emerald-600" />
+                            </div>
                             <ArrowUpRight className="w-4 h-4 text-emerald-500" />
                         </div>
-                        <p className="text-2xl font-black text-emerald-700">Nrs. {financials.cashIn.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-1">Cash Sales</p>
+                        <p className="text-2xl font-black text-emerald-700 font-['DM_Sans',sans-serif]">Nrs. {financials.cashIn.toLocaleString()}</p>
+                        <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Cash Sales</p>
                     </CardContent>
                 </Card>
 
                 {/* Card In */}
-                <Card className="border-0 shadow-md shadow-slate-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+                <Card className="border border-blue-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between mb-2">
-                            <CreditCard className="w-5 h-5 text-blue-600" />
+                            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <CreditCard className="w-4 h-4 text-blue-600" />
+                            </div>
                             <ArrowUpRight className="w-4 h-4 text-blue-500" />
                         </div>
-                        <p className="text-2xl font-black text-blue-700">Nrs. {financials.cardIn.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1">Card / Fonepay</p>
+                        <p className="text-2xl font-black text-blue-700 font-['DM_Sans',sans-serif]">Nrs. {financials.cardIn.toLocaleString()}</p>
+                        <p className="text-[10px] font-bold text-blue-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Card / Fonepay</p>
                     </CardContent>
                 </Card>
 
                 {/* Cash Expenses */}
-                <Card className="border-0 shadow-md shadow-slate-100 bg-gradient-to-br from-orange-50 to-amber-50">
+                <Card className="border border-orange-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between mb-2">
-                            <MinusCircle className="w-5 h-5 text-orange-600" />
+                            <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center">
+                                <MinusCircle className="w-4 h-4 text-orange-600" />
+                            </div>
                             <ArrowDownRight className="w-4 h-4 text-orange-500" />
                         </div>
-                        <p className="text-2xl font-black text-orange-700">Nrs. {financials.cashExpenses.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mt-1">Cash Expenses</p>
+                        <p className="text-2xl font-black text-orange-700 font-['DM_Sans',sans-serif]">Nrs. {financials.cashExpenses.toLocaleString()}</p>
+                        <p className="text-[10px] font-bold text-orange-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Cash Expenses</p>
                     </CardContent>
                 </Card>
 
                 {/* Net Revenue */}
-                <Card className="border-0 shadow-md shadow-slate-100 bg-gradient-to-br from-purple-50 to-violet-50">
+                <Card className="border border-indigo-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between mb-2">
-                            <TrendingUp className="w-5 h-5 text-purple-600" />
-                            <span className="text-[10px] font-black text-purple-500 bg-purple-100 px-2 py-0.5 rounded-full">{financials.totalOrders} orders</span>
+                            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+                                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                            </div>
+                            <span className="text-[10px] font-black text-indigo-500 bg-indigo-100/50 px-2 py-0.5 rounded-full font-['DM_Sans',sans-serif]">{financials.totalOrders} orders</span>
                         </div>
-                        <p className="text-2xl font-black text-purple-700">Nrs. {financials.totalRevenue.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-purple-500 uppercase tracking-widest mt-1">Total Revenue</p>
+                        <p className="text-2xl font-black text-indigo-700 font-['DM_Sans',sans-serif]">Nrs. {financials.totalRevenue.toLocaleString()}</p>
+                        <p className="text-[10px] font-bold text-indigo-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Total Revenue</p>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Cash Flow Summary */}
-            <Card className="border-0 shadow-lg shadow-slate-100/50">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-emerald-600" />
+            <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                    <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2 font-['DM_Sans',sans-serif]">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-indigo-600" />
+                        </div>
                         Cash Flow Summary
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="rounded-xl overflow-hidden border border-slate-100">
+                <CardContent className="p-0">
+                    <div className="overflow-hidden">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-slate-50/80 text-[10px] uppercase tracking-widest text-slate-400 font-black">
-                                    <th className="text-left py-3 px-4"></th>
-                                    <th className="text-right py-3 px-4">💵 Cash</th>
-                                    <th className="text-right py-3 px-4">💳 Card</th>
-                                    <th className="text-right py-3 px-4">Total</th>
+                                <tr className="bg-slate-50/50 text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold font-['DM_Sans',sans-serif]">
+                                    <th className="text-left py-4 px-6">Metric</th>
+                                    <th className="text-right py-4 px-6">💵 Cash</th>
+                                    <th className="text-right py-4 px-6">💳 Card</th>
+                                    <th className="text-right py-4 px-6">Total</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                <tr className="hover:bg-slate-50/50">
-                                    <td className="py-3 px-4 font-bold text-emerald-700 flex items-center gap-2">
+                            <tbody className="divide-y divide-slate-100 font-['DM_Sans',sans-serif]">
+                                <tr className="hover:bg-slate-50 transition-colors">
+                                    <td className="py-4 px-6 font-bold text-emerald-700 flex items-center gap-2">
                                         <ArrowUpRight className="w-4 h-4" /> Sales In
                                     </td>
-                                    <td className="py-3 px-4 text-right font-black text-emerald-600">+{financials.cashIn.toLocaleString()}</td>
-                                    <td className="py-3 px-4 text-right font-black text-emerald-600">+{financials.cardIn.toLocaleString()}</td>
-                                    <td className="py-3 px-4 text-right font-black text-emerald-700">+{financials.totalRevenue.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-bold text-emerald-600">+{financials.cashIn.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-bold text-emerald-600">+{financials.cardIn.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-black text-emerald-700">+{financials.totalRevenue.toLocaleString()}</td>
                                 </tr>
-                                <tr className="hover:bg-slate-50/50">
-                                    <td className="py-3 px-4 font-bold text-red-600 flex items-center gap-2">
+                                <tr className="hover:bg-slate-50 transition-colors">
+                                    <td className="py-4 px-6 font-bold text-red-600 flex items-center gap-2">
                                         <ArrowDownRight className="w-4 h-4" /> Expenses Out
                                     </td>
-                                    <td className="py-3 px-4 text-right font-black text-red-500">-{financials.cashExpenses.toLocaleString()}</td>
-                                    <td className="py-3 px-4 text-right font-black text-red-500">-{financials.cardExpenses.toLocaleString()}</td>
-                                    <td className="py-3 px-4 text-right font-black text-red-600">-{financials.totalExpenses.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-bold text-red-500">-{financials.cashExpenses.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-bold text-red-500">-{financials.cardExpenses.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-black text-red-600">-{financials.totalExpenses.toLocaleString()}</td>
                                 </tr>
-                                <tr className="bg-slate-50 font-black">
-                                    <td className="py-3 px-4 text-slate-800">Net Flow</td>
-                                    <td className="py-3 px-4 text-right text-slate-800">{financials.netCash.toLocaleString()}</td>
-                                    <td className="py-3 px-4 text-right text-slate-800">{financials.netCard.toLocaleString()}</td>
-                                    <td className="py-3 px-4 text-right text-slate-900 text-base">{(financials.netCash + financials.netCard).toLocaleString()}</td>
+                                <tr className="bg-indigo-50/30">
+                                    <td className="py-4 px-6 text-slate-800 font-black">Net Flow</td>
+                                    <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCash.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCard.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right text-indigo-900 font-black text-base">{(financials.netCash + financials.netCard).toLocaleString()}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -618,14 +628,14 @@ export function CashLedgerPage() {
             {/* Transaction Feed + Shift History */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Transaction Feed */}
-                <Card className="lg:col-span-2 border-0 shadow-lg shadow-slate-100/50">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-black text-slate-800 flex items-center justify-between">
+                <Card className="lg:col-span-2 border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
+                    <CardHeader className="pb-3 border-b border-slate-100 mb-2">
+                        <CardTitle className="text-base font-black text-slate-800 flex items-center justify-between font-['DM_Sans',sans-serif]">
                             <span className="flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-slate-500" />
                                 Transaction Feed
                             </span>
-                            <Badge variant="outline" className="font-bold text-slate-500">
+                            <Badge variant="outline" className="font-bold text-indigo-500 bg-indigo-50 border-indigo-100">
                                 {transactions.length} entries
                             </Badge>
                         </CardTitle>
@@ -680,9 +690,9 @@ export function CashLedgerPage() {
                 </Card>
 
                 {/* Shift History */}
-                <Card className="border-0 shadow-lg shadow-slate-100/50">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2">
+                <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
+                    <CardHeader className="pb-3 border-b border-slate-100 mb-2">
+                        <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2 font-['DM_Sans',sans-serif]">
                             <Clock className="w-4 h-4 text-slate-500" />
                             Shift History
                         </CardTitle>

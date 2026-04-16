@@ -244,38 +244,38 @@ export function OrdersPage() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sales Orders</p>
-                    <p className="text-2xl font-black text-gray-900 mt-1">{salesOrders.length}</p>
+                <div className="bg-white/80 backdrop-blur-xl rounded-xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Sales Orders</p>
+                    <p className="text-2xl font-black text-slate-900 mt-1 font-['DM_Sans',sans-serif]">{salesOrders.length}</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Revenue</p>
-                    <p className="text-2xl font-black text-emerald-600 mt-1">Nrs. {totalRevenue.toLocaleString()}</p>
+                <div className="bg-emerald-50/50 backdrop-blur-xl rounded-xl border border-emerald-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+                    <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Net Revenue</p>
+                    <p className="text-2xl font-black text-emerald-600 mt-1 font-['DM_Sans',sans-serif]">Nrs. {totalRevenue.toLocaleString()}</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Waste Events</p>
+                <div className="bg-rose-50/50 backdrop-blur-xl rounded-xl border border-rose-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+                    <p className="text-[10px] font-bold text-rose-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Waste Events</p>
                     <div className="flex items-center gap-2 mt-1">
-                        <p className="text-2xl font-black text-rose-600">{wasteOrders.length}</p>
-                        <Badge className="bg-rose-50 text-rose-600 border-rose-100 text-[10px] h-5">- {wasteOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0)} items</Badge>
+                        <p className="text-2xl font-black text-rose-600 font-['DM_Sans',sans-serif]">{wasteOrders.length}</p>
+                        <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[10px] h-5 font-bold shadow-none">- {wasteOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0)} items</Badge>
                     </div>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Inventory Out</p>
-                    <p className="text-2xl font-black text-gray-900 mt-1">{totalItems}</p>
+                <div className="bg-white/80 backdrop-blur-xl rounded-xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Total Out</p>
+                    <p className="text-2xl font-black text-slate-900 mt-1 font-['DM_Sans',sans-serif]">{totalItems}</p>
                 </div>
             </div>
 
             {/* Filters */}
-            <Card className="border-0 shadow-md ring-1 ring-gray-200">
-                <CardHeader className="pb-3 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
+            <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
+                <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <Input
                                 placeholder="Search orders, items, or cashier..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-9 text-sm bg-white"
+                                className="pl-9 h-10 text-sm bg-white border-slate-200/60 rounded-full focus:ring-2 focus:ring-indigo-500/20 font-['DM_Sans',sans-serif] shadow-sm"
                             />
                         </div>
                         <div className="flex items-center gap-2">

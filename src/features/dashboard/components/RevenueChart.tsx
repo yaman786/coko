@@ -9,12 +9,12 @@ interface RevenueChartProps {
 
 export function RevenueChart({ data, days = 7 }: RevenueChartProps) {
     return (
-        <Card className="col-span-1 lg:col-span-2">
-            <CardHeader>
-                <CardTitle>Revenue Trend</CardTitle>
-                <CardDescription>Sales performance over the last {days} days</CardDescription>
+        <Card className="col-span-1 lg:col-span-2 bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Revenue Trend</CardTitle>
+                <CardDescription className="font-medium text-slate-500 font-['DM_Sans',sans-serif]">Sales performance over the last {days} days</CardDescription>
             </CardHeader>
-            <CardContent className="px-2">
+            <CardContent className="px-2 pt-4">
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart

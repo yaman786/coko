@@ -61,8 +61,8 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp,
         <div className={`h-[100dvh] w-full flex flex-col transition-colors duration-500 ${isRetail ? 'bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100' : 'bg-gradient-to-br from-slate-100 via-blue-100 to-sky-100'} overflow-hidden`}>
             <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
                 <div className="w-full max-w-md shrink-0">
-                    <Card className="shadow-2xl border-0">
-                        <CardHeader className="space-y-4 pb-6">
+                    <Card className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl relative overflow-hidden">
+                        <CardHeader className="space-y-4 pb-6 relative z-10">
                             {/* Portal Toggle - Hidden if Locked */}
                             {!isLocked && (
                                 <div className="flex p-1 bg-gray-100 rounded-xl mb-4">
@@ -95,14 +95,14 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp,
                                 </div>
                             </div>
                             <div className="text-center space-y-1">
-                                <CardTitle className="text-3xl font-black tracking-tight transition-colors duration-500">
+                                <CardTitle className="text-3xl font-black tracking-tight transition-colors duration-500 font-['DM_Sans',sans-serif]">
                                     {isRetail ? (
                                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-purple-600">coko</span>
                                     ) : (
                                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-sky-700">GOD</span>
                                     )}
                                 </CardTitle>
-                                <CardDescription className="text-xs font-medium uppercase tracking-widest text-gray-400">
+                                <CardDescription className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">
                                     {isRetail ? 'Ice Cream Parlour & POS' : 'Wholesale Distribution Hub'}
                                 </CardDescription>
                             </div>
@@ -155,32 +155,32 @@ export function LoginForm({ onLogin, isLoading = false, targetApp, setTargetApp,
                             ) : (
                                 <form onSubmit={handleSubmit} className="space-y-5">
                                     <div className="space-y-2">
-                                        <Label htmlFor="email" className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</Label>
+                                        <Label htmlFor="email" className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Email Address</Label>
                                         <div className="relative group">
-                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
                                             <Input
                                                 id="email"
                                                 type="email"
                                                 placeholder={isRetail ? "admin@coko.com" : "manager@god.com"}
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
-                                                className="pl-10 h-11 bg-gray-50/50 border-gray-100 focus:bg-white transition-all rounded-xl shadow-inner focus:ring-2 focus:ring-blue-500/20"
+                                                className="pl-10 h-11 bg-white/50 backdrop-blur-sm border-white/40 focus:bg-white transition-all rounded-xl shadow-inner focus:ring-2 focus:ring-purple-500/20 font-['DM_Sans',sans-serif]"
                                                 required
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="password" className="text-xs font-bold text-gray-400 uppercase tracking-wider">Password</Label>
+                                        <Label htmlFor="password" className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Password</Label>
                                         <div className="relative group">
-                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
                                             <Input
                                                 id="password"
                                                 type="password"
                                                 placeholder="••••••••"
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
-                                                className="pl-10 h-11 bg-gray-50/50 border-gray-100 focus:bg-white transition-all rounded-xl shadow-inner focus:ring-2 focus:ring-blue-500/20"
+                                                className="pl-10 h-11 bg-white/50 backdrop-blur-sm border-white/40 focus:bg-white transition-all rounded-xl shadow-inner focus:ring-2 focus:ring-purple-500/20 font-['DM_Sans',sans-serif] tracking-widest"
                                                 required
                                             />
                                         </div>

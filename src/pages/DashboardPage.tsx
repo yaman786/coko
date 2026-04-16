@@ -148,28 +148,28 @@ function DashboardContent() {
 
     return (
         <div className="flex-1 space-y-4 md:space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4 mb-4">
                 <div className="flex items-center gap-3 md:gap-4 flex-wrap">
                     <div>
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-                        <p className="text-gray-500 text-sm hidden sm:block">Overview of your store's performance (Live)</p>
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 font-['DM_Sans',sans-serif]">Dashboard</h1>
+                        <p className="text-slate-500 font-medium text-sm hidden sm:block font-['DM_Sans',sans-serif]">Overview of your store's performance (Live)</p>
                     </div>
 
-                    <div className="mt-0.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] md:text-xs font-semibold shadow-sm bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <div className="mt-0.5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] md:text-xs font-bold shadow-sm bg-emerald-50/80 text-emerald-700 border border-emerald-200/60 font-['DM_Sans',sans-serif] tracking-wider uppercase">
                         <Globe className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         Online
                     </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-1 bg-white/80 backdrop-blur-xl rounded-xl p-1.5 border border-slate-200/60 shadow-sm transition-all duration-300">
                         {(['today', 'week', 'month', 'custom'] as const).map((p) => (
                             <button
                                 key={p}
                                 onClick={() => setPeriod(p)}
-                                className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-md capitalize transition-colors min-h-[36px] md:min-h-[40px] ${period === p
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'text-gray-600 hover:bg-gray-50'
+                                className={`px-4 md:px-5 py-2 text-[11px] md:text-xs font-bold uppercase tracking-[0.1em] font-['DM_Sans',sans-serif] rounded-lg transition-all duration-300 min-h-[36px] md:min-h-[40px] ${period === p
+                                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                                    : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 bg-transparent'
                                     }`}
                             >
                                 {p}
@@ -177,19 +177,19 @@ function DashboardContent() {
                         ))}
                     </div>
                     {period === 'custom' && (
-                        <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 border border-gray-200 shadow-sm">
+                        <div className="flex items-center gap-2 bg-white/80 backdrop-blur-xl rounded-xl px-4 py-2 border border-slate-200/60 shadow-sm">
                             <input
                                 type="date"
                                 value={customFrom}
                                 onChange={(e) => setCustomFrom(e.target.value)}
-                                className="text-xs md:text-sm border-0 bg-transparent text-gray-700 focus:outline-none"
+                                className="text-xs md:text-sm font-bold font-['DM_Sans',sans-serif] border-0 bg-transparent text-slate-700 focus:outline-none"
                             />
-                            <span className="text-gray-400 text-xs">to</span>
+                            <span className="text-slate-400 text-xs font-bold leading-none">to</span>
                             <input
                                 type="date"
                                 value={customTo}
                                 onChange={(e) => setCustomTo(e.target.value)}
-                                className="text-xs md:text-sm border-0 bg-transparent text-gray-700 focus:outline-none"
+                                className="text-xs md:text-sm font-bold font-['DM_Sans',sans-serif] border-0 bg-transparent text-slate-700 focus:outline-none"
                             />
                         </div>
                     )}

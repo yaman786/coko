@@ -86,13 +86,13 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto border border-white/20">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-100">
-                    <h2 className="text-lg font-bold text-slate-800">
+                <div className="flex items-center justify-between p-8 border-b border-slate-100/50">
+                    <h2 className="text-xl font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight">
                         {isEditing ? 'Edit Product' : 'Add Wholesale Product'}
                     </h2>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -101,23 +101,23 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {/* Name */}
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Product Name *</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif] mb-2 px-1">Product Name *</label>
                         <Input
                             placeholder="e.g., Vanilla Ice Cream 5L Tub"
                             value={form.name}
                             onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                            className="h-11"
+                            className="h-12 bg-white/50 border-slate-200/60 rounded-xl focus:ring-2 focus:ring-sky-500/20 font-medium"
                         />
                     </div>
 
                     {/* Category + Unit */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif] mb-2 px-1">Category</label>
                             <select
                                 value={form.category}
                                 onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
-                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                                className="w-full h-12 px-4 rounded-xl border border-slate-200/60 bg-white/50 text-sm font-bold focus:ring-2 focus:ring-sky-500/20 outline-none transition-all cursor-pointer font-['DM_Sans',sans-serif] text-slate-600"
                             >
                                 {CATEGORIES.map(c => (
                                     <option key={c} value={c}>{c}</option>
@@ -125,11 +125,11 @@ export function AddWsProductDialog({ open, onClose, editingProduct }: Props) {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Unit</label>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif] mb-2 px-1">Unit</label>
                             <select
                                 value={form.unit}
                                 onChange={(e) => setForm(f => ({ ...f, unit: e.target.value as WsProduct['unit'] }))}
-                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                                className="w-full h-12 px-4 rounded-xl border border-slate-200/60 bg-white/50 text-sm font-bold focus:ring-2 focus:ring-sky-500/20 outline-none transition-all cursor-pointer font-['DM_Sans',sans-serif] text-slate-600"
                             >
                                 {UNITS.map(u => (
                                     <option key={u} value={u}>{u}</option>

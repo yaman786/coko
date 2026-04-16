@@ -59,36 +59,36 @@ export function WholesaleDashboard() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-black tracking-tight text-slate-800">
+                <h1 className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">
                     Welcome to <span className="text-sky-600">GOD HUB</span>
                 </h1>
-                <p className="text-slate-500 font-medium">Wholesale Distribution & Logistics Overview</p>
+                <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif]">Wholesale Distribution & Logistics Overview</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat, idx) => (
-                    <Card key={idx} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <Card key={idx} className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 rounded-2xl">
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">
                                 {stat.label}
                             </CardTitle>
                             <stat.icon className={`w-4 h-4 ${stat.color}`} />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-slate-800">{stat.value}</div>
+                            <div className="text-2xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">{stat.value}</div>
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
-            <Card className="border-0 shadow-sm min-h-[400px] flex items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200">
-                <div className="text-center space-y-2 p-12">
-                    <div className="w-16 h-16 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Warehouse className="w-8 h-8 text-sky-600" />
+            <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm min-h-[400px] flex items-center justify-center rounded-2xl">
+                <div className="text-center space-y-3 p-12">
+                    <div className="w-20 h-20 bg-sky-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner ring-1 ring-sky-100/50">
+                        <Warehouse className="w-10 h-10 text-sky-600" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800">Warehouse Operations Coming Soon</h3>
-                    <p className="text-sm text-slate-500 max-w-xs mx-auto">
-                        In the next step, we will implement the Bulk Inventory and Client Ledger systems for your wholesale business.
+                    <h3 className="text-xl font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight">Warehouse Operations</h3>
+                    <p className="text-sm text-slate-500 max-w-sm mx-auto font-medium leading-relaxed">
+                        Bulk inventory tracking and automated client ledgers are being initialized. Your supply chain management suite will be ready shortly.
                     </p>
                 </div>
             </Card>

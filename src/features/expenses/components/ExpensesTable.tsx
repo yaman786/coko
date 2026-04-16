@@ -89,57 +89,56 @@ export function ExpensesTable() {
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Calendar className="w-6 h-6 text-blue-600" />
+                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center shadow-inner">
+                        <Calendar className="w-8 h-8 text-indigo-600" />
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-gray-500 uppercase tracking-widest">{periodLabel}</p>
-                        <p className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">{periodLabel}</p>
+                        <p className="text-4xl font-black text-slate-900 tracking-tighter font-['DM_Sans',sans-serif] mt-1">
                             Nrs. {filteredTotal.toLocaleString()}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <div className="flex flex-col gap-4 bg-transparent">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                    <div className="flex flex-wrap items-center gap-1.5 bg-white/80 backdrop-blur-xl p-1.5 rounded-xl border border-slate-200/60 shadow-sm transition-all duration-300">
                         {(['today', 'week', 'month', 'all'] as const).map((p) => (
                             <button
                                 key={p}
                                 onClick={() => { setPeriod(p); setCurrentPage(1); }}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                                className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.1em] font-['DM_Sans',sans-serif] transition-all duration-300 ${
                                     period === p 
-                                    ? 'bg-white text-purple-700 shadow-sm border border-gray-200' 
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' 
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 bg-transparent'
                                 }`}
                             >
-                                {p.charAt(0).toUpperCase() + p.slice(1)}
+                                {p}
                             </button>
                         ))}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                         <div className="relative flex-1 lg:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <Input
                                 placeholder="Search..."
                                 value={searchQuery}
                                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                className="pl-10 h-10"
+                                className="pl-11 h-12 bg-white/50 backdrop-blur-sm border-slate-200/60 rounded-full focus:ring-2 focus:ring-purple-500/20 font-medium font-['DM_Sans',sans-serif]"
                             />
                         </div>
 
                         <Select value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}>
-                            <SelectTrigger className="w-full lg:w-40 h-10">
-                                <Filter className="w-4 h-4 mr-2 text-gray-400" />
+                            <SelectTrigger className="w-full lg:w-48 h-12 rounded-full border-slate-200/60 bg-white/50 backdrop-blur-sm text-sm font-bold font-['DM_Sans',sans-serif] text-slate-600 focus:ring-2 focus:ring-purple-500/20">
                                 <SelectValue placeholder="Category" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Categories</SelectItem>
+                            <SelectContent className="rounded-2xl border-slate-200 bg-white/95 backdrop-blur-xl">
+                                <SelectItem value="all" className="font-medium">All Categories</SelectItem>
                                 {['Rent', 'Salary', 'Inventory', 'Utilities', 'Marketing', 'Maintenance', 'Other'].map(cat => (
-                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    <SelectItem key={cat} value={cat} className="font-medium">{cat}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -149,7 +148,7 @@ export function ExpensesTable() {
                                 setEditingExpense(null);
                                 setIsAddDialogOpen(true);
                             }}
-                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold h-10"
+                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold h-12 px-6 rounded-full shadow-lg shadow-purple-500/20 hover:-translate-y-0.5 transition-all w-full lg:w-auto font-['DM_Sans',sans-serif]"
                         >
                             <Plus className="w-4 h-4 mr-2" /> Record
                         </Button>
@@ -157,16 +156,16 @@ export function ExpensesTable() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
                 <Table containerClassName="max-h-[600px] overflow-y-auto">
                     <TableHeader>
-                        <TableRow className="bg-slate-50/50">
-                            <TableHead className="font-bold">Date</TableHead>
-                            <TableHead className="font-bold">Category</TableHead>
-                            <TableHead className="font-bold">Description</TableHead>
-                            <TableHead className="font-bold">Recorded By</TableHead>
-                            <TableHead className="font-bold text-right">Amount</TableHead>
-                            <TableHead className="text-right font-bold">Actions</TableHead>
+                        <TableRow className="bg-slate-50/80 border-b border-slate-100">
+                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Date</TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Category</TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Description</TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Recorded By</TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] text-right h-12">Amount</TableHead>
+                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] text-right h-12">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -185,21 +184,21 @@ export function ExpensesTable() {
                             </TableRow>
                         ) : (
                             paginatedExpenses.map((expense) => (
-                                <TableRow key={expense.id} className="hover:bg-slate-50/50 transition-colors">
-                                    <TableCell className="font-medium">{format(new Date(expense.date), 'MMM d, yyyy')}</TableCell>
+                                <TableRow key={expense.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50 last:border-0">
+                                    <TableCell className="font-medium text-slate-600 font-['DM_Sans',sans-serif]">{format(new Date(expense.date), 'MMM d, yyyy')}</TableCell>
                                     <TableCell>
-                                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 uppercase tracking-tighter">
+                                        <span className="px-3 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-[0.1em] font-['DM_Sans',sans-serif]">
                                             {expense.category}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="max-w-[300px] truncate text-gray-600">{expense.description || '-'}</TableCell>
+                                    <TableCell className="max-w-[300px] truncate text-slate-500 font-medium">{expense.description || '-'}</TableCell>
                                     <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium text-gray-700">{expense.cashier_name || 'System'}</span>
-                                            <span className="text-[10px] text-gray-400 font-mono tracking-tighter uppercase">{expense.payment_method}</span>
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-sm font-bold text-slate-700">{expense.cashier_name || 'System'}</span>
+                                            <span className="text-[10px] text-slate-400 font-bold tracking-[0.1em] uppercase font-['DM_Sans',sans-serif]">{expense.payment_method}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right font-bold text-red-600">Nrs. {Number(expense.amount).toLocaleString()}</TableCell>
+                                    <TableCell className="text-right text-base font-black text-rose-600 font-['DM_Sans',sans-serif]">Nrs. {Number(expense.amount).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
                                             <Button

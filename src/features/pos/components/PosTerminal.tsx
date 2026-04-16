@@ -347,17 +347,17 @@ export function PosTerminal() {
     return (
         <div className="h-[calc(100vh-theme(spacing.20))] md:h-[calc(100vh-theme(spacing.16))] flex flex-col pt-6 pb-6 pr-6 pl-0 md:pl-6 -mt-6 md:mt-0 relative overflow-hidden">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 h-full transition-all overflow-y-auto md:overflow-hidden pb-28 md:pb-0">
-                <div className="md:col-span-7 xl:col-span-8 flex flex-col max-h-[55vh] md:max-h-none md:min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 flex-none bg-white border-b border-slate-100 z-10 sticky top-0">
+                <div className="md:col-span-7 xl:col-span-8 flex flex-col max-h-[55vh] md:max-h-none md:min-h-0 bg-white/40 backdrop-blur-3xl rounded-[2.5rem] shadow-xl border border-slate-200/60 overflow-hidden relative">
+                    <div className="p-6 flex-none bg-transparent border-b border-slate-100/50 z-10 sticky top-0">
                         <div className="relative">
                             <Input
                                 placeholder="Search menu items..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-12 bg-slate-50/60 backdrop-blur-md border-slate-200/60 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 rounded-full pl-11 shadow-sm font-['DM_Sans',sans-serif]"
+                                className="w-full h-14 bg-white/80 backdrop-blur-xl border-slate-200/60 focus:bg-white focus:ring-4 focus:ring-purple-500/10 rounded-full pl-13 shadow-sm font-['DM_Sans',sans-serif] text-base font-medium transition-all"
                             />
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                <ShoppingBag className="w-4 h-4 text-slate-400" />
+                            <div className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <ShoppingBag className="w-5 h-5 text-slate-400" />
                             </div>
                         </div>
                     </div>
@@ -394,12 +394,12 @@ export function PosTerminal() {
                                         key={item.id}
                                         role="button"
                                         aria-disabled={isOutOfStock}
-                                        className={`flex flex-col h-full min-h-[110px] md:min-h-[130px] p-4 rounded-2xl transition-all duration-300 ease-out text-left relative group ${
+                                        className={`flex flex-col h-full min-h-[120px] md:min-h-[140px] p-5 rounded-[2rem] transition-all duration-500 ease-out text-left relative group ${
                                             isOutOfStock
                                                 ? 'bg-slate-50/50 opacity-50 cursor-not-allowed border border-slate-100/50'
                                                 : isLowStock
-                                                    ? 'bg-amber-50/30 hover:bg-amber-50 border border-amber-200 hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer'
-                                                    : 'bg-white/90 backdrop-blur-xl border border-slate-200/60 hover:border-indigo-300 hover:shadow-xl hover:-translate-y-1 shadow-sm cursor-pointer'
+                                                    ? 'bg-amber-50/80 backdrop-blur-xl border border-amber-200/60 hover:border-amber-400 hover:shadow-2xl hover:-translate-y-2 cursor-pointer'
+                                                    : 'bg-white/80 backdrop-blur-2xl border border-slate-200/60 hover:border-purple-300 hover:shadow-2xl hover:-translate-y-2 shadow-sm cursor-pointer'
                                         }`}
                                         onClick={handleClick}
                                     >
@@ -501,20 +501,20 @@ export function PosTerminal() {
                     </div>
                 </div>
 
-                <div className="md:col-span-5 xl:col-span-4 flex flex-col min-h-[200px] md:min-h-0 bg-white/95 backdrop-blur-2xl rounded-xl shadow-[-5px_0_30px_-15px_rgba(0,0,0,0.1)] border-l border-indigo-50 overflow-hidden relative z-20">
-                    <div className="p-4 border-b border-indigo-50/50 flex-none bg-indigo-50/30 flex items-center justify-between backdrop-blur-md">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                <ShoppingBag className="w-4 h-4 text-indigo-700" />
+                <div className="md:col-span-5 xl:col-span-4 flex flex-col min-h-[200px] md:min-h-0 bg-white/80 backdrop-blur-3xl rounded-[2.5rem] shadow-2xl border-l border-white/50 overflow-hidden relative z-20">
+                    <div className="p-6 border-b border-indigo-50/50 flex-none bg-purple-50/30 flex items-center justify-between backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-[1rem] bg-purple-100 flex items-center justify-center border border-purple-200/50 shadow-inner">
+                                <ShoppingBag className="w-5 h-5 text-purple-700" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 leading-none font-['DM_Sans',sans-serif]">Current Order</h3>
-                                <p className="text-xs text-slate-500 mt-1 font-medium font-['DM_Sans',sans-serif]">{cartItemCount} items</p>
+                                <h3 className="font-black text-slate-800 leading-none font-['DM_Sans',sans-serif] tracking-tight">Your Order</h3>
+                                <p className="text-[10px] text-purple-500 uppercase font-black tracking-[0.2em] font-['DM_Sans',sans-serif] mt-1.5">{cartItemCount} items gathered</p>
                             </div>
                         </div>
                         {cart.length > 0 && (
-                            <Button variant="ghost" size="sm" onClick={clearCart} className="text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 px-2 font-['DM_Sans',sans-serif]">
-                                Clear
+                            <Button variant="ghost" size="sm" onClick={clearCart} className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-10 px-4 font-black font-['DM_Sans',sans-serif] text-xs uppercase tracking-wider transition-all">
+                                Wipe
                             </Button>
                         )}
                     </div>
@@ -584,8 +584,8 @@ export function PosTerminal() {
                                 <span className="text-indigo-600 font-black text-3xl tracking-tight leading-none font-['DM_Sans',sans-serif]">Nrs. {(subtotal + (subtotal * taxRate)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                         </div>
-                        <Button className="w-full h-12 text-base font-bold font-['DM_Sans',sans-serif] bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 border-0 hover:scale-[1.02] transition-all duration-300 text-white shadow-xl shadow-indigo-500/25 mt-4 disabled:opacity-70 disabled:hover:scale-100 hidden md:flex" disabled={cart.length === 0} onClick={handleCheckoutInit}>
-                            Open Tender Modal
+                        <Button className="w-full h-14 text-lg font-black font-['DM_Sans',sans-serif] bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 border-0 hover:scale-[1.02] transition-all duration-300 text-white shadow-2xl shadow-purple-500/25 mt-4 disabled:opacity-70 disabled:hover:scale-100 hidden md:flex rounded-2xl uppercase tracking-widest" disabled={cart.length === 0} onClick={handleCheckoutInit}>
+                            Proceed to Tender
                         </Button>
                     </div>
                 </div>

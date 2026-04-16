@@ -74,10 +74,10 @@ export function WholesaleOrdersPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-800">
+                    <h1 className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">
                         Supply <span className="text-sky-600">Orders</span>
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1">Track all supply deliveries to clients</p>
+                    <p className="text-sm text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1">Track all supply deliveries to clients and monitor pending payments</p>
                 </div>
                 <button
                     onClick={() => setCreateOpen(true)}
@@ -90,28 +90,28 @@ export function WholesaleOrdersPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
-                <Card className="border-0 shadow-sm font-bold">
+                <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Revenue</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Total Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-800">Rs. {totalRevenue.toLocaleString()}</div>
+                        <div className="text-2xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">Rs. {totalRevenue.toLocaleString()}</div>
                     </CardContent>
                 </Card>
-                <Card className="border-0 shadow-sm font-bold">
+                <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Received</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Received</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">Rs. {totalReceived.toLocaleString()}</div>
+                        <div className="text-2xl font-black text-green-600 tracking-tight font-['DM_Sans',sans-serif]">Rs. {totalReceived.toLocaleString()}</div>
                     </CardContent>
                 </Card>
-                <Card className={`border-0 shadow-sm font-bold ${totalPending > 0 ? 'ring-2 ring-amber-200' : ''}`}>
+                <Card className={`bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl ${totalPending > 0 ? 'ring-2 ring-amber-500/20' : ''}`}>
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Pending</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${totalPending > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                        <div className={`text-2xl font-black tracking-tight font-['DM_Sans',sans-serif] ${totalPending > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                             Rs. {totalPending.toLocaleString()}
                         </div>
                     </CardContent>
@@ -121,18 +121,18 @@ export function WholesaleOrdersPage() {
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
-                        placeholder="Search by client or order number..."
+                        placeholder="Search client or order number..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 bg-white focus-visible:ring-sky-500 focus-visible:border-sky-500"
+                        className="pl-10 h-11 bg-white/50 backdrop-blur-sm border-slate-200/60 rounded-full focus:ring-2 focus:ring-sky-500/20 font-medium font-['DM_Sans',sans-serif]"
                     />
                 </div>
                 <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="h-11 px-3 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:ring-sky-500 focus:border-sky-500"
+                    className="h-11 px-6 rounded-full border border-slate-200/60 bg-white/50 backdrop-blur-sm text-sm font-bold focus:ring-2 focus:ring-sky-500/20 outline-none transition-all cursor-pointer font-['DM_Sans',sans-serif] text-slate-600"
                 >
                     <option value="all">All Status</option>
                     <option value="paid">Paid</option>
@@ -143,19 +143,19 @@ export function WholesaleOrdersPage() {
             </div>
 
             {/* Orders Table */}
-            <Card className="border-0 shadow-sm overflow-hidden">
+            <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/80">
-                                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Order</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Client</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
-                                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Items</th>
-                                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Total</th>
-                                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Paid</th>
-                                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-                                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-16"></th>
+                            <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">
+                                <th className="text-left px-4 py-4">Order</th>
+                                <th className="text-left px-4 py-4">Client</th>
+                                <th className="text-left px-4 py-4">Date</th>
+                                <th className="text-center px-4 py-4">Items</th>
+                                <th className="text-right px-4 py-4">Total</th>
+                                <th className="text-right px-4 py-4">Paid</th>
+                                <th className="text-center px-4 py-4">Status</th>
+                                <th className="text-right px-4 py-4 w-16"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -181,13 +181,13 @@ export function WholesaleOrdersPage() {
                                                 day: 'numeric', month: 'short', year: 'numeric'
                                             })}
                                         </td>
-                                        <td className="px-4 py-3 text-center text-sm text-slate-600">
+                                        <td className="px-4 py-4 text-center text-sm text-slate-500 font-medium">
                                             {Array.isArray(order.items) ? order.items.length : 0}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-bold text-slate-800">
+                                        <td className="px-4 py-4 text-right font-black text-slate-800 font-['DM_Sans',sans-serif]">
                                             Rs. {order.total_amount?.toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-medium text-green-700">
+                                        <td className="px-4 py-4 text-right text-sm font-bold text-green-700 font-['DM_Sans',sans-serif]">
                                             Rs. {order.paid_amount?.toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-center">

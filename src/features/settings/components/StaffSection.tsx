@@ -176,11 +176,11 @@ export function StaffSection() {
 
     return (
         <div className="space-y-6">
-            <Card className="border-0 shadow-md ring-1 ring-slate-200">
-                <CardHeader className="bg-slate-50/50 rounded-t-xl border-b border-slate-100">
+            <Card className="bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200/60 overflow-hidden rounded-2xl">
+                <CardHeader className="bg-white/50 border-b border-slate-100 pb-6 pt-8 px-8">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
-                            <CardTitle className="text-xl text-slate-800">Staff Management</CardTitle>
+                            <CardTitle className="text-xl font-bold text-slate-800 font-['DM_Sans',sans-serif]">Staff Management</CardTitle>
                             <CardDescription>Configure Role-Based Access Control (RBAC) across the POS.</CardDescription>
                         </div>
                         <div className="flex gap-2">

@@ -55,13 +55,13 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white w-full max-w-xl shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300">
+            <div className="relative bg-white/90 backdrop-blur-2xl w-full max-w-xl shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300 border-l border-white/20">
                 {/* Header */}
-                <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+                <div className="sticky top-0 z-10 bg-white/50 backdrop-blur-md border-b border-slate-100 px-6 py-5 flex items-center justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-800">{client.name}</h2>
+                        <h2 className="text-xl font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight">{client.name}</h2>
                         {client.contact_person && (
-                            <p className="text-sm text-slate-500">{client.contact_person}</p>
+                            <p className="text-sm text-slate-500 font-medium font-['DM_Sans',sans-serif]">{client.contact_person}</p>
                         )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -112,12 +112,12 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     {activeTab === 'details' && (
                         <>
                     {/* Balance Card */}
-                    <div className={`rounded-xl p-5 ${client.balance > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-green-50 border border-green-200'}`}>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Outstanding Balance</p>
-                        <p className={`text-3xl font-black ${client.balance > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                    <div className={`rounded-2xl p-6 shadow-sm border ${client.balance > 0 ? 'bg-amber-50/50 border-amber-200/50' : 'bg-emerald-50/50 border-emerald-200/50'}`}>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] mb-2">Outstanding Balance</p>
+                        <p className={`text-4xl font-black font-['DM_Sans',sans-serif] tracking-tighter ${client.balance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                             Rs. {Math.abs(client.balance).toLocaleString()}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-slate-500 font-medium mt-2">
                             {client.balance > 0 ? 'Client owes you' : client.balance < 0 ? 'You owe client (advance)' : 'All settled ✓'}
                         </p>
                     </div>

@@ -11,20 +11,20 @@ interface TopProductsCardProps {
 
 export function TopProductsCard({ title = "Product Performance Board", products }: TopProductsCardProps) {
     return (
-        <Card className="col-span-1 lg:col-span-2 border-t-4 border-t-pink-500 shadow-sm overflow-hidden flex flex-col h-full bg-white">
-            <CardHeader className="bg-slate-50 border-b border-slate-100 flex-none pb-4 flex flex-row items-center justify-between">
+        <Card className="col-span-1 lg:col-span-2 bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300">
+            <CardHeader className="bg-transparent border-b border-slate-100/50 flex-none pb-4 flex flex-row items-center justify-between p-6">
                 <div>
-                    <CardTitle className="text-xl font-bold text-slate-800">{title}</CardTitle>
-                    <CardDescription className="text-sm">Comprehensive breakdown of product profitability</CardDescription>
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">{title}</CardTitle>
+                    <CardDescription className="text-sm font-medium text-slate-500 font-['DM_Sans',sans-serif] mt-1">Comprehensive breakdown of product profitability</CardDescription>
                 </div>
-                <Link to="/analytics/products" className="text-sm font-medium text-pink-600 hover:text-pink-700 flex items-center gap-1 transition-colors group px-3 py-1.5 rounded-lg hover:bg-pink-50">
+                <Link to="/analytics/products" className="text-[10px] font-bold font-['DM_Sans',sans-serif] uppercase tracking-wider text-pink-600 hover:text-pink-700 flex items-center gap-1 transition-colors group px-4 py-2 rounded-xl bg-pink-50/50 hover:bg-pink-100/50 border border-pink-100">
                     View Report <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-x-auto">
                 <div className="min-w-[800px]">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-500 uppercase bg-slate-50/80 border-b border-slate-200">
+                        <thead className="bg-slate-50/50 border-b border-slate-200/60 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">
                             <tr>
                                 <th className="px-6 py-4 font-bold tracking-wider">Rank</th>
                                 <th className="px-6 py-4 font-bold tracking-wider">Product Name</th>
@@ -53,27 +53,27 @@ export function TopProductsCard({ title = "Product Performance Board", products 
                                     return (
                                         <tr key={index} className="hover:bg-slate-50/80 transition-colors group">
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-pink-100 text-pink-700 font-bold text-xs ring-1 ring-pink-200 shadow-sm">
+                                                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-pink-50 text-pink-600 font-bold text-xs ring-1 ring-pink-500/20 shadow-sm font-['DM_Sans',sans-serif]">
                                                     #{index + 1}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 font-bold text-slate-800 whitespace-nowrap">
+                                            <td className="px-6 py-4 font-black text-slate-800 whitespace-nowrap font-['DM_Sans',sans-serif] tracking-tight text-base">
                                                 {product.name}
                                             </td>
-                                            <td className="px-6 py-4 text-right font-medium text-slate-600">
+                                            <td className="px-6 py-4 text-right font-bold text-slate-600 font-['DM_Sans',sans-serif]">
                                                 {product.quantity}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className="font-semibold text-slate-700">Nrs. {product.revenue.toLocaleString()}</span>
+                                                <span className="font-bold text-slate-700 font-['DM_Sans',sans-serif]">Nrs. {product.revenue.toLocaleString()}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className="font-medium text-slate-500">Nrs. {product.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                                <span className="font-medium text-slate-500 font-['DM_Sans',sans-serif]">Nrs. {product.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className="font-bold text-purple-700">Nrs. {product.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                                <span className="font-black text-purple-700 font-['DM_Sans',sans-serif]">Nrs. {product.profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <Badge variant="outline" className={`font-black tracking-tight ${marginColorBadge}`}>
+                                                <Badge variant="outline" className={`font-black tracking-tight font-['DM_Sans',sans-serif] ${marginColorBadge}`}>
                                                     {product.marginPct.toFixed(1)}%
                                                 </Badge>
                                             </td>

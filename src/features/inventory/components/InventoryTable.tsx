@@ -646,8 +646,8 @@ export function InventoryTable() {
 
 
 
-            <Card className="shadow-sm border-0 ring-1 ring-gray-200">
-                <CardHeader className="pb-4">
+            <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
+                <CardHeader className="pb-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl mb-2">
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <CardTitle className="text-xl font-bold text-gray-900">Inventory Management</CardTitle>
@@ -985,12 +985,12 @@ export function InventoryTable() {
                             </Dialog>
                         </div>
                     </div>
-                    <div className="relative">
+                    <div className="relative mt-2">
                         <Input 
                             placeholder="Search products..." 
                             value={searchQuery} 
                             onChange={(e) => setSearchQuery(e.target.value)} 
-                            className="max-w-sm h-9 bg-gray-50 border-transparent focus:bg-white transition-all text-sm pl-9"
+                            className="max-w-sm h-10 bg-white border-slate-200/60 rounded-full focus:ring-2 focus:ring-indigo-500/20 font-['DM_Sans',sans-serif] shadow-sm text-sm pl-10"
                         />
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -1004,11 +1004,11 @@ export function InventoryTable() {
                     >
                         <TableHeader>
                             <TableRow className="hover:bg-transparent">
-                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px]">Item Name</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px]">Category</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px] text-right">Stock</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px] text-right">Selling Price</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-gray-50 py-3 font-extrabold text-gray-900 border-b border-gray-200 uppercase tracking-wider text-[10px] text-center w-[160px]">Actions</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Item Name</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Category</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Stock</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Selling Price</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] text-center w-[160px] font-['DM_Sans',sans-serif]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                             <TableBody>

@@ -12,14 +12,14 @@ interface RecentOrdersCardProps {
 
 export function RecentOrdersCard({ title = "Recent Transactions", orders = [] }: RecentOrdersCardProps) {
     return (
-        <Card className="col-span-1 lg:col-span-2 border-t-4 border-t-purple-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="col-span-1 lg:col-span-2 bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100/50 p-6">
                 <div>
-                    <CardTitle>{title}</CardTitle>
-                    <CardDescription>Latest orders processed through the POS</CardDescription>
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">{title}</CardTitle>
+                    <CardDescription className="text-sm font-medium text-slate-500 font-['DM_Sans',sans-serif] mt-1">Latest orders processed through the POS</CardDescription>
                 </div>
-                <Link to="/orders" className="text-sm font-medium text-purple-600 hover:text-purple-700 flex items-center gap-1 hover:underline">
-                    View All <ArrowRight className="w-4 h-4" />
+                <Link to="/orders" className="text-[10px] font-bold font-['DM_Sans',sans-serif] uppercase tracking-wider text-purple-600 hover:text-purple-700 flex items-center gap-1 transition-colors group px-4 py-2 rounded-xl bg-purple-50/50 hover:bg-purple-100/50 border border-purple-100">
+                    View All <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
             </CardHeader>
             <CardContent>
@@ -28,23 +28,23 @@ export function RecentOrdersCard({ title = "Recent Transactions", orders = [] }:
                         <div className="text-center py-8 text-slate-500 text-sm">No recent transactions.</div>
                     ) : (
                         orders.map((order) => (
-                            <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-slate-50/50">
+                            <div key={order.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-white/50 hover:bg-white transition-colors group">
                                 <div className="space-y-1">
-                                    <p className="text-sm font-medium text-slate-800">
+                                    <p className="text-base font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight group-hover:text-purple-600 transition-colors">
                                         Order #{order.id}
                                     </p>
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-[11px] font-bold text-slate-400 font-['DM_Sans',sans-serif] uppercase tracking-[0.1em]">
                                         {format(new Date(order.createdAt), 'MMM d, yyyy h:mm a')}
                                     </p>
-                                    <div className="flex items-center gap-2 mt-1 -mb-1">
-                                        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    <div className="flex items-center gap-2 mt-2 -mb-1">
+                                        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold font-['DM_Sans',sans-serif]">
                                             By: {order.cashierId || order.cashierName || 'System'}
                                         </p>
-                                        <Badge variant="outline" className={`text-[9px] font-bold h-4 py-0 px-1.5 border-0 ${order.paymentMethod === 'Cash' ? 'bg-emerald-50 text-emerald-700' : order.paymentMethod === 'Card' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+                                        <Badge variant="outline" className={`text-[9px] font-black tracking-wider uppercase font-['DM_Sans',sans-serif] h-5 py-0 px-2 border-0 ${order.paymentMethod === 'Cash' ? 'bg-emerald-50 text-emerald-700' : order.paymentMethod === 'Card' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
                                             {order.paymentMethod || 'Cash'}
                                         </Badge>
                                     </div>
-                                    <div className="flex gap-1 text-xs text-slate-600 mt-1">
+                                    <div className="flex gap-1 text-xs font-medium text-slate-500 font-['DM_Sans',sans-serif] mt-1.5">
                                         {order.items.slice(0, 2).map((item, i) => (
                                             <span key={i} className="truncate max-w-[120px]">
                                                 {item.quantity}x {item.name}{i === 0 && order.items.length > 1 ? ',' : ''}
@@ -54,7 +54,7 @@ export function RecentOrdersCard({ title = "Recent Transactions", orders = [] }:
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                    <span className="font-semibold text-slate-800">Nrs. {order.totalAmount.toLocaleString()}</span>
+                                    <span className="text-lg font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">Nrs. {order.totalAmount.toLocaleString()}</span>
                                 </div>
                             </div>
                         ))

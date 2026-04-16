@@ -467,7 +467,7 @@ export function ProductAnalyticsPage() {
             )}
 
             {/* Visual Analytics - Pareto Chart */}
-            <Card className="border-t-4 border-t-purple-600 shadow-md">
+            <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm border-t-4 border-t-purple-600 rounded-2xl">
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-purple-600" />
@@ -521,8 +521,8 @@ export function ProductAnalyticsPage() {
             </Card>
 
             {/* Main Content */}
-            <Card className="border-t-4 border-t-pink-500 shadow-sm">
-                <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm border-t-4 border-t-pink-500 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-white/50 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <CardTitle className="text-lg text-slate-800">Performance Ledger</CardTitle>
                         <CardDescription>Metrics for {getDateRangeLabel()}</CardDescription>
@@ -547,13 +547,13 @@ export function ProductAnalyticsPage() {
                             </button>
                         </div>
 
-                        <div className="relative flex-1 md:w-72 md:flex-none">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <div className="relative flex-1 md:w-72 md:flex-none mt-2 md:mt-0">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <Input
                                 placeholder="Search products..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-white"
+                                className="pl-10 h-10 bg-white border-slate-200/60 rounded-full focus:ring-2 focus:ring-indigo-500/20 font-['DM_Sans',sans-serif] shadow-sm text-sm"
                             />
                         </div>
                     </div>
@@ -629,27 +629,27 @@ export function ProductAnalyticsPage() {
                             </div>
                         ) : (
                             <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-50/80 border-b border-slate-200 sticky top-0 z-10">
+                                <thead className="text-[10px] text-slate-400 uppercase bg-slate-50/80 border-b border-slate-200 sticky top-0 z-10 font-bold tracking-[0.2em] font-['DM_Sans',sans-serif]">
                                     <tr>
-                                        <th className="px-4 py-4 font-bold tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
+                                        <th className="px-4 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
                                             <div className="flex items-center gap-1">Product <SortIcon field="name" /></div>
                                         </th>
-                                        <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('quantity')}>
+                                        <th className="px-4 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('quantity')}>
                                             <div className="flex items-center justify-end gap-1"><SortIcon field="quantity" /> Qty Sold</div>
                                         </th>
-                                        <th className="px-4 py-4 font-bold tracking-wider text-right" title="Average Selling Price">ASP</th>
-                                        <th className="px-4 py-4 font-bold text-emerald-600 tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('revenue')}>
+                                        <th className="px-4 py-4 text-right" title="Average Selling Price">ASP</th>
+                                        <th className="px-4 py-4 text-emerald-600 text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('revenue')}>
                                             <div className="flex items-center justify-end gap-1"><SortIcon field="revenue" /> Gross Rev</div>
                                         </th>
-                                        <th className="px-4 py-4 font-bold text-red-500 tracking-wider text-right">Given Away</th>
-                                        <th className="px-4 py-4 font-bold tracking-wider text-right">COGS</th>
-                                        <th className="px-4 py-4 font-bold tracking-wider text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('profit')}>
+                                        <th className="px-4 py-4 text-red-500 text-right">Given Away</th>
+                                        <th className="px-4 py-4 text-right">COGS</th>
+                                        <th className="px-4 py-4 text-slate-900 text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('profit')}>
                                             <div className="flex items-center justify-end gap-1"><SortIcon field="profit" /> Net Profit</div>
                                         </th>
-                                        <th className="px-4 py-4 font-bold tracking-wider text-left cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('marginPct')}>
+                                        <th className="px-4 py-4 text-left cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('marginPct')}>
                                             <div className="flex items-center gap-1"><SortIcon field="marginPct" /> Insight</div>
                                         </th>
-                                        <th className="px-4 py-4 font-bold tracking-wider text-right">
+                                        <th className="px-4 py-4 text-right">
                                             Actions
                                         </th>
                                     </tr>

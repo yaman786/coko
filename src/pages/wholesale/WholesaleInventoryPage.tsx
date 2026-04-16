@@ -4,7 +4,7 @@ import { wholesaleApi } from '../../services/wholesaleApi';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Package, Plus, Search, AlertTriangle, Pencil, Trash2, Boxes } from 'lucide-react';
+import { Package, Plus, Search, AlertTriangle, Pencil, Trash2, Boxes, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddWsProductDialog } from '../../features/wholesale/components/AddWsProductDialog';
 import type { WsProduct } from '../../types';
@@ -86,10 +86,10 @@ export function WholesaleInventoryPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-800">
+                    <h1 className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">
                         Stock <span className="text-sky-600">Warehouse</span>
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1">Manage wholesale inventory</p>
+                    <p className="text-sm text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1">Manage wholesale inventory and global logistics</p>
                 </div>
                 <button
                     onClick={handleAdd}
@@ -102,40 +102,40 @@ export function WholesaleInventoryPage() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border-0 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Products</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Total Products</CardTitle>
                         <Boxes className="w-4 h-4 text-sky-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-800">{activeProducts.length}</div>
+                        <div className="text-2xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">{activeProducts.length}</div>
                     </CardContent>
                 </Card>
-                <Card className="border-0 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Categories</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Categories</CardTitle>
                         <Package className="w-4 h-4 text-sky-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-800">{categories.length}</div>
+                        <div className="text-2xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">{categories.length}</div>
                     </CardContent>
                 </Card>
-                <Card className="border-0 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Stock Value</CardTitle>
-                        <Package className="w-4 h-4 text-orange-500" />
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Stock Value</CardTitle>
+                        <DollarSign className="w-4 h-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-800">Rs. {totalStockValue.toLocaleString()}</div>
+                        <div className="text-2xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">Rs. {totalStockValue.toLocaleString()}</div>
                     </CardContent>
                 </Card>
-                <Card className={`border-0 shadow-sm ${lowStockProducts.length > 0 ? 'ring-2 ring-amber-200' : ''}`}>
+                <Card className={`bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl ${lowStockProducts.length > 0 ? 'ring-2 ring-amber-500/20' : ''}`}>
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Low Stock</CardTitle>
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">Low Stock</CardTitle>
                         <AlertTriangle className={`w-4 h-4 ${lowStockProducts.length > 0 ? 'text-amber-500' : 'text-slate-400'}`} />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${lowStockProducts.length > 0 ? 'text-amber-600' : 'text-slate-800'}`}>
+                        <div className={`text-2xl font-black tracking-tight font-['DM_Sans',sans-serif] ${lowStockProducts.length > 0 ? 'text-amber-600' : 'text-slate-800'}`}>
                             {lowStockProducts.length}
                         </div>
                     </CardContent>
@@ -144,28 +144,28 @@ export function WholesaleInventoryPage() {
 
             {/* Search */}
             <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                     placeholder="Search products..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-11 bg-white focus-visible:ring-sky-500 focus-visible:border-sky-500"
+                    className="pl-10 h-11 bg-white/50 backdrop-blur-sm border-slate-200/60 rounded-full focus:ring-2 focus:ring-sky-500/20 font-medium font-['DM_Sans',sans-serif]"
                 />
             </div>
 
             {/* Products Table */}
-            <Card className="border-0 shadow-sm overflow-hidden">
+            <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/80">
-                                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Product</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Category</th>
-                                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Stock</th>
-                                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Unit</th>
-                                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Cost</th>
-                                <th className="text-right px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Base Price</th>
-                                <th className="text-center px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>
+                            <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif]">
+                                <th className="text-left px-4 py-4">Product</th>
+                                <th className="text-left px-4 py-4">Category</th>
+                                <th className="text-center px-4 py-4">Stock</th>
+                                <th className="text-center px-4 py-4">Unit</th>
+                                <th className="text-right px-4 py-4">Cost</th>
+                                <th className="text-right px-4 py-4">Base Price</th>
+                                <th className="text-center px-4 py-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -202,11 +202,11 @@ export function WholesaleInventoryPage() {
                                                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500 inline ml-1.5" />
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-center text-sm text-slate-600">{product.unit}</td>
-                                        <td className="px-4 py-3 text-right text-sm font-medium text-slate-600">
+                                        <td className="px-4 py-4 text-center text-sm text-slate-500 font-medium">{product.unit}</td>
+                                        <td className="px-4 py-4 text-right text-sm font-bold text-slate-600 font-['DM_Sans',sans-serif]">
                                             Rs. {product.cost_price.toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-sm font-bold text-sky-700">
+                                        <td className="px-4 py-4 text-right text-sm font-black text-sky-700 font-['DM_Sans',sans-serif]">
                                             Rs. {product.base_sell_price.toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-center">

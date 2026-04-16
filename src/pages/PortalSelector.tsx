@@ -13,7 +13,7 @@ export default function PortalSelector() {
                         <span className="text-white font-black text-xl tracking-tighter italic">C</span>
                     </div>
                 </div>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight sm:text-5xl">
+                <h1 className="text-4xl font-black text-slate-900 tracking-tighter sm:text-5xl font-['DM_Sans',sans-serif]">
                     Choose Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">Portal</span>
                 </h1>
                 <p className="mt-4 text-slate-500 font-medium text-lg">Select a department to continue to your workspace.</p>
@@ -29,7 +29,7 @@ export default function PortalSelector() {
                     <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center mb-6 border border-pink-100 group-hover:bg-pink-500 group-hover:scale-110 transition-all duration-500">
                         <ShoppingBag className="w-7 h-7 text-pink-600 group-hover:text-white transition-colors duration-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">Coko Boutique</h2>
+                    <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight font-['DM_Sans',sans-serif]">Coko Boutique</h2>
                     <p className="text-slate-500 font-medium leading-relaxed mb-8">
                         Retail Point of Sale, inventory management, and customer relations for the boutique.
                     </p>
@@ -49,7 +49,7 @@ export default function PortalSelector() {
                     <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mb-6 border border-slate-700 group-hover:bg-sky-600 group-hover:scale-110 transition-all duration-500 text-white">
                         <Warehouse className="w-7 h-7 text-slate-300 group-hover:text-white transition-colors duration-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">GOD Warehouse</h2>
+                    <h2 className="text-2xl font-black text-white mb-3 tracking-tight font-['DM_Sans',sans-serif]">GOD Warehouse</h2>
                     <p className="text-slate-400 font-medium leading-relaxed mb-8">
                         Bulk supply management, wholesale client orders, and warehouse logistics.
                     </p>

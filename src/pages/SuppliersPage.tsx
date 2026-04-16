@@ -93,14 +93,14 @@ export function SuppliersPage() {
                     <p className="text-slate-500 font-medium">Manage your vendor balances and financial history.</p>
                 </div>
                 
-                <Card className="bg-white border-slate-200/60 shadow-sm min-w-[240px]">
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center border border-orange-100/50">
-                            <ArrowUpRight className="w-6 h-6 text-orange-600" />
+                <Card className="bg-white/80 backdrop-blur-2xl border-slate-200/60 shadow-xl rounded-3xl min-w-[320px] hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                    <CardContent className="p-6 flex items-center gap-5">
+                        <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center border border-orange-100/50 shadow-inner">
+                            <ArrowUpRight className="w-8 h-8 text-orange-600" />
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Owed</p>
-                            <p className="text-2xl font-black text-slate-900 tracking-tight">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Total Owed</p>
+                            <p className="text-3xl font-black text-rose-600 tracking-tighter font-['DM_Sans',sans-serif] mt-1">
                                 Nrs. {totalOwed.toLocaleString()}
                             </p>
                         </div>
@@ -109,105 +109,58 @@ export function SuppliersPage() {
             </div>
 
             {/* Actions Bar */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                    <div className="relative flex-1 sm:max-w-md">
-                        <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme.text}`} />
-                        <Input
-                            placeholder="Search suppliers by name, phone or email..."
-                            className={`pl-10 h-11 rounded-xl border-slate-200 bg-white/50 backdrop-blur-sm focus:border-${isWholesale ? 'sky-400' : 'purple-400'} focus:ring-${isWholesale ? 'sky-100' : 'purple-100'} transition-all font-medium`}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
+            <div className="flex flex-col sm:flex-row gap-6 items-center">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Input
+                        placeholder="Search vendors..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-13 h-14 bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-full focus:ring-4 focus:ring-purple-500/10 shadow-sm font-['DM_Sans',sans-serif] text-base font-medium"
+                    />
+                </div>
                 <Button 
                     onClick={() => {
                         setEditingSupplier(null);
                         setIsAddOpen(true);
                     }}
-                    className={`w-full sm:w-auto h-11 px-6 rounded-xl ${theme.bg} ${theme.hover} shadow-lg ${theme.shadow} flex items-center gap-2 font-bold`}
+                    className={`${theme.bg} ${theme.hover} text-white px-8 h-14 rounded-full font-black font-['DM_Sans',sans-serif] text-base shadow-xl transition-all duration-300 hover:scale-[1.02] flex items-center gap-3 w-full sm:w-auto`}
                 >
                     <Plus className="w-5 h-5" />
-                    Add New Vendor
+                    Add Vendor
                 </Button>
             </div>
 
-            {/* Main Listing */}
-            {filteredSuppliers.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
-                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
-                        <Building2 className="w-8 h-8 text-slate-300" />
-                    </div>
-                    <div>
-                        <p className="text-lg font-bold text-slate-900">No suppliers found</p>
-                        <p className="text-slate-500">Start by adding your first vendor to track balances.</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredSuppliers.map((supplier) => (
-                        <Card 
-                            key={supplier.id} 
-                            onClick={() => setSelectedSupplier(supplier)}
-                            className={`group hover:border-${isWholesale ? 'sky' : 'purple'}-200 transition-all hover:shadow-xl hover:shadow-${isWholesale ? 'sky' : 'purple'}-500/5 cursor-pointer relative overflow-hidden bg-white border-slate-200/80 rounded-2xl`}
-                        >
-                            <CardContent className="p-6 space-y-4">
-                                <div className="flex justify-between items-start">
-                                        <h3 className="font-bold text-lg text-slate-900">{supplier.name}</h3>
-                                        <div className="flex flex-col gap-1.5 mt-1">
-                                            <p className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
-                                                <Building2 className={`w-3.5 h-3.5 ${theme.text}`} />
-                                                {supplier.contact_person || 'No contact person'}
-                                            </p>
-                                        </div>
-                                    <div className={`px-2.5 py-1 rounded-lg text-xs font-bold tracking-tight ${
-                                        supplier.current_balance > 0 
-                                            ? 'bg-orange-50 text-orange-700 border border-orange-100' 
-                                            : 'bg-green-50 text-green-700 border border-green-100'
-                                    }`}>
-                                        {supplier.current_balance > 0 ? 'DUE' : 'CLEAR'}
-                                    </div>
+            {/* Suppliers Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                {filteredSuppliers.map((supplier) => (
+                    <Card 
+                        key={supplier.id} 
+                        className="group bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer relative shadow-sm"
+                        onClick={() => setSelectedSupplier(supplier)}
+                    >
+                        <CardContent className="p-8 space-y-6">
+                            <div className="flex justify-between items-start">
+                                <div className={`w-16 h-16 rounded-[1.25rem] ${theme.iconBg} flex items-center justify-center border border-${theme.primary}/10 group-hover:rotate-12 transition-transform duration-500`}>
+                                    <Building2 className={`w-8 h-8 ${theme.text}`} />
                                 </div>
-
-                                <div className="space-y-2 pt-2 border-t border-slate-50">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="text-slate-400 font-medium">Balance Owed</span>
-                                        <span className={`font-black ${supplier.current_balance > 0 ? 'text-orange-600' : 'text-slate-600'}`}>
-                                            Nrs. {supplier.current_balance.toLocaleString()}
-                                        </span>
-                                    </div>
-                                    {supplier.phone && (
-                                        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                                            <Phone className="w-3.5 h-3.5" />
-                                            {supplier.phone}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center gap-2 pt-2">
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className={`flex-1 rounded-lg font-bold border-slate-200 hover:bg-${isWholesale ? 'sky' : 'purple'}-50 hover:text-${isWholesale ? 'sky' : 'purple'}-700 hover:border-${isWholesale ? 'sky' : 'purple'}-200 transition-all`}
-                                    >
-                                        View Ledger
-                                    </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className={`flex-1 rounded-lg font-bold border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-${isWholesale ? 'sky' : 'purple'}-600 transition-all flex items-center justify-center gap-2`}
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full bg-slate-100/50 hover:bg-white text-slate-500 hover:text-blue-600 shadow-sm border border-slate-200/50"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingSupplier(supplier);
                                             setIsAddOpen(true);
                                         }}
                                     >
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                        Edit
+                                        <Edit2 className="w-4 h-4" />
                                     </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-9 w-9 text-slate-400 hover:text-red-500 transition-colors"
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full bg-slate-100/50 hover:bg-white text-slate-500 hover:text-rose-600 shadow-sm border border-slate-200/50"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setSupplierToDelete(supplier);
@@ -216,11 +169,47 @@ export function SuppliersPage() {
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
+                            </div>
+
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 font-['DM_Sans',sans-serif] tracking-tight group-hover:text-purple-600 transition-colors">{supplier.name}</h3>
+                                {supplier.contact_person && (
+                                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] font-['DM_Sans',sans-serif] mt-1">{supplier.contact_person}</p>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-['DM_Sans',sans-serif]">Contact</p>
+                                    <p className="text-sm font-black text-slate-700 font-['DM_Sans',sans-serif] flex items-center gap-2 truncate">
+                                        <Phone className="w-3.5 h-3.5 text-slate-300" />
+                                        {supplier.phone || '-'}
+                                    </p>
+                                </div>
+                                <div className="space-y-1 text-right">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-['DM_Sans',sans-serif]">Balance</p>
+                                    <p className={`text-lg font-black font-['DM_Sans',sans-serif] ${supplier.current_balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                        Nrs. {supplier.current_balance.toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                        <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-${theme.primary}/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                    </Card>
+                ))}
+
+                {filteredSuppliers.length === 0 && (
+                    <div className="col-span-full py-24 flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                            <Truck className="w-12 h-12 text-slate-200" />
+                        </div>
+                        <div className="space-y-1">
+                            <h3 className="text-xl font-bold text-slate-400 font-['DM_Sans',sans-serif]">No vendors found</h3>
+                            <p className="text-slate-300 font-medium font-['DM_Sans',sans-serif]">Try adjusting your search query</p>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             <AddSupplierDialog 
                 open={isAddOpen} 
