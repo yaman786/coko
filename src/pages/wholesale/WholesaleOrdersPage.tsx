@@ -35,6 +35,7 @@ export function WholesaleOrdersPage() {
     const [editStatus, setEditStatus] = useState<string>('');
     const [editPaymentStatus, setEditPaymentStatus] = useState<string>('');
     const [editPaymentMethod, setEditPaymentMethod] = useState<string>('');
+    const [editDate, setEditDate] = useState<string>('');
 
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ['ws_orders'],
@@ -88,6 +89,7 @@ export function WholesaleOrdersPage() {
         setEditStatus(order.status);
         setEditPaymentStatus(order.payment_status);
         setEditPaymentMethod(order.payment_method);
+        setEditDate(new Date(order.created_at).toISOString().split('T')[0]);
     };
 
     const filteredOrders = useMemo(() => {
@@ -386,6 +388,15 @@ export function WholesaleOrdersPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Order Date (Backdate)</label>
+                                <Input
+                                    type="date"
+                                    value={editDate}
+                                    onChange={(e) => setEditDate(e.target.value)}
+                                    className="h-12 rounded-2xl border-slate-200 font-bold"
+                                />
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Payment Status</label>
@@ -426,7 +437,8 @@ export function WholesaleOrdersPage() {
                                 updates: {
                                     status: editStatus,
                                     payment_status: editPaymentStatus as any,
-                                    payment_method: editPaymentMethod as any
+                                    payment_method: editPaymentMethod as any,
+                                    created_at: new Date(editDate)
                                 }
                             })}
                         >

@@ -17,6 +17,7 @@ export function EditTransactionDialog({ open, onOpenChange, transaction, clientI
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('Cash');
     const [notes, setNotes] = useState('');
+    const [date, setDate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -24,6 +25,7 @@ export function EditTransactionDialog({ open, onOpenChange, transaction, clientI
             setAmount(transaction.amount.toString());
             setMethod(transaction.payment_method || 'Cash');
             setNotes(transaction.reference_note || '');
+            setDate(new Date(transaction.created_at).toISOString().split('T')[0]);
         }
     }, [transaction, open]);
 
@@ -47,7 +49,8 @@ export function EditTransactionDialog({ open, onOpenChange, transaction, clientI
                 {
                     amount: Number(amount),
                     payment_method: method,
-                    reference_note: notes || undefined
+                    reference_note: notes || undefined,
+                    created_at: new Date(date)
                 }
             );
             toast.success("Transaction updated successfully!");
@@ -104,6 +107,16 @@ export function EditTransactionDialog({ open, onOpenChange, transaction, clientI
                             <option value="Cheque">Cheque</option>
                             <option value="eSewa/Fonepay">eSewa / Fonepay</option>
                         </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Transaction Date</label>
+                        <input
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm font-medium focus:ring-2 focus:ring-slate-500 outline-none transition-all"
+                        />
                     </div>
 
                     <div className="space-y-2">
