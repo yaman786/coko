@@ -51,6 +51,7 @@ export function InventoryTable() {
     const [restockTubCost, setRestockTubCost] = useState('');
     const [restockPopcornWeight, setRestockPopcornWeight] = useState('');
     const [restockPopcornBoxes, setRestockPopcornBoxes] = useState('');
+    const [restockDate, setRestockDate] = useState(() => new Date().toISOString().split('T')[0]);
 
 
 
@@ -437,6 +438,7 @@ export function InventoryTable() {
         setRestockTubCost('');
         setRestockPopcornWeight('');
         setRestockPopcornBoxes('');
+        setRestockDate(new Date().toISOString().split('T')[0]);
     };
 
     const handleConfirmRestock = () => {
@@ -486,6 +488,7 @@ export function InventoryTable() {
                 },
                 actor_email: user?.email || 'unknown',
                 actor_name: user?.email?.split('@')[0] || 'Unknown',
+                createdAt: new Date(restockDate)
             });
             currentStock = 0;
         }
@@ -526,6 +529,15 @@ export function InventoryTable() {
                             queryClient.invalidateQueries({ queryKey: ['products'] });
                         }
                         toast.success('Popcorn Restocked', { description: `Added ${addWeight}g across ${addBoxes} boxes.` });
+                        api.logActivity({
+                            action: 'PRODUCT_RESTOCKED',
+                            category: 'INVENTORY',
+                            description: `Restocked "${restockItem.name}": ${restockItem.stock} → ${newStock} (+${addWeight}g).${wasAutoReconciled ? ' (Auto-reconciled negative balance)' : ''} Cost: Nrs.${newCostPrice?.toFixed(2)}`,
+                            metadata: { productId: restockItem.id, name: restockItem.name, previousStock: restockItem.stock, newStock, added: addWeight, added_unit: 'g', newCostPrice, autoReconciled: wasAutoReconciled },
+                            actor_email: user?.email || 'unknown',
+                            actor_name: user?.email?.split('@')[0] || 'Unknown',
+                            createdAt: new Date(restockDate)
+                        });
                         setRestockItem(null);
                     }
                 }
@@ -572,6 +584,7 @@ export function InventoryTable() {
                             metadata: { productId: restockItem.id, name: restockItem.name, previousStock: restockItem.stock, newStock, added: addQty, newCostPrice, variantCount: variants.length, autoReconciled: wasAutoReconciled },
                             actor_email: user?.email || 'unknown',
                             actor_name: user?.email?.split('@')[0] || 'Unknown',
+                            createdAt: new Date(restockDate)
                         });
                         setRestockItem(null);
                     }
@@ -1300,6 +1313,21 @@ export function InventoryTable() {
                                     />
                                 </div>
                             )}
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center px-1">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Date</Label>
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 text-[10px] font-black uppercase">Can Backdate</Badge>
+                                </div>
+                                <Input
+                                    type="date"
+                                    value={restockDate}
+                                    onChange={(e) => setRestockDate(e.target.value)}
+                                    max={new Date().toISOString().split('T')[0]}
+                                    className="h-11 bg-white border-slate-200 focus:ring-2 focus:ring-purple-500/20 font-bold"
+                                />
+                                <p className="text-[10px] text-slate-400 font-medium px-1 italic">Missing a delivery? Backdate it here for accurate records.</p>
+                            </div>
 
                             <Button
                                 onClick={handleConfirmRestock}
