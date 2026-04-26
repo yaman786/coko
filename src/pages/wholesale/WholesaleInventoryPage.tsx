@@ -10,6 +10,16 @@ import { toast } from 'sonner';
 import { AddWsProductDialog } from '../../features/wholesale/components/AddWsProductDialog';
 import { RestockWsProductDialog } from '../../features/wholesale/components/RestockWsProductDialog';
 import { WholesaleProductLedgerDialog } from '../../features/wholesale/components/WholesaleProductLedgerDialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '../../components/ui/alert-dialog';
 import type { WsProduct } from '../../types';
 
 export function WholesaleInventoryPage() {
@@ -21,6 +31,19 @@ export function WholesaleInventoryPage() {
     const [editingProduct, setEditingProduct] = useState<WsProduct | null>(null);
     const [restockProduct, setRestockProduct] = useState<WsProduct | null>(null);
     const [ledgerProduct, setLedgerProduct] = useState<WsProduct | null>(null);
+    const [confirmConfig, setConfirmConfig] = useState<{
+        open: boolean;
+        title: string;
+        description: string;
+        action: () => void;
+        variant: 'danger' | 'warning' | 'info';
+    }>({
+        open: false,
+        title: '',
+        description: '',
+        action: () => {},
+        variant: 'info'
+    });
 
     const { data: products = [], isLoading } = useQuery({
         queryKey: ['ws_products'],
@@ -271,9 +294,13 @@ export function WholesaleInventoryPage() {
                                                         </button>
                                                         <button
                                                             onClick={() => {
-                                                                if (confirm(`Archive "${product.name}"? It will be hidden from the warehouse but its history will be kept.`)) {
-                                                                    deleteMutation.mutate(product.id);
-                                                                }
+                                                                setConfirmConfig({
+                                                                    open: true,
+                                                                    title: 'Archive Product',
+                                                                    description: `Are you sure you want to archive "${product.name}"? It will be hidden from the warehouse but its history will be kept.`,
+                                                                    variant: 'warning',
+                                                                    action: () => deleteMutation.mutate(product.id)
+                                                                });
                                                             }}
                                                             className="p-1.5 rounded-lg hover:bg-amber-100 text-slate-400 hover:text-amber-600 transition-colors"
                                                             title="Archive"
@@ -292,9 +319,13 @@ export function WholesaleInventoryPage() {
                                                         </button>
                                                         <button
                                                             onClick={() => {
-                                                                if (confirm(`PERMANENT DELETE:\n\nAre you sure you want to delete "${product.name}" forever? This cannot be undone.`)) {
-                                                                    hardDeleteMutation.mutate(product.id);
-                                                                }
+                                                                setConfirmConfig({
+                                                                    open: true,
+                                                                    title: 'PERMANENT DELETE',
+                                                                    description: `Are you absolutely sure you want to delete "${product.name}" forever? This action is irreversible and may fail if there are linked orders.`,
+                                                                    variant: 'danger',
+                                                                    action: () => hardDeleteMutation.mutate(product.id)
+                                                                });
                                                             }}
                                                             className="p-2 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors"
                                                             title="Hard Delete"
@@ -332,6 +363,37 @@ export function WholesaleInventoryPage() {
                 product={ledgerProduct}
                 onClose={() => setLedgerProduct(null)}
             />
+
+            {/* Professional Confirm Dialog */}
+            <AlertDialog open={confirmConfig.open} onOpenChange={(open) => setConfirmConfig(prev => ({ ...prev, open }))}>
+                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className={`flex items-center gap-2 ${
+                            confirmConfig.variant === 'danger' ? 'text-rose-600' : 
+                            confirmConfig.variant === 'warning' ? 'text-amber-600' : 'text-sky-600'
+                        }`}>
+                            {confirmConfig.variant === 'danger' ? <AlertTriangle className="w-6 h-6" /> : <Boxes className="w-6 h-6" />}
+                            {confirmConfig.title}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 font-medium">
+                            {confirmConfig.description}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-2xl h-11 px-6 border-slate-200 font-semibold">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmConfig.action}
+                            className={`rounded-2xl h-11 px-6 font-bold text-white shadow-lg ${
+                                confirmConfig.variant === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-100' : 
+                                confirmConfig.variant === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-100' : 
+                                'bg-sky-600 hover:bg-sky-700 shadow-sky-100'
+                            }`}
+                        >
+                            Confirm Action
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

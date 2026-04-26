@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { wholesaleApi } from '../../../services/wholesaleApi';
-import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight, Trash2, RotateCcw, Ban } from 'lucide-react';
+import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight, Trash2, RotateCcw, Ban, AlertTriangle } from 'lucide-react';
 import { ClientPricingTable } from './ClientPricingTable';
 import { RecordClientPaymentDialog } from './RecordClientPaymentDialog';
 import { EditTransactionDialog } from './EditTransactionDialog';
 import type { WsClient, WsClientTransaction } from '../../../types';
 import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '../../../components/ui/alert-dialog';
 
 interface Props {
     client: WsClient;
@@ -22,19 +32,38 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingTx, setEditingTx] = useState<WsClientTransaction | null>(null);
 
+    const [confirmConfig, setConfirmConfig] = useState<{
+        open: boolean;
+        title: string;
+        description: string;
+        action: () => void;
+        variant: 'danger' | 'warning' | 'info';
+    }>({
+        open: false,
+        title: '',
+        description: '',
+        action: () => {},
+        variant: 'info'
+    });
+
     const handleDeleteTransaction = async (tx: WsClientTransaction) => {
-        if (!window.confirm(`Are you sure you want to delete this ${tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : 'Order Credit'} of Rs. ${tx.amount}?\n\nThis will automatically reverse the client's total balance to keep it accurate.`)) {
-            return;
-        }
-        try {
-            await wholesaleApi.deleteClientTransaction(tx.id, client.id, tx.amount, tx.type as any);
-            toast.success("Transaction deleted successfully");
-            queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
-            queryClient.invalidateQueries({ queryKey: ['ws_clients'] }); 
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete transaction");
-        }
+        setConfirmConfig({
+            open: true,
+            title: 'Delete Transaction',
+            description: `Are you sure you want to delete this ${tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : 'Order Credit'} of Rs. ${tx.amount}? This will automatically reverse the client's total balance.`,
+            variant: 'danger',
+            action: async () => {
+                try {
+                    await wholesaleApi.deleteClientTransaction(tx.id, client.id, tx.amount, tx.type as any);
+                    toast.success("Transaction deleted successfully");
+                    queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
+                    queryClient.invalidateQueries({ queryKey: ['ws_clients'] }); 
+                } catch (error) {
+                    console.error(error);
+                    toast.error("Failed to delete transaction");
+                }
+            }
+        });
     };
 
     const archiveMutation = useMutation({
@@ -113,9 +142,13 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                         {client.is_active ? (
                             <button 
                                 onClick={() => {
-                                    if (window.confirm("Archive this client? They will be hidden from active lists but their history will be preserved.")) {
-                                        archiveMutation.mutate();
-                                    }
+                                    setConfirmConfig({
+                                        open: true,
+                                        title: 'Archive Client',
+                                        description: `Archive "${client.name}"? They will be hidden from active lists but their financial history will be preserved.`,
+                                        variant: 'warning',
+                                        action: () => archiveMutation.mutate()
+                                    });
                                 }}
                                 className="p-2 rounded-lg hover:bg-amber-50 text-amber-600 transition-colors"
                                 title="Archive Client"
@@ -133,9 +166,13 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                 </button>
                                 <button 
                                     onClick={() => {
-                                        if (window.confirm("PERMANENT DELETE:\n\nAre you sure? This will erase the client record forever. This cannot be undone.")) {
-                                            hardDeleteMutation.mutate();
-                                        }
+                                        setConfirmConfig({
+                                            open: true,
+                                            title: 'PERMANENT DELETE',
+                                            description: `Are you absolutely sure? This will erase "${client.name}" and all their records from the system forever. This action cannot be undone.`,
+                                            variant: 'danger',
+                                            action: () => hardDeleteMutation.mutate()
+                                        });
                                     }}
                                     className="p-2 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors"
                                     title="Hard Delete"
@@ -432,6 +469,37 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     queryClient.invalidateQueries({ queryKey: ['ws_clients'] }); 
                 }}
             />
+
+            {/* Professional Confirm Dialog */}
+            <AlertDialog open={confirmConfig.open} onOpenChange={(open) => setConfirmConfig(prev => ({ ...prev, open }))}>
+                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className={`flex items-center gap-2 ${
+                            confirmConfig.variant === 'danger' ? 'text-rose-600' : 
+                            confirmConfig.variant === 'warning' ? 'text-amber-600' : 'text-sky-600'
+                        }`}>
+                            {confirmConfig.variant === 'danger' ? <AlertTriangle className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
+                            {confirmConfig.title}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 font-medium">
+                            {confirmConfig.description}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-2xl h-11 px-6 border-slate-200 font-semibold">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmConfig.action}
+                            className={`rounded-2xl h-11 px-6 font-bold text-white shadow-lg ${
+                                confirmConfig.variant === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-100' : 
+                                confirmConfig.variant === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-100' : 
+                                'bg-sky-600 hover:bg-sky-700 shadow-sky-100'
+                            }`}
+                        >
+                            Confirm Action
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
