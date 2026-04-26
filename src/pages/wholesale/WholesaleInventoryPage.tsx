@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { wholesaleApi } from '../../services/wholesaleApi';
+import { supabase } from '../../lib/supabase';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -15,6 +16,7 @@ export function WholesaleInventoryPage() {
     usePageTitle('Stock Warehouse', 'GOD');
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
+    const [showArchived, setShowArchived] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<WsProduct | null>(null);
     const [restockProduct, setRestockProduct] = useState<WsProduct | null>(null);
@@ -29,22 +31,43 @@ export function WholesaleInventoryPage() {
         mutationFn: wholesaleApi.deleteProduct,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['ws_products'] });
-            toast.success('Product deactivated');
+            toast.success('Product archived');
         },
-        onError: () => toast.error('Failed to delete product'),
+        onError: () => toast.error('Failed to archive product'),
     });
+
+    const restoreMutation = useMutation({
+        mutationFn: wholesaleApi.upsertProduct,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['ws_products'] });
+            toast.success('Product restored');
+        },
+        onError: () => toast.error('Failed to restore product'),
+    });
+
+    const hardDeleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from('ws_products').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['ws_products'] });
+            toast.success('Product permanently deleted');
+        },
+        onError: () => toast.error('Failed to delete product permanently. Check if it has linked orders.'),
+    });
+
+    const filteredProducts = useMemo(() => {
+        const base = products.filter(p => p.is_active === !showArchived);
+        return base.filter(p =>
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.category.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [products, searchQuery, showArchived]);
 
     const activeProducts = useMemo(() =>
         products.filter(p => p.is_active),
         [products]
-    );
-
-    const filteredProducts = useMemo(() =>
-        activeProducts.filter(p =>
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.category.toLowerCase().includes(searchQuery.toLowerCase())
-        ),
-        [activeProducts, searchQuery]
     );
 
     const lowStockProducts = useMemo(() =>
@@ -95,13 +118,21 @@ export function WholesaleInventoryPage() {
                     </h1>
                     <p className="text-sm text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1">Manage wholesale inventory and global logistics</p>
                 </div>
-                <button
-                    onClick={handleAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl font-semibold text-sm hover:bg-sky-700 transition-colors shadow-sm"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add Product
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${showArchived ? 'bg-amber-600 text-white shadow-lg shadow-amber-100' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                        {showArchived ? 'Live Inventory' : 'View Archived'}
+                    </button>
+                    <button
+                        onClick={handleAdd}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl font-semibold text-sm hover:bg-sky-700 transition-colors shadow-sm"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add Product
+                    </button>
+                </div>
             </div>
 
             {/* Stats Cards */}
@@ -213,40 +244,65 @@ export function WholesaleInventoryPage() {
                                         <td className="px-4 py-4 text-right text-sm font-black text-sky-700 font-['DM_Sans',sans-serif]">
                                             Rs. {product.base_sell_price.toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-3 text-center">
+                                         <td className="px-4 py-3 text-center">
                                             <div className="flex items-center justify-center gap-1">
-                                                <button
-                                                    onClick={() => setLedgerProduct(product)}
-                                                    className="p-1.5 rounded-lg hover:bg-purple-100 text-slate-400 hover:text-purple-600 transition-colors"
-                                                    title="Ledger & History"
-                                                >
-                                                    <History className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => setRestockProduct(product)}
-                                                    className="p-1.5 rounded-lg hover:bg-emerald-100 text-slate-400 hover:text-emerald-600 transition-colors"
-                                                    title="Receive Stock"
-                                                >
-                                                    <PackagePlus className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleEdit(product)}
-                                                    className="p-1.5 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        if (confirm(`Deactivate "${product.name}"?`)) {
-                                                            deleteMutation.mutate(product.id);
-                                                        }
-                                                    }}
-                                                    className="p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600 transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                {product.is_active ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setLedgerProduct(product)}
+                                                            className="p-1.5 rounded-lg hover:bg-purple-100 text-slate-400 hover:text-purple-600 transition-colors"
+                                                            title="Ledger & History"
+                                                        >
+                                                            <History className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setRestockProduct(product)}
+                                                            className="p-1.5 rounded-lg hover:bg-emerald-100 text-slate-400 hover:text-emerald-600 transition-colors"
+                                                            title="Receive Stock"
+                                                        >
+                                                            <PackagePlus className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEdit(product)}
+                                                            className="p-1.5 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm(`Archive "${product.name}"? It will be hidden from the warehouse but its history will be kept.`)) {
+                                                                    deleteMutation.mutate(product.id);
+                                                                }
+                                                            }}
+                                                            className="p-1.5 rounded-lg hover:bg-amber-100 text-slate-400 hover:text-amber-600 transition-colors"
+                                                            title="Archive"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => restoreMutation.mutate({ ...product, is_active: true })}
+                                                            className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
+                                                            title="Restore Product"
+                                                        >
+                                                            <History className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm(`PERMANENT DELETE:\n\nAre you sure you want to delete "${product.name}" forever? This cannot be undone.`)) {
+                                                                    hardDeleteMutation.mutate(product.id);
+                                                                }
+                                                            }}
+                                                            className="p-2 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors"
+                                                            title="Hard Delete"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

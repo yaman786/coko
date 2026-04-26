@@ -12,23 +12,24 @@ import type { WsClient } from '../../types';
 export function ClientsPage() {
     usePageTitle('Client Ledger', 'GOD');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showArchived, setShowArchived] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<WsClient | null>(null);
     const [selectedClient, setSelectedClient] = useState<WsClient | null>(null);
 
     const { data: clients = [], isLoading } = useQuery({
-        queryKey: ['ws_clients'],
-        queryFn: wholesaleApi.getClients,
+        queryKey: ['ws_clients', 'all'],
+        queryFn: wholesaleApi.getAllClients,
     });
 
-    const filteredClients = useMemo(() =>
-        clients.filter(c =>
+    const filteredClients = useMemo(() => {
+        const base = clients.filter(c => c.is_active === !showArchived);
+        return base.filter(c =>
             c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.contact_person?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.address?.toLowerCase().includes(searchQuery.toLowerCase())
-        ),
-        [clients, searchQuery]
-    );
+        );
+    }, [clients, searchQuery, showArchived]);
 
     const totalOutstanding = useMemo(() =>
         clients.reduce((sum, c) => sum + Math.max(0, c.balance), 0),
@@ -63,13 +64,21 @@ export function ClientsPage() {
                     </h1>
                     <p className="text-sm text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1">Manage cafe and restaurant relationships & their financial balances</p>
                 </div>
-                <button
-                    onClick={handleAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl font-semibold text-sm hover:bg-sky-700 transition-colors shadow-sm"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add Client
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${showArchived ? 'bg-amber-600 text-white shadow-lg shadow-amber-100' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                        {showArchived ? 'Live Clients' : 'View Archived'}
+                    </button>
+                    <button
+                        onClick={handleAdd}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl font-semibold text-sm hover:bg-sky-700 transition-colors shadow-sm"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add Client
+                    </button>
+                </div>
             </div>
 
             {/* Stats */}

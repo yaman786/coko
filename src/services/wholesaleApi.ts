@@ -63,6 +63,15 @@ export const wholesaleApi = {
         return data || [];
     },
 
+    async getAllClients(): Promise<WsClient[]> {
+        const { data, error } = await supabase
+            .from('ws_clients')
+            .select('*')
+            .order('name');
+        if (error) throw error;
+        return data || [];
+    },
+
     async getClientById(id: string): Promise<WsClient | null> {
         const { data, error } = await supabase
             .from('ws_clients')
@@ -84,6 +93,22 @@ export const wholesaleApi = {
         const { error } = await supabase
             .from('ws_clients')
             .update({ is_active: false, updated_at: new Date() })
+            .eq('id', id);
+        if (error) throw error;
+    },
+
+    async restoreClient(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('ws_clients')
+            .update({ is_active: true, updated_at: new Date() })
+            .eq('id', id);
+        if (error) throw error;
+    },
+
+    async hardDeleteClient(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('ws_clients')
+            .delete()
             .eq('id', id);
         if (error) throw error;
     },

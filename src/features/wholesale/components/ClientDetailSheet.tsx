@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { wholesaleApi } from '../../../services/wholesaleApi';
-import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
+import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight, Trash2, RotateCcw, Ban } from 'lucide-react';
 import { ClientPricingTable } from './ClientPricingTable';
 import { RecordClientPaymentDialog } from './RecordClientPaymentDialog';
 import { EditTransactionDialog } from './EditTransactionDialog';
@@ -36,6 +36,36 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
             toast.error("Failed to delete transaction");
         }
     };
+
+    const archiveMutation = useMutation({
+        mutationFn: () => wholesaleApi.deleteClient(client.id),
+        onSuccess: () => {
+            toast.success("Client archived successfully");
+            queryClient.invalidateQueries({ queryKey: ['ws_clients'] });
+            onClose();
+        },
+        onError: () => toast.error("Failed to archive client")
+    });
+
+    const restoreMutation = useMutation({
+        mutationFn: () => wholesaleApi.restoreClient(client.id),
+        onSuccess: () => {
+            toast.success("Client restored successfully");
+            queryClient.invalidateQueries({ queryKey: ['ws_clients'] });
+            onClose();
+        },
+        onError: () => toast.error("Failed to restore client")
+    });
+
+    const hardDeleteMutation = useMutation({
+        mutationFn: () => wholesaleApi.hardDeleteClient(client.id),
+        onSuccess: () => {
+            toast.success("Client permanently deleted");
+            queryClient.invalidateQueries({ queryKey: ['ws_clients'] });
+            onClose();
+        },
+        onError: () => toast.error("Failed to delete client permanently. Check if they have linked orders.")
+    });
 
     const { data: orders = [] } = useQuery({
         queryKey: ['ws_orders', 'client', client.id],
@@ -79,6 +109,42 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                         >
                             <Pencil className="w-4 h-4" />
                         </button>
+                        
+                        {client.is_active ? (
+                            <button 
+                                onClick={() => {
+                                    if (window.confirm("Archive this client? They will be hidden from active lists but their history will be preserved.")) {
+                                        archiveMutation.mutate();
+                                    }
+                                }}
+                                className="p-2 rounded-lg hover:bg-amber-50 text-amber-600 transition-colors"
+                                title="Archive Client"
+                            >
+                                <Ban className="w-4 h-4" />
+                            </button>
+                        ) : (
+                            <>
+                                <button 
+                                    onClick={() => restoreMutation.mutate()}
+                                    className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
+                                    title="Restore Client"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        if (window.confirm("PERMANENT DELETE:\n\nAre you sure? This will erase the client record forever. This cannot be undone.")) {
+                                            hardDeleteMutation.mutate();
+                                        }
+                                    }}
+                                    className="p-2 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors"
+                                    title="Hard Delete"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
+                        
                         <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400">
                             <X className="w-5 h-5" />
                         </button>
