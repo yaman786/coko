@@ -57,6 +57,9 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
             return;
         }
 
+        const isWholesale = typeof window !== 'undefined' && window.location.pathname.startsWith('/wholesale');
+        const currentPortal = isWholesale ? 'wholesale' : 'retail';
+
         setLoading(true);
         try {
             await api.upsertExpense({
@@ -68,6 +71,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
                 payment_method: formData.payment_method,
                 cashier_id: session?.user.email || 'system',
                 cashier_name: session?.user.email?.split('@')[0] || 'System',
+                portal: currentPortal
             });
             toast.success(editingExpense ? 'Expense updated' : 'Expense recorded');
             onSuccess();

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck, Warehouse, Boxes, Users, Wallet } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
 import { ShiftReminderModal } from '../components/shift/ShiftReminderModal';
 
 interface MainLayoutProps {
@@ -49,6 +50,11 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
         try { localStorage.setItem('sidebar-collapsed', String(isCollapsed)); }
         catch { /* ignore */ }
     }, [isCollapsed]);
+
+    // DB Tenant Handshake (RLS Guard)
+    useEffect(() => {
+        api.setPortalContext(mode);
+    }, [mode]);
 
     const handleLogout = async () => {
         await signOut();

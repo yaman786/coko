@@ -1,113 +1,45 @@
 import { api } from '../services/api';
-import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
-
-
-export interface DashboardMetrics {
-    totalRevenue: number;
-    totalOrders: number;
-    averageOrderValue: number;
-    totalProductsSold: number;
-    cashTotal: number;
-    cardTotal: number; // Renamed from fonepayTotal for broader use
-    totalDiscounts: number;
-    grossRevenue: number;
-    totalOffers: number;
-    totalComplimentary: number;
-    totalLoyalty: number;
-    trends: {
-        revenueDeltaPct: number;
-        ordersDeltaPct: number;
-        aovDeltaPct: number;
-        productsDeltaPct: number;
-    };
-    totalExpenses: number;
-    wasteValue: number;
-    wasteCount: number;
-    overYieldValue: number;
-    overYieldCount: number;
-    totalCOGS: number;
-}
-
-export interface RevenueData {
-    date: string;
-    revenue: number;
-    orders: number;
-}
-
-export interface TopProduct {
-    id: string;
-    name: string;
-    revenue: number;
-    quantity: number;
-    cost: number;
-    profit: number;
-    marginPct: number;
-    revenueDeltaPct?: number;
-    quantityDeltaPct?: number;
-    profitDeltaPct?: number;
-    category?: string;
-    parentId?: string;
-    discounts?: number;
-}
-
-export interface RecentOrder {
-    id: string;
-    items: {
-        productId: string;
-        name: string;
-        price: number;
-        quantity: number;
-    }[];
-    totalAmount: number;
-    subtotal: number;
-    discount: number;
-    loyalty: number;
-    vat: number;
-    paymentMethod: 'Cash' | 'Card' | 'Split' | 'Other';
-    cashAmount?: number;
-    cardAmount?: number;
-    status: 'pending' | 'completed' | 'cancelled';
-    cashierId?: string;
-    cashierName?: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
+import { startOfDay, endOfDay, subDays, eachDayOfInterval, format } from 'date-fns';
+import { DashboardMetrics, RevenueData, TopProduct, RecentOrder } from '../types';
 
 /**
- * Dashboard Metrics — now accepts a `days` parameter so the
- * period filter (Today/Week/Month) controls ALL stat cards.
+ * Dashboard Metrics — strictly isolated by portal.
+ * This prevents Wholesale expenses/orders from leaking into Retail dashboard.
  */
-export async function getDashboardMetrics(period: number | { start: Date; end: Date } = 30): Promise<DashboardMetrics> {
+export async function getDashboardMetrics(
+    period: number | { start: Date; end: Date } = 30,
+    portal: 'retail' | 'wholesale' = 'retail'
+): Promise<DashboardMetrics> {
     const start = typeof period === 'number' ? startOfDay(subDays(new Date(), period - 1)) : startOfDay(period.start);
     const end = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
 
-    // Calculate previous period dates
+    // Calculate previous period dates for trend analysis
     const durationMs = end.getTime() - start.getTime();
     const days = Math.round(durationMs / 86400000) + 1;
     const prevEnd = endOfDay(subDays(start, 1));
     const prevStart = startOfDay(subDays(start, days));
 
-    console.log(`[Analytics] Fetching Metrics Range: ${format(start, 'yyyy-MM-dd HH:mm:ss')} to ${format(end, 'yyyy-MM-dd HH:mm:ss')}`);
-    
+    // 1. Parallel Fetch with strict portal context
     const [orders, prevOrders, expenses, logs] = await Promise.all([
-        api.getOrdersByDateRange(start, end),
-        api.getOrdersByDateRange(prevStart, prevEnd),
-        api.getExpenses(start, end),
-        api.getAuditLog(1000)
+        api.getOrdersByDateRange(start, end, portal),
+        api.getOrdersByDateRange(prevStart, prevEnd, portal),
+        api.getExpenses(start, end, portal),
+        api.getAuditLog(2000) // Audit logs are currently global, we filter them below
     ]);
 
-    // Current Period Metrics
-    // Revenue is already Rs. 0 for waste, but we exclude waste and cancelled from order counts and AOV
+    // 2. Metric Calculations
     const validOrders = orders.filter(o => !o.isWaste && o.status !== 'cancelled');
     const activeOrders = orders.filter(o => o.status !== 'cancelled');
+    
     const totalRevenue = activeOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
     const totalOrders = validOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-    // Previous Period Metrics
-    const validPrevOrders = prevOrders.filter(o => !o.isWaste);
-    const prevTotalRevenue = prevOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    // Previous Period (for trends)
+    const activePrevOrders = prevOrders.filter(o => o.status !== 'cancelled');
+    const validPrevOrders = prevOrders.filter(o => !o.isWaste && o.status !== 'cancelled');
+    const prevTotalRevenue = activePrevOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const prevTotalOrders = validPrevOrders.length;
     const prevAverageOrderValue = prevTotalOrders > 0 ? prevTotalRevenue / prevTotalOrders : 0;
 
@@ -119,10 +51,9 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0);
     }, 0);
 
-    // Deltas (Safely handle 0 to 0 transitions, otherwise standard percentage diff)
     const calculateDelta = (current: number, previous: number) => {
-        if (current === 0 && previous === 0) return 0; // Neutral 0%
-        if (previous === 0) return 100; // From 0 to something is immediately 100% up
+        if (current === 0 && previous === 0) return 0;
+        if (previous === 0) return 100;
         return ((current - previous) / previous) * 100;
     };
 
@@ -156,26 +87,28 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         }, 0);
     }, 0);
 
-    // --- Unified Waste & Over-yield Calculation ---
-    // 1. POS-logged Waste
+    // --- Waste & Over-yield (Portal Filtered) ---
     let posWasteValue = activeOrders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
     let posWasteCount = activeOrders.filter(o => o.isWaste).length;
 
-    // 2. Manual Inventory Adjustments from Audit Log
     let manualWasteValue = 0;
     let manualWasteCount = 0;
     let overYieldValue = 0;
     let overYieldCount = 0;
 
+    // Filter audit logs by portal (only if we can match them via metadata or category)
     logs.forEach(log => {
         const logDate = new Date(log.createdAt);
         if (logDate >= start && logDate <= end && log.action === 'STOCK_ADJUSTMENT') {
+            // As a fallback, we assume audit logs without a portal metadata tag belong to retail
+            // for backward compatibility, but in new records, we should tag them.
+            const logPortal = log.metadata?.portal || 'retail';
+            if (logPortal !== portal) return;
+
             const varianceVal = Number(log.metadata?.variance_value) || 0;
             const type = log.metadata?.variance_type;
             const reason = (log.metadata?.reason as string) || '';
 
-            // Only count variances that are real operational Losses or Gains.
-            // Ignore "Miscount / Correction" as it's just fixing system data.
             if (type === 'ASSET_LOSS') {
                 const isLossReason = ['Spillage / Shop Damage', 'Melted / Quality Issue', 'Theft / Missing'].includes(reason);
                 if (isLossReason) {
@@ -192,9 +125,6 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         }
     });
 
-    const totalWasteValue = posWasteValue + manualWasteValue;
-    const totalWasteCount = posWasteCount + manualWasteCount;
-
     return {
         totalRevenue,
         totalOrders,
@@ -209,8 +139,8 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
         totalLoyalty,
         totalExpenses,
         totalCOGS,
-        wasteValue: totalWasteValue,
-        wasteCount: totalWasteCount,
+        wasteValue: posWasteValue + manualWasteValue,
+        wasteCount: posWasteCount + manualWasteCount,
         overYieldValue,
         overYieldCount,
         trends: {
@@ -222,12 +152,14 @@ export async function getDashboardMetrics(period: number | { start: Date; end: D
     };
 }
 
-export async function getRevenueTrend(period: number | { start: Date; end: Date } = 7): Promise<RevenueData[]> {
+export async function getRevenueTrend(
+    period: number | { start: Date; end: Date } = 7,
+    portal: 'retail' | 'wholesale' = 'retail'
+): Promise<RevenueData[]> {
     const startDate = typeof period === 'number' ? startOfDay(subDays(endOfDay(new Date()), period - 1)) : startOfDay(period.start);
     const endDate = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
 
-    console.log(`[Analytics] Fetching Trend Range: ${format(startDate, 'yyyy-MM-dd HH:mm:ss')} to ${format(endDate, 'yyyy-MM-dd HH:mm:ss')}`);
-    const orders = await api.getOrdersByDateRange(startDate, endDate);
+    const orders = await api.getOrdersByDateRange(startDate, endDate, portal);
     const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
 
     return dateRange.map(date => {
@@ -244,27 +176,26 @@ export async function getRevenueTrend(period: number | { start: Date; end: Date 
     });
 }
 
-export async function getTopProducts(limit: number = 5, period: number | { start: Date; end: Date } = 30): Promise<TopProduct[]> {
+export async function getTopProducts(
+    limit: number = 5, 
+    period: number | { start: Date; end: Date } = 30,
+    portal: 'retail' | 'wholesale' = 'retail'
+): Promise<TopProduct[]> {
     const start = typeof period === 'number' ? startOfDay(subDays(new Date(), period - 1)) : startOfDay(period.start);
     const end = typeof period === 'number' ? endOfDay(new Date()) : endOfDay(period.end);
 
-    // Calculate previous period dates
     const durationMs = end.getTime() - start.getTime();
     const days = Math.round(durationMs / 86400000) + 1;
     const prevEnd = endOfDay(subDays(start, 1));
     const prevStart = startOfDay(subDays(start, days));
 
-    // Fetch both periods in parallel if possible, or sequentially
     const [rawData, prevRawData] = await Promise.all([
-        api.getProductAnalytics(start, end, 'retail'),
-        api.getProductAnalytics(prevStart, prevEnd, 'retail')
+        api.getProductAnalytics(start, end, portal),
+        api.getProductAnalytics(prevStart, prevEnd, portal)
     ]);
 
-    if (!Array.isArray(rawData)) {
-        return [];
-    }
+    if (!Array.isArray(rawData)) return [];
 
-    // Build a map of previous period data for quick lookup
     const prevDataMap = new Map<string, any>();
     for (const row of prevRawData) {
         prevDataMap.set(row.product_id, row);
@@ -275,20 +206,12 @@ export async function getTopProducts(limit: number = 5, period: number | { start
             const revenue = Number(row.net_revenue) || 0;
             const cost = Number(row.total_cost) || 0;
             const quantity = Number(row.quantity_sold) || 0;
-            const discounts = Number(row.total_discounts) || 0;
             const profit = revenue - cost;
-            const marginPct = revenue > 0 ? (profit / revenue) * 100 : 0;
-
-            // Calculate Deltas
             const prevRow = prevDataMap.get(row.product_id);
             const prevRevenue = prevRow ? (Number(prevRow.net_revenue) || 0) : 0;
             const prevQuantity = prevRow ? (Number(prevRow.quantity_sold) || 0) : 0;
             const prevCost = prevRow ? (Number(prevRow.total_cost) || 0) : 0;
             const prevProfit = prevRevenue - prevCost;
-
-            const revenueDeltaPct = prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : (revenue > 0 ? 100 : 0);
-            const quantityDeltaPct = prevQuantity > 0 ? ((quantity - prevQuantity) / prevQuantity) * 100 : (quantity > 0 ? 100 : 0);
-            const profitDeltaPct = prevProfit !== 0 ? ((profit - prevProfit) / Math.abs(prevProfit)) * 100 : (profit > 0 ? 100 : 0); // Handle loss to profit swings
 
             return {
                 id: row.product_id,
@@ -297,21 +220,23 @@ export async function getTopProducts(limit: number = 5, period: number | { start
                 quantity,
                 cost,
                 profit,
-                marginPct,
-                revenueDeltaPct,
-                quantityDeltaPct,
-                profitDeltaPct,
+                marginPct: revenue > 0 ? (profit / revenue) * 100 : 0,
+                revenueDeltaPct: prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : (revenue > 0 ? 100 : 0),
+                quantityDeltaPct: prevQuantity > 0 ? ((quantity - prevQuantity) / prevQuantity) * 100 : (quantity > 0 ? 100 : 0),
+                profitDeltaPct: prevProfit !== 0 ? ((profit - prevProfit) / Math.abs(prevProfit)) * 100 : (profit > 0 ? 100 : 0),
                 category: row.category || 'Uncategorized',
-                parentId: row.parent_id || null,
-                discounts
+                parentId: row.parent_id || null
             };
         })
-        .sort((a: any, b: any) => b.profit - a.profit) // Default sort by profit to align with our new UI focus
+        .sort((a, b) => b.profit - a.profit)
         .slice(0, limit);
 }
 
-export async function getRecentOrders(limit: number = 5): Promise<RecentOrder[]> {
-    const orders = await api.getRecentOrders(limit);
+export async function getRecentOrders(
+    limit: number = 5,
+    portal: 'retail' | 'wholesale' = 'retail'
+): Promise<RecentOrder[]> {
+    const orders = await api.getRecentOrders(limit, portal);
 
     return orders.map(o => ({
         id: o.id,

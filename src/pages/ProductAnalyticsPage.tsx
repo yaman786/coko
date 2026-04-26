@@ -295,29 +295,31 @@ export function ProductAnalyticsPage() {
     };
 
     return (
-        <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="flex-1 space-y-8 p-6 md:p-10 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <Link to="/dashboard" className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                        <ArrowLeft className="w-5 h-5 text-slate-600" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-2">
+                <div className="flex items-center gap-4">
+                    <Link to="/dashboard" className="p-3 bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-full hover:bg-slate-100 transition-all shadow-sm">
+                        <ArrowLeft className="w-5 h-5 text-slate-800" />
                     </Link>
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Product Analytics</h1>
-                        <p className="text-slate-500 text-sm hidden sm:block">Deep dive into profitability and performance.</p>
+                    <div className="flex flex-col gap-1">
+                        <h1 className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">
+                            Product <span className="text-purple-600">Performance</span>
+                        </h1>
+                        <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif]">Comprehensive audit of profitability and realized margins.</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
                     {/* Period Selector */}
-                    <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-slate-200 shadow-sm overflow-x-auto w-full max-w-[100vw]">
+                    <div className="flex items-center gap-1.5 bg-white/50 backdrop-blur-md rounded-full p-1.5 border border-slate-200/60 shadow-inner">
                         {(['today', 'week', 'month', 'custom'] as const).map((p) => (
                             <button
                                 key={p}
                                 onClick={() => setPeriod(p)}
-                                className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-md capitalize transition-colors min-h-[36px] whitespace-nowrap ${period === p
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'text-slate-600 hover:bg-slate-50'
+                                className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-full transition-all duration-300 ${period === p
+                                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
+                                    : 'text-slate-500 hover:text-slate-800'
                                     }`}
                             >
                                 {p}
@@ -347,18 +349,18 @@ export function ProductAnalyticsPage() {
                         buttonContent={
                             <>
                                 <Download className="w-4 h-4 text-purple-600" />
-                                <span className="hidden sm:inline">Export</span>
+                                <span className="hidden sm:inline">Export Audit</span>
                             </>
                         }
-                        buttonClassName="border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 h-[36px] md:h-[40px] shrink-0 min-w-10"
+                        buttonClassName="border-slate-200/60 bg-white/80 backdrop-blur-xl hover:bg-white text-slate-700 h-[44px] shrink-0 rounded-full font-black text-[10px] uppercase tracking-widest px-6 shadow-sm transition-all"
                         items={[
                             {
-                                label: 'Export as PDF',
+                                label: 'Intelligence PDF',
                                 icon: FileText,
                                 onClick: handleExportPDF
                             },
                             {
-                                label: 'Export as CSV',
+                                label: 'Raw CSV',
                                 icon: TableProperties,
                                 onClick: handleExportCSV
                             }
@@ -369,14 +371,14 @@ export function ProductAnalyticsPage() {
 
             {/* Financial Reconciliation Section — Top Banner */}
             {!isLoading && (reconciliationStats.gainCount > 0 || reconciliationStats.lossCount > 0) && (
-                <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 shadow-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-emerald-800">
-                            <Scale className="w-5 h-5" />
-                            Inventory Reconciliation — Financial Truth
+                <Card className="bg-emerald-50/40 backdrop-blur-3xl border-emerald-200/60 shadow-2xl rounded-[2rem] overflow-hidden border">
+                    <CardHeader className="p-8 pb-4">
+                        <CardTitle className="flex items-center gap-2 text-emerald-800 font-['DM_Sans',sans-serif] font-black tracking-tight text-xl">
+                            <Scale className="w-6 h-6" />
+                            Financial Truth & Reconciliation
                         </CardTitle>
-                        <CardDescription className="text-emerald-600">
-                            {reconciliationStats.gainCount + reconciliationStats.lossCount} reconciliations performed via Speedo Meter this period
+                        <CardDescription className="text-emerald-600/70 font-medium">
+                            {reconciliationStats.gainCount + reconciliationStats.lossCount} automated yield adjustments recorded this period.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -467,14 +469,14 @@ export function ProductAnalyticsPage() {
             )}
 
             {/* Visual Analytics - Pareto Chart */}
-            <Card className="bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-sm border-t-4 border-t-purple-600 rounded-2xl">
-                <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-purple-600" />
-                        Profit Contribution (Top 10 Products)
+            <Card className="bg-white/40 backdrop-blur-3xl border-slate-200/60 shadow-2xl rounded-[2.5rem] overflow-hidden border">
+                <CardHeader className="p-8 pb-4">
+                    <CardTitle className="text-xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif] flex items-center gap-3">
+                        <TrendingUp className="w-6 h-6 text-purple-600" />
+                        Profit Map <span className="text-purple-600/50">(Pareto 80/20)</span>
                     </CardTitle>
-                    <CardDescription>
-                        A visual breakdown of which products are driving your realized net profit.
+                    <CardDescription className="text-slate-500 font-medium font-['DM_Sans',sans-serif]">
+                        Which products are truly fueling your net liquidity?
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -607,51 +609,46 @@ export function ProductAnalyticsPage() {
                         {isLoading ? (
                             <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
                                 <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-                                <p>Crunching product metrics...</p>
+                                <p className="font-black text-[10px] uppercase tracking-widest">Crunching Performance Metrics...</p>
                             </div>
                         ) : isError ? (
-                            <div className="flex flex-col items-center justify-center h-64 gap-3 text-red-500 bg-red-50/50 rounded-lg m-4 border border-red-100">
-                                <AlertTriangle className="w-8 h-8" />
+                            <div className="flex flex-col items-center justify-center p-12 gap-4 text-rose-500 bg-rose-50/50 rounded-2xl m-8 border border-rose-100 italic">
+                                <AlertTriangle className="w-10 h-10" />
                                 <div className="text-center">
-                                    <p className="font-bold">Analytics Data Error</p>
-                                    <p className="text-sm opacity-80 max-w-md">{(error as any)?.message || 'Unknown database error'}</p>
+                                    <p className="font-black uppercase tracking-tight">Database Connection Intermittent</p>
+                                    <p className="text-xs opacity-80 mt-1">{(error as any)?.message || 'Service latency detected'}</p>
                                 </div>
-                                <button
-                                    onClick={() => window.location.reload()}
-                                    className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-semibold transition-colors"
-                                >
-                                    Retry Connection
-                                </button>
                             </div>
                         ) : products.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-slate-500">
-                                <p>No performance data found for this period.</p>
+                            <div className="flex flex-col items-center justify-center py-24 text-slate-400 gap-4">
+                                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center shadow-inner">
+                                    <History className="w-10 h-10 text-slate-300" />
+                                </div>
+                                <p className="font-black text-[10px] uppercase tracking-widest">No activity found for this period.</p>
                             </div>
                         ) : (
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-[10px] text-slate-400 uppercase bg-slate-50/80 border-b border-slate-200 sticky top-0 z-10 font-bold tracking-[0.2em] font-['DM_Sans',sans-serif]">
-                                    <tr>
-                                        <th className="px-4 py-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
-                                            <div className="flex items-center gap-1">Product <SortIcon field="name" /></div>
+                            <table className="w-full text-sm text-left border-separate border-spacing-0">
+                                <thead className="text-[10px] text-slate-400 uppercase bg-transparent sticky top-0 z-10 font-black tracking-[0.2em] font-['DM_Sans',sans-serif]">
+                                    <tr className="bg-white/60 backdrop-blur-md">
+                                        <th className="px-6 py-5 cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('name')}>
+                                            <div className="flex items-center gap-1">Product Descriptor <SortIcon field="name" /></div>
                                         </th>
-                                        <th className="px-4 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('quantity')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="quantity" /> Qty Sold</div>
+                                        <th className="px-6 py-5 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('quantity')}>
+                                            <div className="flex items-center justify-end gap-1"><SortIcon field="quantity" /> Movement</div>
                                         </th>
-                                        <th className="px-4 py-4 text-right" title="Average Selling Price">ASP</th>
-                                        <th className="px-4 py-4 text-emerald-600 text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('revenue')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="revenue" /> Gross Rev</div>
+                                        <th className="px-6 py-5 text-right">ASP</th>
+                                        <th className="px-6 py-5 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('revenue')}>
+                                            <div className="flex items-center justify-end gap-1"><SortIcon field="revenue" /> Realized Rev</div>
                                         </th>
-                                        <th className="px-4 py-4 text-red-500 text-right">Given Away</th>
-                                        <th className="px-4 py-4 text-right">COGS</th>
-                                        <th className="px-4 py-4 text-slate-900 text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('profit')}>
-                                            <div className="flex items-center justify-end gap-1"><SortIcon field="profit" /> Net Profit</div>
+                                        <th className="px-6 py-5 text-slate-400 text-right">Burn</th>
+                                        <th className="px-6 py-5 text-right">COGS</th>
+                                        <th className="px-6 py-5 text-slate-800 text-right cursor-pointer hover:text-black transition-colors" onClick={() => handleSort('profit')}>
+                                            <div className="flex items-center justify-end gap-1"><SortIcon field="profit" /> Net Liquidity</div>
                                         </th>
-                                        <th className="px-4 py-4 text-left cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('marginPct')}>
-                                            <div className="flex items-center gap-1"><SortIcon field="marginPct" /> Insight</div>
+                                        <th className="px-6 py-5 text-left cursor-pointer hover:text-slate-800 transition-colors font-black tracking-widest" onClick={() => handleSort('marginPct')}>
+                                            <div className="flex items-center gap-1"><SortIcon field="marginPct" /> Health</div>
                                         </th>
-                                        <th className="px-4 py-4 text-right">
-                                            Actions
-                                        </th>
+                                        <th className="px-6 py-5 text-center w-[120px]">Audit</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">

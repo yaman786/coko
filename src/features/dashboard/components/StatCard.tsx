@@ -13,15 +13,15 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon: Icon, description, trend, trendValue, sparklineData }: StatCardProps) {
     return (
-        <Card className="group relative overflow-hidden border border-slate-200/60 bg-white/80 backdrop-blur-xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10">
-                <CardTitle className="text-xs font-bold tracking-wider uppercase text-slate-400 font-['DM_Sans',sans-serif]">{title}</CardTitle>
-                <div className="p-2.5 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl group-hover:scale-110 transition-transform duration-300">
+        <Card className="group relative overflow-hidden border border-slate-200/60 bg-white/40 backdrop-blur-3xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ease-out cursor-pointer rounded-[2rem] border">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10 px-6 pt-6">
+                <CardTitle className="text-[10px] font-black tracking-[0.2em] uppercase text-slate-400 font-['DM_Sans',sans-serif]">{title}</CardTitle>
+                <div className="p-3 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl group-hover:scale-110 transition-transform duration-300 border border-slate-200/40">
                     <Icon className="w-5 h-5 text-indigo-600" />
                 </div>
             </CardHeader>
-            <CardContent className="relative z-10">
-                <div className="text-3xl font-black tracking-tight text-slate-900 font-['DM_Sans',sans-serif] mb-1">{value}</div>
+            <CardContent className="relative z-10 px-6 pb-6">
+                <div className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif] mb-1">{value}</div>
                 
                 <div className="flex items-center justify-between">
                     {(description || trend || trendValue) && (

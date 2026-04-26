@@ -4,9 +4,11 @@ import { wholesaleApi } from '../../services/wholesaleApi';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Package, Plus, Search, AlertTriangle, Pencil, Trash2, Boxes, DollarSign } from 'lucide-react';
+import { Package, Plus, Search, AlertTriangle, Pencil, Trash2, Boxes, DollarSign, PackagePlus, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddWsProductDialog } from '../../features/wholesale/components/AddWsProductDialog';
+import { RestockWsProductDialog } from '../../features/wholesale/components/RestockWsProductDialog';
+import { WholesaleProductLedgerDialog } from '../../features/wholesale/components/WholesaleProductLedgerDialog';
 import type { WsProduct } from '../../types';
 
 export function WholesaleInventoryPage() {
@@ -15,10 +17,12 @@ export function WholesaleInventoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<WsProduct | null>(null);
+    const [restockProduct, setRestockProduct] = useState<WsProduct | null>(null);
+    const [ledgerProduct, setLedgerProduct] = useState<WsProduct | null>(null);
 
     const { data: products = [], isLoading } = useQuery({
         queryKey: ['ws_products'],
-        queryFn: wholesaleApi.getProducts,
+        queryFn: wholesaleApi.getProducts
     });
 
     const deleteMutation = useMutation({
@@ -212,6 +216,20 @@ export function WholesaleInventoryPage() {
                                         <td className="px-4 py-3 text-center">
                                             <div className="flex items-center justify-center gap-1">
                                                 <button
+                                                    onClick={() => setLedgerProduct(product)}
+                                                    className="p-1.5 rounded-lg hover:bg-purple-100 text-slate-400 hover:text-purple-600 transition-colors"
+                                                    title="Ledger & History"
+                                                >
+                                                    <History className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setRestockProduct(product)}
+                                                    className="p-1.5 rounded-lg hover:bg-emerald-100 text-slate-400 hover:text-emerald-600 transition-colors"
+                                                    title="Receive Stock"
+                                                >
+                                                    <PackagePlus className="w-4 h-4" />
+                                                </button>
+                                                <button
                                                     onClick={() => handleEdit(product)}
                                                     className="p-1.5 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
                                                     title="Edit"
@@ -244,6 +262,19 @@ export function WholesaleInventoryPage() {
                 open={dialogOpen}
                 onClose={handleDialogClose}
                 editingProduct={editingProduct}
+            />
+
+            {/* Restock Dialog */}
+            <RestockWsProductDialog
+                open={!!restockProduct}
+                onClose={() => setRestockProduct(null)}
+                product={restockProduct}
+            />
+
+            {/* Ledger Dialog */}
+            <WholesaleProductLedgerDialog
+                product={ledgerProduct}
+                onClose={() => setLedgerProduct(null)}
             />
         </div>
     );

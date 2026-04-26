@@ -239,19 +239,29 @@ export function ShiftReminderModal() {
         localStorage.setItem('shift-snooze-until', (Date.now() + REMINDER_INTERVAL_MS).toString());
     };
 
+    // ── Dynamic Greeting ──
+    const getGreetingData = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return { text: 'Good Morning!', icon: <Sunrise className="w-5 h-5 text-white" />, gradient: 'from-amber-400 to-orange-500' };
+        if (hour < 17) return { text: 'Good Afternoon!', icon: <Sunrise className="w-5 h-5 text-white" />, gradient: 'from-blue-400 to-indigo-500' };
+        return { text: 'Good Evening!', icon: <Moon className="w-5 h-5 text-white" />, gradient: 'from-indigo-500 to-purple-600' };
+    };
+
+    const greeting = getGreetingData();
+
     if (isLoading) return null;
 
     return (
         <>
-            {/* ── Open Shift Modal (Morning Nag) ── */}
+            {/* ── Open Shift Modal (Morning/Afternoon/Evening Prompt) ── */}
             <Dialog open={showOpenModal} onOpenChange={(open) => { if (!open) handleSkip(); }}>
                 <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2.5 text-lg font-black">
-                            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-200/50">
-                                <Sunrise className="w-5 h-5 text-white" />
+                            <div className={`w-10 h-10 bg-gradient-to-br ${greeting.gradient} rounded-xl flex items-center justify-center shadow-lg shadow-amber-200/20`}>
+                                {greeting.icon}
                             </div>
-                            Good Morning!
+                            {greeting.text}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-2">

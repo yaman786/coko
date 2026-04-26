@@ -24,7 +24,8 @@ import {
     XCircle,
     Receipt,
     ShoppingBag,
-    MinusCircle
+    MinusCircle,
+    Truck
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -139,6 +140,31 @@ export function CashLedgerPage() {
             const { data } = await supabase
                 .from('expenses')
                 .select('*')
+                .eq('portal', 'retail')
+                .gte('date', start.toISOString())
+                .lte('date', end.toISOString());
+            return data || [];
+        }
+    });
+
+    // ── Fetch Supplier Payments for Selected Date ──
+    const { data: supplierPayments = [] } = useQuery({
+        queryKey: ['ledger-supplier-payments', selectedDate],
+        queryFn: async () => {
+            const start = new Date(selectedDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(selectedDate);
+            end.setHours(23, 59, 59, 999);
+
+            const { data } = await supabase
+                .from('supplier_transactions')
+                .select(`
+                    *,
+                    suppliers!inner (name, portal)
+                `)
+                .eq('suppliers.portal', 'retail')
+                .eq('type', 'PAYMENT')
+                .eq('is_deleted', false)
                 .gte('date', start.toISOString())
                 .lte('date', end.toISOString());
             return data || [];
@@ -199,6 +225,16 @@ export function CashLedgerPage() {
             }
         });
 
+        supplierPayments.forEach((sp: any) => {
+            const method = (sp.payment_method as string || '').toLowerCase();
+            const amount = Number(sp.amount) || 0;
+            if (method === 'cash') {
+                cashExpenses += amount;
+            } else {
+                cardExpenses += amount;
+            }
+        });
+
         const netCash = cashIn - cashExpenses;
         const netCard = cardIn - cardExpenses;
         // Use selectedDateShift for historical, activeShift for today
@@ -216,7 +252,7 @@ export function CashLedgerPage() {
             totalOrders,
             totalExpenseCount
         };
-    }, [orders, expenses, activeShift, selectedDateShift, isToday]);
+    }, [orders, expenses, supplierPayments, activeShift, selectedDateShift, isToday]);
 
     // ── Transaction Feed ──
     const transactions = useMemo<TransactionItem[]>(() => {
@@ -248,8 +284,19 @@ export function CashLedgerPage() {
             });
         });
 
+        supplierPayments.forEach((sp: any) => {
+            items.push({
+                id: String(sp.id),
+                type: 'expense', // Treating as expense for feed categorization
+                description: `Payment: ${sp.suppliers?.name || 'Supplier'}`,
+                amount: Number(sp.amount) || 0,
+                method: String(sp.payment_method || 'Cash'),
+                time: new Date(sp.date as string),
+            });
+        });
+
         return items.sort((a, b) => b.time.getTime() - a.time.getTime());
-    }, [orders, expenses]);
+    }, [orders, expenses, supplierPayments]);
 
     // ── Mutations ──
     const openShiftMutation = useMutation({
@@ -397,42 +444,43 @@ export function CashLedgerPage() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-8 p-6 md:p-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200/50">
-                            <Wallet className="w-5 h-5 text-white" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-3xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif] flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-200/50">
+                            <Wallet className="w-6 h-6 text-white" />
                         </div>
-                        Cash Flow Ledger
+                        Cash Flow <span className="text-emerald-600">Ledger</span>
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Track every Rupee flowing in and out</p>
+                    <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif] ml-16">Real-time audit of every transaction and shift variance.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="w-auto h-9 text-sm font-medium"
-                    />
+                    <div className="bg-white/50 p-1.5 rounded-full border border-slate-200/60 shadow-inner px-4 overflow-hidden h-[44px] flex items-center">
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="bg-transparent font-black tracking-tight text-slate-800 focus:outline-none"
+                        />
+                    </div>
                     {isToday && !activeShift && (
                         <Button
                             onClick={() => setIsStartDialogOpen(true)}
-                            className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-200/50 font-bold"
+                            className="h-[44px] px-8 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:shadow-xl hover:shadow-emerald-500/20 text-white text-[10px] font-black uppercase tracking-widest transition-all"
                         >
                             <PlayCircle className="w-4 h-4 mr-2" />
-                            Start Day
+                            Initialize Shift
                         </Button>
                     )}
                     {isToday && activeShift && (
                         <Button
                             onClick={() => setIsCloseDialogOpen(true)}
-                            variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-50 font-bold"
+                            className="h-[44px] px-8 rounded-full bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-[10px] uppercase tracking-widest transition-all shadow-sm"
                         >
                             <StopCircle className="w-4 h-4 mr-2" />
-                            Close Day
+                            Terminate Day
                         </Button>
                     )}
                 </div>
@@ -440,19 +488,21 @@ export function CashLedgerPage() {
 
             {/* Active Shift Banner */}
             {activeShift && isToday && (
-                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 rounded-2xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="bg-emerald-50/40 backdrop-blur-3xl border-emerald-200/40 rounded-[2rem] p-6 flex items-center justify-between shadow-xl border">
+                    <div className="flex items-center gap-4">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                         <div>
-                            <p className="text-sm font-black text-emerald-800">Shift Active</p>
-                            <p className="text-[11px] text-emerald-600 font-medium">
-                                Started at {new Date(activeShift.startTime).toLocaleTimeString()} • Float: Nrs. {activeShift.startingCash.toLocaleString()}
+                            <p className="text-[10px] font-black text-emerald-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Current Session State</p>
+                            <p className="text-xl font-black text-emerald-800 font-['DM_Sans',sans-serif] tracking-tight">
+                                Live since {new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
+                            <p className="text-[11px] text-emerald-600 font-medium">Float: Rs. {activeShift.startingCash.toLocaleString()} • Responsible: {activeShift.cashierName}</p>
                         </div>
                     </div>
-                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 font-black">
-                        Expected Drawer: Nrs. {financials.expectedDrawer.toLocaleString()}
-                    </Badge>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black text-emerald-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Projected Drawer</p>
+                        <p className="text-2xl font-black text-emerald-800 font-['DM_Sans',sans-serif]">Rs. {financials.expectedDrawer.toLocaleString()}</p>
+                    </div>
                 </div>
             )}
 
@@ -519,60 +569,40 @@ export function CashLedgerPage() {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Cash In */}
-                <Card className="border border-emerald-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                <Banknote className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                        </div>
-                        <p className="text-2xl font-black text-emerald-700 font-['DM_Sans',sans-serif]">Nrs. {financials.cashIn.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Cash Sales</p>
-                    </CardContent>
-                </Card>
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                        <Banknote className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Cash Intake</p>
+                    <p className="text-2xl font-black text-emerald-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.cashIn.toLocaleString()}</p>
+                </div>
 
                 {/* Card In */}
-                <Card className="border border-blue-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-                                <CreditCard className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <ArrowUpRight className="w-4 h-4 text-blue-500" />
-                        </div>
-                        <p className="text-2xl font-black text-blue-700 font-['DM_Sans',sans-serif]">Nrs. {financials.cardIn.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-blue-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Card / Fonepay</p>
-                    </CardContent>
-                </Card>
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                        <CreditCard className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Interbank</p>
+                    <p className="text-2xl font-black text-blue-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.cardIn.toLocaleString()}</p>
+                </div>
 
                 {/* Cash Expenses */}
-                <Card className="border border-orange-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center">
-                                <MinusCircle className="w-4 h-4 text-orange-600" />
-                            </div>
-                            <ArrowDownRight className="w-4 h-4 text-orange-500" />
-                        </div>
-                        <p className="text-2xl font-black text-orange-700 font-['DM_Sans',sans-serif]">Nrs. {financials.cashExpenses.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-orange-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Cash Expenses</p>
-                    </CardContent>
-                </Card>
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                        <MinusCircle className="w-5 h-5 text-rose-600" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Outgoings</p>
+                    <p className="text-2xl font-black text-rose-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.cashExpenses.toLocaleString()}</p>
+                </div>
 
                 {/* Net Revenue */}
-                <Card className="border border-indigo-100/60 shadow-sm bg-white/80 backdrop-blur-xl hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
-                                <TrendingUp className="w-4 h-4 text-indigo-600" />
-                            </div>
-                            <span className="text-[10px] font-black text-indigo-500 bg-indigo-100/50 px-2 py-0.5 rounded-full font-['DM_Sans',sans-serif]">{financials.totalOrders} orders</span>
-                        </div>
-                        <p className="text-2xl font-black text-indigo-700 font-['DM_Sans',sans-serif]">Nrs. {financials.totalRevenue.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-indigo-600/70 uppercase tracking-[0.2em] mt-1 font-['DM_Sans',sans-serif]">Total Revenue</p>
-                    </CardContent>
-                </Card>
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                        <TrendingUp className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Gross Liquidity</p>
+                    <p className="text-2xl font-black text-purple-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.totalRevenue.toLocaleString()}</p>
+                </div>
             </div>
 
             {/* Cash Flow Summary */}
@@ -660,6 +690,8 @@ export function CashLedgerPage() {
                                             }`}>
                                                 {t.type === 'sale' ? (
                                                     <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                                                ) : t.description.includes('Payment:') ? (
+                                                    <Truck className="w-4 h-4 text-orange-600" />
                                                 ) : (
                                                     <MinusCircle className="w-4 h-4 text-orange-600" />
                                                 )}

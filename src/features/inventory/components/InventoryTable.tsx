@@ -18,7 +18,7 @@ import {
     AlertDialogTitle
 } from '../../../components/ui/alert-dialog';
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
-import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes, ChevronRight, ChevronDown, Info } from 'lucide-react';
+import { Plus, Edit3, Trash2, PackagePlus, Loader2, AlertTriangle, RefreshCcw, Archive, History, Boxes, ChevronRight, ChevronDown, Info, Search } from 'lucide-react';
 
 import { Separator } from '../../../components/ui/separator';
 import { api } from '../../../services/api';
@@ -622,21 +622,21 @@ export function InventoryTable() {
     return (
         <div className="space-y-6">
             {lowStockItems.length > 0 && (
-                <Card className="border-orange-200 bg-orange-50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-orange-700">
+                <Card className="bg-orange-50/80 backdrop-blur-xl border-orange-200/60 shadow-xl rounded-[2rem] overflow-hidden">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-orange-700 font-['DM_Sans',sans-serif] font-black tracking-tight">
                             <AlertTriangle className="w-5 h-5" />
                             Low Stock Alert
                         </CardTitle>
-                        <CardDescription>
-                            {lowStockItems.length} items need restocking
+                        <CardDescription className="font-medium text-orange-600/70">
+                            {lowStockItems.length} items require immediate restocking
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 pb-2">
                             {lowStockItems.map(item => (
-                                <Badge key={item.id} variant="outline" className="border-orange-300 text-orange-700">
-                                    {item.name}: {item.stock} pcs
+                                <Badge key={item.id} variant="outline" className="bg-white/50 border-orange-200 text-orange-700 font-black px-3 py-1 rounded-lg font-['DM_Sans',sans-serif] text-[10px] uppercase tracking-wider">
+                                    {item.name}: {item.stock} {item.unit || 'pcs'}
                                 </Badge>
                             ))}
                         </div>
@@ -646,32 +646,32 @@ export function InventoryTable() {
 
 
 
-            <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                <CardHeader className="pb-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl mb-2">
-                    <div className="flex items-center justify-between mb-4">
+            <Card className="bg-white/40 backdrop-blur-3xl border-slate-200/60 shadow-2xl rounded-[2.5rem] overflow-hidden border">
+                <CardHeader className="p-8 pb-4 bg-transparent">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
                         <div>
-                            <CardTitle className="text-xl font-bold text-gray-900">Inventory Management</CardTitle>
-                            <CardDescription>Track and manage your entire product catalog (Live)</CardDescription>
+                            <CardTitle className="text-2xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">Catalog <span className="text-purple-600">Overview</span></CardTitle>
+                            <CardDescription className="text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1">Real-time status of your retail inventory network.</CardDescription>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-3">
                             {role === 'admin' && (
                                 <Button
                                     variant="outline"
                                     onClick={() => setShowArchived(!showArchived)}
-                                    className={`gap-2 h-9 text-xs font-semibold ${showArchived ? 'bg-purple-50 border-purple-200 text-purple-700' : 'text-gray-500'}`}
+                                    className={`gap-2 h-11 px-5 rounded-full text-xs font-black uppercase tracking-widest font-['DM_Sans',sans-serif] transition-all border-slate-200/60 shadow-sm ${showArchived ? 'bg-purple-600 text-white border-purple-600 shadow-purple-500/20' : 'bg-white/80 backdrop-blur-xl text-slate-500 hover:text-slate-800'}`}
                                 >
                                     <Archive className="w-4 h-4" />
-                                    {showArchived ? 'Active Inventory' : 'View Archived'}
+                                    {showArchived ? 'Live Inventory' : 'Archive'}
                                 </Button>
                             )}
                             {role === 'admin' && showArchived && archivedItems.length > 0 && (
                                 <Button
                                     variant="outline"
                                     onClick={() => setShowClearAllConfirm(true)}
-                                    className="gap-2 h-9 text-xs font-semibold bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                                    className="gap-2 h-11 px-5 rounded-full text-xs font-black uppercase tracking-widest font-['DM_Sans',sans-serif] bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
                                 >
                                     <Trash2 className="w-4 h-4" />
-                                    Clear All ({archivedItems.length})
+                                    Clear all
                                 </Button>
                             )}
                             <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
@@ -679,8 +679,8 @@ export function InventoryTable() {
                                 if (!open) resetForm();
                             }}>
                                 <DialogTrigger asChild>
-                                    <Button onClick={handleOpenAdd} className="gap-2 h-9 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-sm text-white text-xs font-bold">
-                                        <Plus className="w-4 h-4" /> Add Item
+                                    <Button onClick={handleOpenAdd} className="gap-2 h-11 px-6 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:shadow-xl hover:shadow-purple-500/20 text-white text-xs font-black uppercase tracking-widest transition-all">
+                                        <Plus className="w-4 h-4" /> Add Product
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
@@ -985,30 +985,30 @@ export function InventoryTable() {
                             </Dialog>
                         </div>
                     </div>
-                    <div className="relative mt-2">
+                    <div className="relative mt-2 max-w-md">
                         <Input 
-                            placeholder="Search products..." 
+                            placeholder="Find inventory..." 
                             value={searchQuery} 
                             onChange={(e) => setSearchQuery(e.target.value)} 
-                            className="max-w-sm h-10 bg-white border-slate-200/60 rounded-full focus:ring-2 focus:ring-indigo-500/20 font-['DM_Sans',sans-serif] shadow-sm text-sm pl-10"
+                            className="w-full h-12 bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-full focus:ring-4 focus:ring-purple-500/10 font-['DM_Sans',sans-serif] shadow-sm text-sm pl-12 transition-all"
                         />
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                            <Search className="w-5 h-5" />
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table 
-                        containerClassName="max-h-[calc(100vh-280px)] overflow-y-auto relative scrollbar-thin scrollbar-thumb-slate-200 border-t"
-                        className="min-w-[600px] border-separate border-spacing-0"
+                        containerClassName="max-h-[calc(100vh-320px)] overflow-y-auto relative scrollbar-thin scrollbar-thumb-slate-200 px-6"
+                        className="min-w-[600px] border-separate border-spacing-y-2"
                     >
-                        <TableHeader>
-                            <TableRow className="hover:bg-transparent">
-                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Item Name</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Category</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Stock</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Selling Price</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-slate-50 py-4 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-[0.2em] text-[10px] text-center w-[160px] font-['DM_Sans',sans-serif]">Actions</TableHead>
+                        <TableHeader className="bg-transparent">
+                            <TableRow className="hover:bg-transparent border-none">
+                                <TableHead className="px-5 py-4 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Product Details</TableHead>
+                                <TableHead className="px-5 py-4 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Category</TableHead>
+                                <TableHead className="px-5 py-4 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Level</TableHead>
+                                <TableHead className="px-5 py-4 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Revenue Potential</TableHead>
+                                <TableHead className="px-5 py-4 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] text-center w-[180px] font-['DM_Sans',sans-serif]">Operations</TableHead>
                             </TableRow>
                         </TableHeader>
                             <TableBody>
@@ -1022,7 +1022,7 @@ export function InventoryTable() {
                                     return (
                                         <>
                                         {/* ── Main Row ── */}
-                                        <TableRow key={item.id} className={`${item.isDeleted ? 'opacity-60 bg-slate-50' : ''} ${isPopcornParent ? 'bg-purple-50/30 border-b-0 cursor-pointer hover:bg-purple-50/60 transition-colors' : ''}`}
+                                        <TableRow key={item.id} className={`group border-none ${item.isDeleted ? 'opacity-60 bg-slate-50/50' : 'bg-white/60 backdrop-blur-md'} ${isPopcornParent ? 'bg-purple-100/30 cursor-pointer hover:bg-purple-100/50' : 'hover:bg-white/80'} transition-all duration-300 rounded-2xl shadow-sm`}
                                             onClick={isPopcornParent ? () => setExpandedPopcorn(prev => {
                                                 const next = new Set(prev);
                                                 if (next.has(item.id)) next.delete(item.id); else next.add(item.id);

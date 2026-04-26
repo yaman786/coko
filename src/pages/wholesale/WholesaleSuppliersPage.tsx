@@ -1,29 +1,29 @@
 import { useState, useEffect } from 'react';
-import { usePageTitle } from '../hooks/usePageTitle';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { Truck, Plus, Search, Building2, ArrowUpRight, Trash2, Edit2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent } from '../components/ui/card';
-import { api } from '../services/api';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card, CardContent } from '../../components/ui/card';
+import { api } from '../../services/api';
 import { toast } from 'sonner';
-import type { Supplier } from '../types';
-import { SupplierLedger } from '../features/suppliers/components/SupplierLedger';
-import { AddSupplierDialog } from '../features/suppliers/components/AddSupplierDialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
+import type { Supplier } from '../../types';
+import { SupplierLedger } from '../../features/suppliers/components/SupplierLedger';
+import { AddSupplierDialog } from '../../features/suppliers/components/AddSupplierDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
 
-export function SuppliersPage() {
-    // Hard-coded to Retail - No 'isWholesale' logic needed
-    const currentPortal = 'retail';
-    usePageTitle('Suppliers', 'Coko');
+export default function WholesaleSuppliersPage() {
+    // Hard-coded to Wholesale - No 'isWholesale' logic needed
+    const currentPortal = 'wholesale';
+    usePageTitle('Suppliers', 'GOD');
 
-    // Industry Standard Purple Theme for Retail
+    // Industry Standard Sky-Blue Theme for Wholesale
     const theme = {
-        primary: 'purple-600',
-        hover: 'hover:bg-purple-700',
-        bg: 'bg-purple-600',
-        shadow: 'shadow-purple-100',
-        text: 'text-purple-600',
-        iconBg: 'bg-purple-50'
+        primary: 'sky-600',
+        hover: 'hover:bg-sky-700',
+        bg: 'bg-sky-600',
+        shadow: 'shadow-sky-100',
+        text: 'text-sky-600',
+        iconBg: 'bg-sky-50'
     };
     
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -38,8 +38,8 @@ export function SuppliersPage() {
             const data = await api.getSuppliers(currentPortal);
             setSuppliers(data);
         } catch (error) {
-            console.error('Failed to fetch suppliers:', error);
-            toast.error('Failed to load suppliers');
+            console.error('Failed to fetch wholesale suppliers:', error);
+            toast.error('Failed to load supplier network');
         }
     };
 
@@ -51,10 +51,10 @@ export function SuppliersPage() {
         if (!supplierToDelete) return;
         try {
             await api.deleteSupplier(supplierToDelete.id);
-            toast.success('Supplier removed');
+            toast.success('Supplier removed from GOD network');
             fetchSuppliers();
         } catch (error) {
-            toast.error('Failed to delete supplier');
+            toast.error('Failed to remove supplier');
         } finally {
             setSupplierToDelete(null);
         }
@@ -90,18 +90,18 @@ export function SuppliersPage() {
                         <div className={`w-12 h-12 ${theme.bg} rounded-2xl flex items-center justify-center shadow-xl ${theme.shadow}/50`}>
                             <Truck className="w-6 h-6 text-white" />
                         </div>
-                        <span className={theme.text}>Partner</span> Ecosystem
+                        <span className={theme.text}>Wholesale</span> Partner Hub
                     </h1>
-                    <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif] ml-16">Intelligence unit for vendor relations and capital flow.</p>
+                    <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif] ml-16">Intelligence unit for bulk vendor relations and capital flow.</p>
                 </div>
                 
                 <Card className="bg-white/40 backdrop-blur-3xl border-slate-200/60 shadow-2xl rounded-[2rem] min-w-[320px] hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border">
                     <CardContent className="p-6 flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-[1.25rem] bg-orange-100 flex items-center justify-center border border-orange-200/50 shadow-inner">
-                            <ArrowUpRight className="w-8 h-8 text-orange-600" />
+                        <div className="w-16 h-16 rounded-[1.25rem] bg-sky-100 flex items-center justify-center border border-sky-200/50 shadow-inner">
+                            <ArrowUpRight className="w-8 h-8 text-sky-600" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Aggregate Liability</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Total Wholesale Liability</p>
                             <p className="text-3xl font-black text-rose-600 tracking-tight font-['DM_Sans',sans-serif] mt-1">
                                 Rs. {totalOwed.toLocaleString()}
                             </p>
@@ -115,10 +115,10 @@ export function SuppliersPage() {
                 <div className="relative flex-1 w-full">
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <Input
-                        placeholder="Search strategic partners..."
+                        placeholder="Search wholesale network..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-14 h-14 bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-full focus:ring-4 focus:ring-purple-500/10 shadow-sm font-['DM_Sans',sans-serif] text-sm font-medium transition-all"
+                        className="pl-14 h-14 bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-full focus:ring-4 focus:ring-sky-500/10 shadow-sm font-['DM_Sans',sans-serif] text-sm font-medium transition-all"
                     />
                 </div>
                 <Button 
@@ -126,10 +126,10 @@ export function SuppliersPage() {
                         setEditingSupplier(null);
                         setIsAddOpen(true);
                     }}
-                    className={`${theme.bg} ${theme.hover} text-white px-10 h-14 rounded-full font-black font-['DM_Sans',sans-serif] text-[10px] uppercase tracking-widest shadow-xl shadow-purple-500/10 transition-all duration-300 hover:scale-[1.02] flex items-center gap-3 w-full sm:w-auto`}
+                    className={`${theme.bg} ${theme.hover} text-white px-10 h-14 rounded-full font-black font-['DM_Sans',sans-serif] text-[10px] uppercase tracking-widest shadow-xl shadow-sky-500/10 transition-all duration-300 hover:scale-[1.02] flex items-center gap-3 w-full sm:w-auto`}
                 >
                     <Plus className="w-5 h-5" />
-                    Onboard Partner
+                    Onboard GOD Partner
                 </Button>
             </div>
 
@@ -174,7 +174,7 @@ export function SuppliersPage() {
                             </div>
 
                             <div className="flex flex-col gap-1">
-                                <h3 className="text-2xl font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight group-hover:text-purple-600 transition-colors">{supplier.name}</h3>
+                                <h3 className="text-2xl font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight group-hover:text-sky-600 transition-colors">{supplier.name}</h3>
                                 {supplier.contact_person && (
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">{supplier.contact_person}</p>
                                 )}
@@ -195,7 +195,7 @@ export function SuppliersPage() {
                                 </div>
                             </div>
                         </CardContent>
-                        <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-${theme.primary}/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                        <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-sky-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                     </Card>
                 ))}
 
@@ -223,9 +223,9 @@ export function SuppliersPage() {
             <AlertDialog open={!!supplierToDelete} onOpenChange={() => setSupplierToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Remove Wholesale Partner?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will remove **{supplierToDelete?.name}** and all their financial history. This action cannot be undone.
+                            This will remove **{supplierToDelete?.name}** from the Wholesale network. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

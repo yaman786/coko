@@ -10,7 +10,7 @@ import {
     getTopProducts,
     getRecentOrders
 } from '../utils/analytics';
-import { Activity, DollarSign, Package, TrendingUp, ShieldAlert, RefreshCw, Globe, Loader2, Download, FileText, TableProperties, Gift, Heart, Percent, CreditCard, Wallet, Receipt, FlaskConical } from 'lucide-react';
+import { Activity, DollarSign, Package, TrendingUp, ShieldAlert, RefreshCw, Loader2, Download, FileText, TableProperties, Gift, Heart, Percent, CreditCard, Wallet, Receipt, FlaskConical } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { exportToCSV, exportDashboardToPDF } from '../utils/export';
@@ -71,32 +71,35 @@ function DashboardContent() {
 
     const queryKeyDatePart = typeof dateFilter === 'number' ? dateFilter : `${customFrom}_${customTo}`;
 
+    const isWholesale = typeof window !== 'undefined' && window.location.pathname.startsWith('/wholesale');
+    const currentPortal = isWholesale ? 'wholesale' : 'retail';
+
     // 1. Concurrent and Cached Data Fetching — ALL queries use the `dateFilter` period
     const { data: metrics, isLoading: metricsLoading } = useQuery({
-        queryKey: ['dashboardMetrics', queryKeyDatePart],
+        queryKey: ['dashboardMetrics', queryKeyDatePart, currentPortal],
         queryFn: () => {
-            console.log('[Query] Fetching metrics for:', dateFilter);
-            return getDashboardMetrics(dateFilter);
+            console.log('[Query] Fetching metrics for:', dateFilter, currentPortal);
+            return getDashboardMetrics(dateFilter, currentPortal);
         },
         staleTime: 1000 * 60 * 2, // 2 minutes
     });
 
     const { data: revenueData = [] } = useQuery({
-        queryKey: ['revenueTrend', queryKeyDatePart],
+        queryKey: ['revenueTrend', queryKeyDatePart, currentPortal],
         queryFn: () => {
-            console.log('[Query] Fetching revenue trend for:', dateFilter);
-            return getRevenueTrend(dateFilter);
+            console.log('[Query] Fetching revenue trend for:', dateFilter, currentPortal);
+            return getRevenueTrend(dateFilter, currentPortal);
         },
     });
 
     const { data: topProducts = [] } = useQuery({
-        queryKey: ['topProducts', queryKeyDatePart],
-        queryFn: () => getTopProducts(5, dateFilter),
+        queryKey: ['topProducts', queryKeyDatePart, currentPortal],
+        queryFn: () => getTopProducts(5, dateFilter, currentPortal),
     });
 
     const { data: recentOrders = [] } = useQuery({
-        queryKey: ['recentOrders'],
-        queryFn: () => getRecentOrders(10),
+        queryKey: ['recentOrders', currentPortal],
+        queryFn: () => getRecentOrders(10, currentPortal),
     });
 
     // --- Export Logic ---
@@ -147,29 +150,29 @@ function DashboardContent() {
     if (!metrics) return null;
 
     return (
-        <div className="flex-1 space-y-4 md:space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4 mb-4">
-                <div className="flex items-center gap-3 md:gap-4 flex-wrap">
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 font-['DM_Sans',sans-serif]">Dashboard</h1>
-                        <p className="text-slate-500 font-medium text-sm hidden sm:block font-['DM_Sans',sans-serif]">Overview of your store's performance (Live)</p>
+        <div className="flex-1 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-2">
+                <div className="flex items-center gap-6 flex-wrap">
+                    <div className="flex flex-col gap-1">
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">Executive <span className="text-purple-600">Overview</span></h1>
+                        <p className="text-slate-500 font-medium text-sm hidden sm:block font-['DM_Sans',sans-serif]">Real-time intelligence and shop performance audit.</p>
                     </div>
 
-                    <div className="mt-0.5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] md:text-xs font-bold shadow-sm bg-emerald-50/80 text-emerald-700 border border-emerald-200/60 font-['DM_Sans',sans-serif] tracking-wider uppercase">
-                        <Globe className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                        Online
+                    <div className="mt-0.5 flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black shadow-inner bg-emerald-50/50 text-emerald-600 border border-emerald-200/40 font-['DM_Sans',sans-serif] tracking-widest uppercase">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Live Feed
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className="flex items-center gap-1 bg-white/80 backdrop-blur-xl rounded-xl p-1.5 border border-slate-200/60 shadow-sm transition-all duration-300">
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-white/50 backdrop-blur-md rounded-full p-1.5 border border-slate-200/60 shadow-inner">
                         {(['today', 'week', 'month', 'custom'] as const).map((p) => (
                             <button
                                 key={p}
                                 onClick={() => setPeriod(p)}
-                                className={`px-4 md:px-5 py-2 text-[11px] md:text-xs font-bold uppercase tracking-[0.1em] font-['DM_Sans',sans-serif] rounded-lg transition-all duration-300 min-h-[36px] md:min-h-[40px] ${period === p
-                                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
-                                    : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 bg-transparent'
+                                className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-full transition-all duration-300 min-h-[40px] ${period === p
+                                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
+                                    : 'text-slate-500 hover:text-slate-800'
                                     }`}
                             >
                                 {p}
@@ -200,18 +203,18 @@ function DashboardContent() {
                             buttonContent={
                                 <>
                                     <Download className="w-4 h-4 text-purple-600" />
-                                    <span className="hidden sm:inline">Export</span>
+                                    <span className="hidden sm:inline">Export Audit</span>
                                 </>
                             }
-                            buttonClassName="border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 h-[36px] md:h-[40px]"
+                            buttonClassName="border-slate-200/60 bg-white/80 backdrop-blur-xl hover:bg-white text-slate-700 h-[44px] shrink-0 rounded-full font-black text-[10px] uppercase tracking-widest px-6 shadow-sm transition-all"
                             items={[
                                 {
-                                    label: 'Export as PDF (Report)',
+                                    label: 'Intelligence PDF',
                                     icon: FileText,
                                     onClick: handleExportPDF
                                 },
                                 {
-                                    label: 'Export as CSV (Data)',
+                                    label: 'Raw CSV',
                                     icon: TableProperties,
                                     onClick: handleExportCSV
                                 }
@@ -248,10 +251,10 @@ function DashboardContent() {
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Financial Breakdown */}
-                <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Financial Breakdown</h3>
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2.5rem] border border-slate-200/60 p-8 shadow-2xl border">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 font-['DM_Sans',sans-serif]">Financial Reconciliation</h3>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center text-sm">
                             <div className="flex items-center gap-2 text-gray-600">
@@ -345,8 +348,8 @@ function DashboardContent() {
                 </div>
 
                 {/* Payment Insights */}
-                <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Payment Insights</h3>
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2.5rem] border border-slate-200/60 p-8 shadow-2xl border">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 font-['DM_Sans',sans-serif]">Liquidity Distribution</h3>
                     <div className="h-full flex flex-col justify-center">
                         <div className="flex items-center justify-between gap-4 mb-6">
                             <div className="flex-1 space-y-2">

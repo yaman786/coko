@@ -23,6 +23,8 @@ const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(m => ({ de
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const CashLedgerPage = lazy(() => import('./pages/CashLedgerPage').then(m => ({ default: m.CashLedgerPage })));
+const WholesaleSuppliersPage = lazy(() => import('./pages/wholesale/WholesaleSuppliersPage'));
+const WholesaleSettingsPage = lazy(() => import('./pages/wholesale/WholesaleSettingsPage'));
 
 function PageLoader() {
   return (
@@ -106,8 +108,8 @@ export function App() {
                    <Route path="inventory" element={<AdminRoute><WholesaleInventoryPage /></AdminRoute>} />
                    <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
                    <Route path="orders" element={<AdminRoute><WholesaleOrdersPage /></AdminRoute>} />
-                   <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
-                   <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+                   <Route path="suppliers" element={<AdminRoute><WholesaleSuppliersPage /></AdminRoute>} />
+                   <Route path="settings" element={<AdminRoute><WholesaleSettingsPage /></AdminRoute>} />
                 </Route>
 
                 {/* Fallback */}

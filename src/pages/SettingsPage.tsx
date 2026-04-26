@@ -6,21 +6,22 @@ import { ChangePassword } from '../features/settings/components/ChangePassword';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export function SettingsPage() {
-    const isWholesale = typeof window !== 'undefined' && window.location.pathname.startsWith('/wholesale');
-    usePageTitle('Settings', isWholesale ? 'GOD' : 'Coko');
+    // Hard-coded to Retail
+    const currentPortal = 'retail';
+    usePageTitle('Settings', 'Coko');
     return (
-        <div className="space-y-6 md:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-5xl mx-auto">
+        <div className="space-y-8 md:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-7xl mx-auto p-6 md:p-10">
             <div>
-                <h1 className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">Settings</h1>
-                <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1 hidden sm:block">Manage your store configuration, staff accounts, and audit trail.</p>
+                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">System <span className="text-purple-600">Configuration</span></h1>
+                <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1 hidden sm:block">Manage your store DNA, staff access levels, and security protocols.</p>
             </div>
 
             <Tabs defaultValue="store" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 bg-white/50 backdrop-blur-xl border border-slate-200/60 p-1 rounded-xl h-12">
-                    <TabsTrigger value="store" className="text-xs sm:text-sm font-bold font-['DM_Sans',sans-serif] data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm rounded-lg transition-all">Store</TabsTrigger>
-                    <TabsTrigger value="staff" className="text-xs sm:text-sm font-bold font-['DM_Sans',sans-serif] data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm rounded-lg transition-all">Staff</TabsTrigger>
-                    <TabsTrigger value="security" className="text-xs sm:text-sm font-bold font-['DM_Sans',sans-serif] data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm rounded-lg transition-all">Security</TabsTrigger>
-                    <TabsTrigger value="activity" className="text-xs sm:text-sm font-bold font-['DM_Sans',sans-serif] data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm rounded-lg transition-all">Activity</TabsTrigger>
+                <TabsList className="flex items-center gap-1.5 bg-white/50 backdrop-blur-md rounded-full p-1.5 border border-slate-200/60 shadow-inner h-14 w-fit max-w-full overflow-x-auto">
+                    <TabsTrigger value="store" className="px-8 h-full rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/20">Store</TabsTrigger>
+                    <TabsTrigger value="staff" className="px-8 h-full rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/20">Staff</TabsTrigger>
+                    <TabsTrigger value="security" className="px-8 h-full rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/20">Security</TabsTrigger>
+                    <TabsTrigger value="activity" className="px-8 h-full rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/20">Activity</TabsTrigger>
                 </TabsList>
                 <TabsContent value="store" className="mt-6">
                     <StoreProfile />

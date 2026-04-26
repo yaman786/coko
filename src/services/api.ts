@@ -11,6 +11,15 @@ export interface OrderItemPayload {
 }
 
 export const api = {
+    // Portal Context Handshake
+    async setPortalContext(portal: 'retail' | 'wholesale'): Promise<void> {
+        const { error } = await supabase.rpc('set_portal', { p_portal: portal });
+        if (error) {
+            console.error('Failed to set DB portal context:', error.message);
+            // Non-blocking, but RLS will fail if not set correctly in DB
+        }
+    },
+
     // Products
     async getProducts(portal?: 'retail' | 'wholesale'): Promise<Product[]> {
         // Try with portal filter first; if column doesn't exist yet, fall back gracefully
@@ -106,6 +115,7 @@ export const api = {
         offerAmount?: number;
         isWaste?: boolean;
         createdAt?: string; // Optional override
+        portal?: 'retail' | 'wholesale';
     }): Promise<void> {
         const { error } = await supabase.rpc('process_order', {
             p_order_id: params.id,
@@ -125,7 +135,8 @@ export const api = {
             p_offer_amount: params.offerAmount || 0,
             p_complimentary_amount: params.complimentaryAmount || 0,
             p_is_waste: params.isWaste || false,
-            p_created_at: params.createdAt || null
+            p_created_at: params.createdAt || null,
+            p_portal: params.portal || 'retail'
         });
 
         if (error) throw error;
@@ -170,11 +181,14 @@ export const api = {
         });
     },
 
-    async getRecentOrders(limit: number = 10): Promise<Order[]> {
+    async getRecentOrders(limit: number = 10, portal?: 'retail' | 'wholesale'): Promise<Order[]> {
+        let query = supabase.from('orders').select('*');
+        
+        if (portal) {
+            query = query.eq('portal', portal);
+        }
 
-        const { data, error } = await supabase
-            .from('orders')
-            .select('*')
+        const { data, error } = await query
             .order('createdAt', { ascending: false })
             .limit(limit);
 
@@ -182,10 +196,14 @@ export const api = {
         return data || [];
     },
 
-    async getOrdersByDateRange(start: Date, end: Date): Promise<Order[]> {
-        const { data, error } = await supabase
-            .from('orders')
-            .select('*')
+    async getOrdersByDateRange(start: Date, end: Date, portal?: 'retail' | 'wholesale'): Promise<Order[]> {
+        let query = supabase.from('orders').select('*');
+        
+        if (portal) {
+            query = query.eq('portal', portal);
+        }
+
+        const { data, error } = await query
             .gte('createdAt', start.toISOString())
             .lte('createdAt', end.toISOString())
             .eq('status', 'completed');
@@ -195,8 +213,16 @@ export const api = {
     },
 
     // Staff
-    async getStaff(includeArchived: boolean = false): Promise<Staff[]> {
+    async getStaff(includeArchived: boolean = false, portal?: 'retail' | 'wholesale'): Promise<Staff[]> {
         let query = supabase.from('staff').select('*');
+        
+        if (portal) {
+            query = query.eq('portal', portal);
+        } else {
+            // If no portal specified, default to retail for backward compatibility
+            // but in RLS environment, this will only return what the session allows.
+        }
+
         if (!includeArchived) {
             query = query.eq('isDeleted', false);
         }
@@ -212,6 +238,7 @@ export const api = {
             .upsert({
                 ...staff,
                 user_id: staff.user_id, // Ensure user_id is passed
+                portal: staff.role === 'admin' ? 'all' : (staff.portal || 'retail'),
                 updatedAt: new Date()
             });
 
@@ -247,6 +274,7 @@ export const api = {
             .from('storeSettings')
             .upsert({
                 ...settings,
+                portal: settings.portal || 'retail',
                 updatedAt: new Date()
             });
 
@@ -265,6 +293,7 @@ export const api = {
         metadata?: Record<string, unknown>;
         actor_email?: string;
         actor_name?: string;
+        createdAt?: Date | string;
     }): Promise<void> {
         try {
             await supabase.from('audit_log').insert({
@@ -275,6 +304,7 @@ export const api = {
                 metadata: entry.metadata || {},
                 actor_email: entry.actor_email || 'system',
                 actor_name: entry.actor_name || 'System',
+                ...(entry.createdAt && { createdAt: new Date(entry.createdAt).toISOString() })
             });
         } catch {
             // Silently fail — audit logging must never disrupt operations
@@ -282,10 +312,14 @@ export const api = {
         }
     },
 
-    async getAuditLog(limit: number = 50): Promise<AuditLogEntry[]> {
-        const { data, error } = await supabase
-            .from('audit_log')
-            .select('*')
+    async getAuditLog(limit: number = 50, portal?: 'retail' | 'wholesale'): Promise<AuditLogEntry[]> {
+        let query = supabase.from('audit_log').select('*');
+        
+        if (portal) {
+            query = query.eq('metadata->>portal', portal);
+        }
+
+        const { data, error } = await query
             .order('createdAt', { ascending: false })
             .limit(limit);
 
@@ -307,11 +341,12 @@ export const api = {
     },
 
     // Expenses
-    async getExpenses(start?: Date, end?: Date): Promise<Expense[]> {
+    async getExpenses(start?: Date, end?: Date, portal?: 'retail' | 'wholesale'): Promise<Expense[]> {
         let query = supabase.from('expenses').select('*').order('date', { ascending: false });
         
         if (start) query = query.gte('date', start.toISOString());
         if (end) query = query.lte('date', end.toISOString());
+        if (portal) query = query.eq('portal', portal);
 
         const { data, error } = await query;
         if (error) throw error;
@@ -321,7 +356,10 @@ export const api = {
     async upsertExpense(expense: Partial<Expense>): Promise<void> {
         const { error } = await supabase
             .from('expenses')
-            .upsert(expense);
+            .upsert({
+                ...expense,
+                portal: expense.portal || 'retail'
+            });
 
         if (error) throw error;
     },

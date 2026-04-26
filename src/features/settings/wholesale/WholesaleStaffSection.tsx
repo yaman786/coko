@@ -1,24 +1,25 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
-import { Badge } from '../../../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
+import { Button } from '../../../../components/ui/button';
+import { Input } from '../../../../components/ui/input';
+import { Label } from '../../../../components/ui/label';
+import { Badge } from '../../../../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../../../../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../../components/ui/alert-dialog";
 import { Plus, Mail, Trash2, Archive, RefreshCcw, Loader2, Edit2 } from 'lucide-react';
-import { api } from '../../../services/api';
-import { supabase } from '../../../lib/supabase';
-import type { Staff } from '../../../types';
+import { api } from '../../../../services/api';
+import { supabase } from '../../../../lib/supabase';
+import type { Staff } from '../../../../types';
 import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../../contexts/AuthContext';
 
-export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'wholesale' }) {
+export function WholesaleStaffSection() {
     const { user, role: currentUserRole } = useAuth();
     const queryClient = useQueryClient();
+    const currentPortal = 'wholesale';
     const [showArchived, setShowArchived] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -36,31 +37,31 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
         setEditingStaff(null);
     };
 
-    // 1. Data Fetching
+    // 1. Data Fetching - Specific for Wholesale
     const { data: staff = [], isLoading } = useQuery({
-        queryKey: ['staff', portal, showArchived],
-        queryFn: () => api.getStaff(showArchived, portal),
+        queryKey: ['staff', currentPortal, showArchived],
+        queryFn: () => api.getStaff(showArchived, currentPortal),
     });
 
     // 2. Mutations
     const upsertMutation = useMutation({
-        mutationFn: (data: Staff) => api.upsertStaff({ ...data, portal }),
+        mutationFn: (data: Staff) => api.upsertStaff({ ...data, portal: currentPortal }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['staff', portal] });
+            queryClient.invalidateQueries({ queryKey: ['staff', currentPortal] });
             setIsAddDialogOpen(false);
             resetForm();
         },
-        onError: () => toast.error('Failed to save staff profile')
+        onError: () => toast.error('Failed to save GOD staff profile')
     });
 
     const updateStaffMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: Partial<Staff> }) => api.updateStaff(id, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['staff', portal] });
+            queryClient.invalidateQueries({ queryKey: ['staff', currentPortal] });
             setIsAddDialogOpen(false);
             resetForm();
         },
-        onError: () => toast.error('Failed to update staff member')
+        onError: () => toast.error('Failed to update team member')
     });
 
     const handleSaveStaff = async () => {
@@ -69,52 +70,39 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
             return;
         }
 
-        // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-            toast.error("Invalid Email", { description: "Please enter a valid email address." });
-            return;
-        }
-
         if (editingStaff) {
-            // UPDATE FLOW
             updateStaffMutation.mutate({
                 id: editingStaff.id,
                 data: {
                     name: formData.name,
                     role: formData.role
-                    // Note: Email changes and password resets strictly require 
-                    // Supabase Auth Admin API limits, so we only update metadata.
                 }
             });
-            toast.success("Staff Updated", { description: `${formData.name}'s profile has been updated.` });
+            toast.success("Team Updated", { description: `${formData.name}'s profile has been updated.` });
         } else {
-            // CREATE FLOW
             if (!formData.password || formData.password.length < 6) {
                 toast.error("Weak Password", { description: "Password must be at least 6 characters." });
                 return;
             }
 
             try {
-                // 1. Create the user in Supabase Auth (email confirmation is disabled in dashboard)
                 const { error: signUpError } = await supabase.auth.signUp({
                     email: formData.email,
                     password: formData.password,
                     options: {
                         data: {
                             name: formData.name,
-                            role: formData.role
+                            role: formData.role,
+                            portal: currentPortal
                         }
                     }
                 });
 
                 if (signUpError) {
-                    console.error("Supabase Auth Error:", signUpError);
                     toast.error("Auth Error", { description: signUpError.message });
                     return;
                 }
 
-                // 2. Create the RBAC profile in Supabase via API
                 upsertMutation.mutate({
                     id: crypto.randomUUID(),
                     name: formData.name,
@@ -123,25 +111,22 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                     updatedAt: new Date(),
                     isDeleted: false,
                     user_id: user?.id,
-                    portal: portal
+                    portal: currentPortal
                 });
 
-                toast.success("Staff Created", { description: `${formData.name} can now log in immediately!` });
+                toast.success("Team Member Added", { description: `${formData.name} joined the GOD Hub!` });
             } catch (error) {
-                console.error(error);
-                toast.error("Error", { description: "Failed to create staff profile." });
+                toast.error("Error", { description: "Failed to create team profile." });
             }
         }
     };
-
-
 
     const handleEditClick = (member: Staff) => {
         setEditingStaff(member);
         setFormData({
             name: member.name,
             email: member.email,
-            password: '', // Hidden in edit mode
+            password: '', 
             role: member.role
         });
         setIsAddDialogOpen(true);
@@ -149,19 +134,14 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
 
     const handleDeleteStaff = async (id: string) => {
         updateStaffMutation.mutate({ id, data: { isDeleted: true } });
-        toast.success("Staff Removed", { description: "Their access has been immediately revoked." });
-    };
-
-    const handleRestoreStaff = async (id: string) => {
-        updateStaffMutation.mutate({ id, data: { isDeleted: false } });
-        toast.success("Staff profile restored");
+        toast.success("Access Revoked", { description: "User removed from active wholesale team." });
     };
 
     if (isLoading && staff.length === 0) {
         return (
             <div className="flex flex-col h-64 items-center justify-center gap-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-                <p className="text-slate-500 font-medium tracking-tight">Syncing staff directory...</p>
+                <Loader2 className="h-8 w-8 animate-spin text-sky-600" />
+                <p className="text-slate-500 font-medium tracking-tight">Syncing GOD directory...</p>
             </div>
         );
     }
@@ -181,18 +161,18 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                 <CardHeader className="bg-white/50 border-b border-slate-100 pb-6 pt-8 px-8">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
-                            <CardTitle className="text-xl font-bold text-slate-800 font-['DM_Sans',sans-serif]">Staff Management</CardTitle>
-                            <CardDescription>Configure Role-Based Access Control (RBAC) across the POS.</CardDescription>
+                            <CardTitle className="text-xl font-bold text-slate-800 font-['DM_Sans',sans-serif]">GOD Team Management</CardTitle>
+                            <CardDescription>Configure access levels for the wholesale distribution network.</CardDescription>
                         </div>
                         <div className="flex gap-2">
                             {currentUserRole === 'admin' && (
                                 <Button
                                     variant="outline"
                                     onClick={() => setShowArchived(!showArchived)}
-                                    className={`gap-2 h-10 ${showArchived ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'text-slate-500'}`}
+                                    className={`gap-2 h-10 ${showArchived ? 'bg-sky-50 border-sky-200 text-sky-700' : 'text-slate-500'}`}
                                 >
                                     <Archive className="w-4 h-4" />
-                                    {showArchived ? 'Active Staff' : 'View Archived'}
+                                    {showArchived ? 'Active Team' : 'View Archived'}
                                 </Button>
                             )}
                             <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
@@ -200,53 +180,53 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                                 if (!open) resetForm();
                             }}>
                                 <DialogTrigger asChild>
-                                    <Button onClick={() => resetForm()} className="bg-purple-600 hover:bg-purple-700 text-white gap-2 h-10 shadow-sm border-0">
+                                    <Button onClick={() => resetForm()} className="bg-sky-600 hover:bg-sky-700 text-white gap-2 h-10 shadow-sm border-0">
                                         <Plus className="w-4 h-4" />
-                                        Add Staff
+                                        Add Member
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                     <DialogHeader>
-                                        <DialogTitle>{editingStaff ? "Edit Staff Member" : "Add Staff Member"}</DialogTitle>
+                                        <DialogTitle>{editingStaff ? "Update Team Member" : "Join GOD Team"}</DialogTitle>
                                         <DialogDescription>
-                                            {editingStaff ? "Update role and display name." : "Register a new employee for secure POS login."}
+                                            {editingStaff ? "Update wholesale access level." : "Register a new wholesale operator."}
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="space-y-4 py-4">
                                         <div className="space-y-2">
                                             <Label>Full Name</Label>
-                                            <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Jane Doe" />
+                                            <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="GOD Operator" className="focus-visible:ring-sky-500" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Login Email</Label>
                                             <Input
                                                 type="email"
                                                 value={formData.email}
-                                                disabled={!!editingStaff} // Email usually acts as the immutable PK in auth flows
+                                                disabled={!!editingStaff}
                                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                placeholder="jane@coko.com"
-                                                className={editingStaff ? "bg-slate-50 text-slate-500" : ""}
+                                                placeholder="user@godhub.com"
+                                                className={editingStaff ? "bg-slate-50 text-slate-500" : "focus-visible:ring-sky-500"}
                                             />
                                         </div>
                                         {!editingStaff && (
                                             <div className="space-y-2">
                                                 <Label>Password</Label>
-                                                <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Min 6 characters" />
+                                                <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Min 6 characters" className="focus-visible:ring-sky-500" />
                                             </div>
                                         )}
                                         <div className="space-y-2">
-                                            <Label>System Role</Label>
+                                            <Label>Access Level</Label>
                                             <Select value={formData.role} onValueChange={(value: 'admin' | 'cashier') => setFormData({ ...formData, role: value })}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectTrigger className="focus:ring-sky-500"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="cashier">Cashier (POS Only)</SelectItem>
-                                                    <SelectItem value="admin">System Admin (Full Access)</SelectItem>
+                                                    <SelectItem value="cashier">Operator (Restricted)</SelectItem>
+                                                    <SelectItem value="admin">Admin (Full Control)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <Button onClick={handleSaveStaff} disabled={upsertMutation.isPending || updateStaffMutation.isPending} className="w-full bg-purple-600 shadow-md h-11 mt-4">
+                                        <Button onClick={handleSaveStaff} disabled={upsertMutation.isPending || updateStaffMutation.isPending} className="w-full bg-sky-600 shadow-md h-11 mt-4">
                                             {(upsertMutation.isPending || updateStaffMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                            {editingStaff ? "Save Changes" : "Create Profile"}
+                                            {editingStaff ? "Sync Changes" : "Confirm Onboarding"}
                                         </Button>
                                     </div>
                                 </DialogContent>
@@ -255,15 +235,15 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    <Input placeholder="Search staff..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="mb-6 max-w-sm h-11" />
+                    <Input placeholder="Search team directory..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="mb-6 max-w-sm h-11 focus-visible:ring-sky-500" />
                     <div className="rounded-xl border border-slate-200 overflow-x-auto overflow-hidden shadow-sm">
                         <Table className="min-w-[600px]">
                             <TableHeader className="bg-slate-50">
                                 <TableRow>
-                                    <TableHead>Staff Member</TableHead>
-                                    <TableHead>Contact</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead>Identity</TableHead>
+                                    <TableHead>Credentials</TableHead>
+                                    <TableHead>Level</TableHead>
+                                    <TableHead className="text-right">Control</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -271,12 +251,12 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                                     <TableRow key={member.id} className={`group hover:bg-slate-50/50 ${member.isDeleted ? 'opacity-60 bg-slate-50' : ''}`}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
                                                     {getInitials(member.name)}
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-slate-800 tracking-tight">{member.name}</p>
-                                                    {member.isDeleted && <Badge variant="outline" className="text-[10px] h-4 border-slate-200 bg-white">Archived</Badge>}
+                                                    {member.isDeleted && <Badge variant="outline" className="text-[10px] h-4 border-slate-200 bg-white">Deactivated</Badge>}
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -287,19 +267,19 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className={member.role === 'admin' ? 'bg-indigo-600 shadow-sm border-0' : 'bg-slate-100 text-slate-600 border-slate-200 shadow-none'}>
-                                                {member.role === 'admin' ? 'Admin' : 'Cashier'}
+                                            <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className={member.role === 'admin' ? 'bg-sky-600 shadow-sm border-0 text-white' : 'bg-slate-100 text-slate-600 border-slate-200 shadow-none'}>
+                                                {member.role === 'admin' ? 'Admin' : 'Operator'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-1">
                                                 {member.isDeleted ? (
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" onClick={() => handleRestoreStaff(member.id)}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" onClick={() => api.updateStaff(member.id, { isDeleted: false })}>
                                                         <RefreshCcw className="w-4 h-4" />
                                                     </Button>
                                                 ) : (
                                                     <>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-purple-600 hover:bg-purple-50" onClick={() => handleEditClick(member)}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-sky-600 hover:bg-sky-50" onClick={() => handleEditClick(member)}>
                                                             <Edit2 className="w-4 h-4" />
                                                         </Button>
 
@@ -311,15 +291,15 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                                                             </AlertDialogTrigger>
                                                             <AlertDialogContent>
                                                                 <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                    <AlertDialogTitle>Revoke Wholesale Access?</AlertDialogTitle>
                                                                     <AlertDialogDescription>
-                                                                        This will immediately revoke <strong>{member.name}</strong>'s access to the POS system. By archiving, their past transactions remain safe, but they can no longer log in.
+                                                                        This will immediately block <strong>{member.name}</strong> from the GOD Hub. 
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>
                                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteStaff(member.id)} className="bg-red-500 hover:bg-red-600 text-white">
-                                                                        Yes, Archive User
+                                                                    <AlertDialogAction onClick={() => handleDeleteStaff(member.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold">
+                                                                        Confirm Revocation
                                                                     </AlertDialogAction>
                                                                 </AlertDialogFooter>
                                                             </AlertDialogContent>
@@ -331,7 +311,7 @@ export function StaffSection({ portal = 'retail' }: { portal?: 'retail' | 'whole
                                     </TableRow>
                                 ))}
                                 {filteredStaff.length === 0 && (
-                                    <TableRow><TableCell colSpan={4} className="text-center py-12 text-slate-400 font-medium bg-slate-50/30">No matching staff members</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="text-center py-12 text-slate-400 font-medium bg-slate-50/30">Directory empty</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>

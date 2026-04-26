@@ -233,67 +233,71 @@ export function OrdersPage() {
     }
 
     return (
-        <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-6">
+        <div className="flex-1 space-y-8 p-6 md:p-10 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
             <div className="flex justify-between items-end">
-                <div>
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gray-900">Order History</h1>
-                    <p className="text-gray-500 text-sm">Complete record of every transaction and spillage.</p>
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-3xl font-black tracking-tight text-slate-800 font-['DM_Sans',sans-serif]">
+                        Transaction <span className="text-purple-600">Ledger</span>
+                    </h1>
+                    <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif] mt-1">Complete record of every retail interaction and spillage event.</p>
                 </div>
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                <div className="bg-white/80 backdrop-blur-xl rounded-xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Sales Orders</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1 font-['DM_Sans',sans-serif]">{salesOrders.length}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Volume</p>
+                    <p className="text-3xl font-black text-slate-800 mt-2 font-['DM_Sans',sans-serif] tracking-tight">{salesOrders.length}</p>
                 </div>
-                <div className="bg-emerald-50/50 backdrop-blur-xl rounded-xl border border-emerald-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
-                    <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Net Revenue</p>
-                    <p className="text-2xl font-black text-emerald-600 mt-1 font-['DM_Sans',sans-serif]">Nrs. {totalRevenue.toLocaleString()}</p>
+                <div className="bg-emerald-50/40 backdrop-blur-3xl rounded-[2rem] border border-emerald-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border">
+                    <p className="text-[10px] font-black text-emerald-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Net Cash</p>
+                    <p className="text-3xl font-black text-emerald-600 mt-2 font-['DM_Sans',sans-serif] tracking-tight">Rs. {totalRevenue.toLocaleString()}</p>
                 </div>
-                <div className="bg-rose-50/50 backdrop-blur-xl rounded-xl border border-rose-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
-                    <p className="text-[10px] font-bold text-rose-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Waste Events</p>
-                    <div className="flex items-center gap-2 mt-1">
-                        <p className="text-2xl font-black text-rose-600 font-['DM_Sans',sans-serif]">{wasteOrders.length}</p>
-                        <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[10px] h-5 font-bold shadow-none">- {wasteOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0)} items</Badge>
+                <div className="bg-rose-50/40 backdrop-blur-3xl rounded-[2rem] border border-rose-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border">
+                    <p className="text-[10px] font-black text-rose-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Wastage</p>
+                    <div className="flex items-center gap-2 mt-2">
+                        <p className="text-3xl font-black text-rose-600 font-['DM_Sans',sans-serif] tracking-tight">{wasteOrders.length}</p>
+                        <Badge className="bg-rose-100 text-rose-700 border-none text-[10px] h-5 font-black uppercase tracking-tighter">-{wasteOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0)}</Badge>
                     </div>
                 </div>
-                <div className="bg-white/80 backdrop-blur-xl rounded-xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Total Out</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1 font-['DM_Sans',sans-serif]">{totalItems}</p>
+                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Unit Flow</p>
+                    <p className="text-3xl font-black text-slate-800 mt-2 font-['DM_Sans',sans-serif] tracking-tight">{totalItems}</p>
                 </div>
             </div>
 
             {/* Filters */}
-            <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Card className="bg-white/40 backdrop-blur-3xl border-slate-200/60 shadow-2xl rounded-[2.5rem] overflow-hidden border">
+                <CardHeader className="p-8 pb-4 bg-transparent">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2">
+                        <div className="relative flex-1 max-w-md">
                             <Input
-                                placeholder="Search orders, items, or cashier..."
+                                placeholder="Find transactions..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-10 text-sm bg-white border-slate-200/60 rounded-full focus:ring-2 focus:ring-indigo-500/20 font-['DM_Sans',sans-serif] shadow-sm"
+                                className="w-full h-12 bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-full focus:ring-4 focus:ring-purple-500/10 font-['DM_Sans',sans-serif] shadow-sm text-sm pl-12 transition-all"
                             />
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <Search className="w-5 h-5" />
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <div className="flex items-center gap-4 bg-white/50 p-1.5 rounded-full border border-slate-200/60 shadow-inner px-4">
+                            <Calendar className="w-4 h-4 text-purple-600" />
                             <input
                                 type="date"
                                 value={dateFrom}
                                 max={dateTo || undefined}
                                 onChange={(e) => setDateFrom(e.target.value)}
-                                className="text-sm border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="text-sm bg-transparent font-black tracking-tight text-slate-800 focus:outline-none"
                             />
-                            <span className="text-gray-400 text-xs">to</span>
+                            <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest px-1">TO</span>
                             <input
                                 type="date"
                                 value={dateTo}
                                 min={dateFrom || undefined}
                                 onChange={(e) => setDateTo(e.target.value)}
-                                className="text-sm border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="text-sm bg-transparent font-black tracking-tight text-slate-800 focus:outline-none"
                             />
                         </div>
                     </div>
@@ -301,32 +305,35 @@ export function OrdersPage() {
 
                 <CardContent className="p-0">
                     {filteredOrders.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 gap-3">
-                            <Receipt className="w-10 h-10 text-gray-300" />
-                            <p className="text-gray-500 font-medium">No orders found</p>
+                        <div className="flex flex-col items-center justify-center py-24 gap-4">
+                            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center shadow-inner">
+                                <Receipt className="w-10 h-10 text-slate-300" />
+                            </div>
+                            <p className="text-slate-500 font-bold font-['DM_Sans',sans-serif]">Silence in the ledger.</p>
                             {(searchQuery || dateFrom || dateTo) && (
                                 <button
                                     onClick={() => { setSearchQuery(''); setDateFrom(''); setDateTo(''); }}
-                                    className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                                    className="text-xs text-purple-600 hover:text-purple-700 font-black uppercase tracking-widest"
                                 >
-                                    Clear all filters
+                                    Reset Filters
                                 </button>
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-6 bg-gray-50/50 p-2 sm:p-4 rounded-b-xl">
+                        <div className="space-y-8 p-6 md:p-8">
                             {Object.entries(groupedOrders).map(([dateStr, ordersForDay]) => (
-                                <div key={dateStr} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                                    <div className="bg-gray-100/80 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                        <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                            <Calendar className="w-4 h-4 text-purple-600" />
+                                <div key={dateStr} className="space-y-4">
+                                    <div className="flex items-center justify-between px-2">
+                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] flex items-center gap-3">
+                                            <span className="w-8 h-[1px] bg-slate-200"></span>
                                             {dateStr}
+                                            <span className="w-8 h-[1px] bg-slate-200"></span>
                                         </h3>
-                                        <Badge variant="secondary" className="text-[10px] bg-white text-gray-600 border border-gray-200 shadow-sm font-bold">
+                                        <Badge className="bg-purple-100 text-purple-600 border-none shadow-none font-black text-[10px] px-3">
                                             {ordersForDay.length} {ordersForDay.length === 1 ? 'Entry' : 'Entries'}
                                         </Badge>
                                     </div>
-                                    <div className="divide-y divide-gray-100">
+                                    <div className="grid grid-cols-1 gap-3">
                                         {ordersForDay.map((order, idx) => {
                                             const dailyOrderNumber = ordersForDay.length - idx;
                                             const isExpanded = expandedOrderId === order.id;

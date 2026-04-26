@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, PlusCircle, Search, Edit2, Trash2, Calendar, CreditCard, Receipt, Download, Paperclip, FileText } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
-import { Card } from '../../../components/ui/card';
+// Removed empty import line
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
 import type { Supplier, SupplierTransaction } from '../../../types';
@@ -121,52 +121,50 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier, portal = '
     );
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-right duration-500">
+        <div className="space-y-8 animate-in slide-in-from-right-8 duration-700">
             {/* Ledger Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-white/40 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-slate-200/60 shadow-2xl border">
+                <div className="flex items-center gap-6">
                     <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={onBack}
-                        className="rounded-xl hover:bg-slate-100"
+                        className="w-12 h-12 rounded-2xl bg-white border border-slate-200/60 hover:bg-slate-50 transition-all shadow-sm"
                     >
-                        <ArrowLeft className="w-5 h-5 text-slate-600" />
+                        <ArrowLeft className="w-6 h-6 text-slate-800" />
                     </Button>
-                    <div>
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">{supplier.name}</h2>
-                        <p className="text-slate-500 font-medium text-sm">Full transaction history and ledger.</p>
+                    <div className="flex flex-col gap-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Financial Statement for</p>
+                        <h2 className="text-3xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif]">{supplier.name}</h2>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-8">
                     <div className="text-right">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
-                        <p className={`text-xl font-black tracking-tight ${supplier.current_balance > 0 ? 'text-orange-600' : 'text-slate-900'}`}>
-                            Nrs. {supplier.current_balance.toLocaleString()}
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Net Liability</p>
+                        <p className={`text-3xl font-black tracking-tight font-['DM_Sans',sans-serif] ${supplier.current_balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            Rs. {supplier.current_balance.toLocaleString()}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <DropdownMenu
                             buttonContent={
                                 <>
-                                    <Download className="h-4 w-4" />
-                                    Statement
+                                    <Download className="h-4 w-4 text-purple-600" />
+                                    <span className="hidden sm:inline">Export Audit</span>
                                 </>
                             }
-                            buttonClassName="bg-white rounded-xl border-slate-200 font-bold text-slate-700 hover:bg-slate-50 gap-2 shadow-sm h-11 px-4 ring-0"
+                            buttonClassName="bg-white/80 backdrop-blur-xl rounded-full border border-slate-200/60 font-black text-[10px] uppercase tracking-widest text-slate-700 hover:bg-white gap-3 shadow-sm h-12 px-6 transition-all"
                             items={[
                                 {
-                                    label: 'Export PDF',
+                                    label: 'Intelligence PDF',
                                     icon: FileIcon,
                                     onClick: handleExportPDF,
-                                    className: 'font-bold text-slate-700'
                                 },
                                 {
-                                    label: 'Export CSV',
+                                    label: 'Raw CSV',
                                     icon: CsvIcon,
                                     onClick: handleExportCSV,
-                                    className: 'font-bold text-slate-700'
                                 }
                             ]}
                         />
@@ -175,9 +173,9 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier, portal = '
                                 setEditingTransaction(null);
                                 setIsRecordOpen(true);
                             }}
-                            className={`${theme.active} ${theme.hover} rounded-xl font-bold gap-2 px-6 h-11 shadow-lg ${theme.shadow}`}
+                            className={`${theme.active} ${theme.hover} rounded-full font-black text-[10px] uppercase tracking-widest gap-2 px-8 h-12 shadow-xl shadow-purple-500/20 transition-all hover:scale-105`}
                         >
-                            <PlusCircle className="w-5 h-5" />
+                            <PlusCircle className="w-4 h-4" />
                             Record Flow
                         </Button>
                     </div>
@@ -187,36 +185,36 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier, portal = '
             {/* Controls */}
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                 <div className="relative w-full sm:max-w-md">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <Input 
-                        placeholder="Search by note or ref#..." 
+                        placeholder="Search by note or reference..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 bg-white border-slate-200 rounded-xl"
+                        className="pl-13 h-12 bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-full focus:ring-4 focus:ring-purple-500/10 font-['DM_Sans',sans-serif] text-sm font-medium transition-all"
                     />
                 </div>
                 <Button 
                     variant={showDeleted ? "secondary" : "outline"}
                     onClick={() => setShowDeleted(!showDeleted)}
-                    className="rounded-xl font-bold gap-2 h-11"
+                    className="rounded-full font-black text-[10px] uppercase tracking-widest gap-2 h-12 px-6 border-slate-200/60 transition-all"
                 >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4 text-slate-400" />
                     {showDeleted ? "Hide Archived" : "Show Archived"}
                 </Button>
             </div>
 
             {/* Transaction List */}
-            <Card className="border-slate-200/60 shadow-sm overflow-hidden bg-white rounded-3xl">
+            <div className="bg-white/40 backdrop-blur-3xl rounded-[2.5rem] border border-slate-200/60 shadow-2xl overflow-hidden border">
                 <Table>
-                        <TableHeader className="bg-slate-50/50">
-                            <TableRow className="hover:bg-transparent border-slate-100">
-                                <TableHead className="font-bold text-slate-500">Date</TableHead>
-                                <TableHead className="font-bold text-slate-500">Type</TableHead>
-                                <TableHead className="font-bold text-slate-500">Recorded By</TableHead>
-                                <TableHead className="font-bold text-slate-500 text-right">Amount</TableHead>
-                                <TableHead className="font-bold text-slate-500">Method</TableHead>
-                                <TableHead className="font-bold text-slate-500">Note / Ref#</TableHead>
-                                <TableHead className="w-12"></TableHead>
+                        <TableHeader className="bg-white/60 backdrop-blur-md">
+                            <TableRow className="hover:bg-transparent border-none">
+                                <TableHead className="px-6 py-5 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Timeline</TableHead>
+                                <TableHead className="px-6 py-5 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Flow Type</TableHead>
+                                <TableHead className="px-6 py-5 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Custodian</TableHead>
+                                <TableHead className="px-6 py-5 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Amount</TableHead>
+                                <TableHead className="px-6 py-5 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Medium</TableHead>
+                                <TableHead className="px-6 py-5 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Audit Trail</TableHead>
+                                <TableHead className="w-20"></TableHead>
                             </TableRow>
                         </TableHeader>
                     <TableBody>
@@ -357,7 +355,7 @@ export function SupplierLedger({ supplier, onBack, onRefreshSupplier, portal = '
                         )}
                     </TableBody>
                 </Table>
-            </Card>
+            </div>
 
             <RecordTransactionDialog 
                 supplier={supplier}

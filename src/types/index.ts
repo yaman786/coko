@@ -31,6 +31,7 @@ export interface Expense {
     payment_method: string;
     cashier_id?: string;
     cashier_name?: string;
+    portal?: 'retail' | 'wholesale';
     createdat: Date;
     updatedat: Date;
 }

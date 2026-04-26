@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
-import { Plus, Trash2, Edit2, Search, Calendar, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Filter, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 import { format, isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { AddExpenseDialog } from './AddExpenseDialog';
 import { toast } from 'sonner';
@@ -34,15 +34,18 @@ export function ExpensesTable() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 8;
 
+    const isWholesale = typeof window !== 'undefined' && window.location.pathname.startsWith('/wholesale');
+    const currentPortal = isWholesale ? 'wholesale' : 'retail';
+
     const { data: expenses = [], isLoading } = useQuery({
-        queryKey: ['expenses'],
-        queryFn: () => api.getExpenses()
+        queryKey: ['expenses', currentPortal],
+        queryFn: () => api.getExpenses(undefined, undefined, currentPortal)
     });
 
     const deleteMutation = useMutation({
         mutationFn: (id: string) => api.deleteExpense(id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            queryClient.invalidateQueries({ queryKey: ['expenses', currentPortal] });
             queryClient.invalidateQueries({ queryKey: ['dashboardMetrics'] });
             toast.success('Expense deleted');
         }
@@ -88,15 +91,15 @@ export function ExpensesTable() {
 
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center shadow-inner">
-                        <Calendar className="w-8 h-8 text-indigo-600" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white/40 backdrop-blur-3xl p-8 rounded-[2rem] border border-slate-200/60 shadow-2xl flex items-center gap-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group border">
+                    <div className={`w-16 h-16 rounded-[1.25rem] bg-gradient-to-br ${isWholesale ? 'from-sky-500 to-blue-600' : 'from-rose-500 to-pink-600'} flex items-center justify-center shadow-lg shadow-rose-200/50 group-hover:scale-110 transition-transform`}>
+                        <ShoppingBag className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">{periodLabel}</p>
-                        <p className="text-4xl font-black text-slate-900 tracking-tighter font-['DM_Sans',sans-serif] mt-1">
-                            Nrs. {filteredTotal.toLocaleString()}
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif]">{periodLabel}</p>
+                        <p className="text-4xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif] mt-1">
+                            Rs. {filteredTotal.toLocaleString()}
                         </p>
                     </div>
                 </div>
@@ -104,15 +107,15 @@ export function ExpensesTable() {
 
             <div className="flex flex-col gap-4 bg-transparent">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    <div className="flex flex-wrap items-center gap-1.5 bg-white/80 backdrop-blur-xl p-1.5 rounded-xl border border-slate-200/60 shadow-sm transition-all duration-300">
+                    <div className="flex flex-wrap items-center gap-1.5 bg-white/50 backdrop-blur-md p-1.5 rounded-full border border-slate-200/60 shadow-inner transition-all duration-300">
                         {(['today', 'week', 'month', 'all'] as const).map((p) => (
                             <button
                                 key={p}
                                 onClick={() => { setPeriod(p); setCurrentPage(1); }}
-                                className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.1em] font-['DM_Sans',sans-serif] transition-all duration-300 ${
+                                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest font-['DM_Sans',sans-serif] transition-all duration-300 ${
                                     period === p 
-                                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' 
-                                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 bg-transparent'
+                                    ? `${isWholesale ? 'bg-sky-600' : 'bg-purple-600'} text-white shadow-lg shadow-purple-500/20` 
+                                    : 'text-slate-500 hover:text-slate-800 bg-transparent'
                                 }`}
                             >
                                 {p}
@@ -121,24 +124,24 @@ export function ExpensesTable() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                        <div className="relative flex-1 lg:w-64">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <div className="relative flex-1 lg:w-72">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Find spend..."
                                 value={searchQuery}
                                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                className="pl-11 h-12 bg-white/50 backdrop-blur-sm border-slate-200/60 rounded-full focus:ring-2 focus:ring-purple-500/20 font-medium font-['DM_Sans',sans-serif]"
+                                className={`pl-12 h-12 bg-white/80 backdrop-blur-xl border-slate-200/60 rounded-full focus:ring-4 ${isWholesale ? 'focus:ring-sky-500/10' : 'focus:ring-purple-500/10'} font-['DM_Sans',sans-serif] shadow-sm text-sm transition-all`}
                             />
                         </div>
 
                         <Select value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}>
-                            <SelectTrigger className="w-full lg:w-48 h-12 rounded-full border-slate-200/60 bg-white/50 backdrop-blur-sm text-sm font-bold font-['DM_Sans',sans-serif] text-slate-600 focus:ring-2 focus:ring-purple-500/20">
+                            <SelectTrigger className={`w-full lg:w-48 h-12 rounded-full border-slate-200/60 bg-white/80 backdrop-blur-xl text-[10px] font-black uppercase tracking-widest font-['DM_Sans',sans-serif] text-slate-500 focus:ring-4 ${isWholesale ? 'focus:ring-sky-500/10' : 'focus:ring-purple-500/10'} px-6`}>
                                 <SelectValue placeholder="Category" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-slate-200 bg-white/95 backdrop-blur-xl">
-                                <SelectItem value="all" className="font-medium">All Categories</SelectItem>
+                            <SelectContent className="rounded-2xl border-slate-200/60 bg-white/95 backdrop-blur-xl shadow-2xl">
+                                <SelectItem value="all" className="font-bold text-xs uppercase tracking-tight">All Domains</SelectItem>
                                 {['Rent', 'Salary', 'Inventory', 'Utilities', 'Marketing', 'Maintenance', 'Other'].map(cat => (
-                                    <SelectItem key={cat} value={cat} className="font-medium">{cat}</SelectItem>
+                                    <SelectItem key={cat} value={cat} className="font-bold text-xs uppercase tracking-tight">{cat}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -148,7 +151,7 @@ export function ExpensesTable() {
                                 setEditingExpense(null);
                                 setIsAddDialogOpen(true);
                             }}
-                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold h-12 px-6 rounded-full shadow-lg shadow-purple-500/20 hover:-translate-y-0.5 transition-all w-full lg:w-auto font-['DM_Sans',sans-serif]"
+                            className={`bg-gradient-to-r ${isWholesale ? 'from-sky-600 to-blue-600' : 'from-purple-600 to-indigo-600'} hover:shadow-xl hover:shadow-purple-500/20 text-white text-[10px] font-black uppercase tracking-widest h-12 px-8 rounded-full transition-all w-full lg:w-auto font-['DM_Sans',sans-serif]`}
                         >
                             <Plus className="w-4 h-4 mr-2" /> Record
                         </Button>
@@ -156,16 +159,16 @@ export function ExpensesTable() {
                 </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-                <Table containerClassName="max-h-[600px] overflow-y-auto">
+            <div className="bg-white/40 backdrop-blur-3xl rounded-[2.5rem] border border-slate-200/60 shadow-2xl overflow-hidden border">
+                <Table containerClassName="max-h-[600px] overflow-y-auto px-6">
                     <TableHeader>
-                        <TableRow className="bg-slate-50/80 border-b border-slate-100">
-                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Date</TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Category</TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Description</TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] h-12">Recorded By</TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] text-right h-12">Amount</TableHead>
-                            <TableHead className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] text-right h-12">Actions</TableHead>
+                        <TableRow className="hover:bg-transparent border-none">
+                            <TableHead className="px-5 py-6 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Timeline</TableHead>
+                            <TableHead className="px-5 py-6 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Domain</TableHead>
+                            <TableHead className="px-5 py-6 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Allocation Details</TableHead>
+                            <TableHead className="px-5 py-6 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] font-['DM_Sans',sans-serif]">Custodian</TableHead>
+                            <TableHead className="px-5 py-6 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] text-right font-['DM_Sans',sans-serif]">Amount</TableHead>
+                            <TableHead className="px-5 py-6 font-black text-slate-400 border-none uppercase tracking-[0.2em] text-[10px] text-center w-[120px] font-['DM_Sans',sans-serif]">Audit</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -198,7 +201,7 @@ export function ExpensesTable() {
                                             <span className="text-[10px] text-slate-400 font-bold tracking-[0.1em] uppercase font-['DM_Sans',sans-serif]">{expense.payment_method}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right text-base font-black text-rose-600 font-['DM_Sans',sans-serif]">Nrs. {Number(expense.amount).toLocaleString()}</TableCell>
+                                    <TableCell className={`text-right text-base font-black ${isWholesale ? 'text-sky-600' : 'text-rose-600'} font-['DM_Sans',sans-serif]`}>Nrs. {Number(expense.amount).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
                                             <Button
@@ -250,7 +253,7 @@ export function ExpensesTable() {
                                         variant={currentPage === p ? "default" : "outline"}
                                         size="sm"
                                         onClick={() => setCurrentPage(p)}
-                                        className={`h-8 w-8 p-0 text-xs ${currentPage === p ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                                        className={`h-8 w-8 p-0 text-xs ${currentPage === p ? (isWholesale ? 'bg-sky-600 hover:bg-sky-700' : 'bg-purple-600 hover:bg-purple-700') : ''}`}
                                     >
                                         {p}
                                     </Button>
@@ -275,7 +278,7 @@ export function ExpensesTable() {
                 onOpenChange={setIsAddDialogOpen}
                 editingExpense={editingExpense}
                 onSuccess={() => {
-                    queryClient.invalidateQueries({ queryKey: ['expenses'] });
+                    queryClient.invalidateQueries({ queryKey: ['expenses', currentPortal] });
                     queryClient.invalidateQueries({ queryKey: ['dashboardMetrics'] });
                 }}
             />
