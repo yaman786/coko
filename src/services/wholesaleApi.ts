@@ -288,8 +288,27 @@ export const wholesaleApi = {
         if (error) throw error;
     },
 
-    async deleteOrder(id: string): Promise<void> {
-        // Note: This is a hard delete. Stock reversal should be handled by cancelSupplyOrder if needed.
+    async revertOrderInventory(items: { product_id: string; qty: number }[]): Promise<void> {
+        for (const item of items) {
+            const { data: product } = await supabase
+                .from('ws_products')
+                .select('stock')
+                .eq('id', item.product_id)
+                .single();
+
+            if (product) {
+                const newStock = (product.stock || 0) + item.qty;
+                await this.updateStock(item.product_id, newStock);
+            }
+        }
+    },
+
+    async deleteOrder(id: string, items?: { product_id: string; qty: number }[], status?: string): Promise<void> {
+        // If order was completed/active, we should restore stock on delete
+        if (items && items.length > 0 && status !== 'cancelled') {
+            await this.revertOrderInventory(items);
+        }
+
         const { error } = await supabase
             .from('ws_orders')
             .delete()
@@ -364,18 +383,7 @@ export const wholesaleApi = {
         if (orderError) throw orderError;
 
         // 2. Revert Inventory (Add stock back)
-        for (const item of items) {
-            const product = await supabase
-                .from('ws_products')
-                .select('stock')
-                .eq('id', item.product_id)
-                .single();
-
-            if (product.data) {
-                const newStock = product.data.stock + item.qty;
-                await this.updateStock(item.product_id, newStock);
-            }
-        }
+        await this.revertOrderInventory(items);
 
         // 3. Revert Ledger Debt (Find the ORDER_CREDIT and delete it)
         const { data: tx } = await supabase

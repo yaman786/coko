@@ -56,11 +56,12 @@ export function WholesaleOrdersPage() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id: string) => wholesaleApi.deleteOrder(id),
+        mutationFn: (order: WsOrder) => wholesaleApi.deleteOrder(order.id, order.items, order.status),
         onSuccess: () => {
-            toast.success("Order deleted permanently.");
+            toast.success("Order deleted permanently and stock restored.");
             setDeletingOrder(null);
             queryClient.invalidateQueries({ queryKey: ['ws_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['ws_products'] });
         },
         onError: (error: any) => toast.error(`Delete failed: ${error.message}`)
     });
@@ -432,15 +433,26 @@ export function WholesaleOrdersPage() {
                         <Button
                             className="bg-sky-600 hover:bg-sky-700 rounded-2xl h-11 px-6 shadow-lg shadow-sky-100"
                             disabled={updateMutation.isPending}
-                            onClick={() => editingOrder && updateMutation.mutate({
-                                id: editingOrder.id,
-                                updates: {
-                                    status: editStatus,
-                                    payment_status: editPaymentStatus as any,
-                                    payment_method: editPaymentMethod as any,
-                                    created_at: new Date(editDate)
+                            onClick={() => {
+                                if (!editingOrder) return;
+                                
+                                // Check if we are cancelling via edit
+                                if (editStatus === 'cancelled' && editingOrder.status !== 'cancelled') {
+                                    handleCancelOrder(editingOrder);
+                                    setEditingOrder(null);
+                                    return;
                                 }
-                            })}
+
+                                updateMutation.mutate({
+                                    id: editingOrder.id,
+                                    updates: {
+                                        status: editStatus,
+                                        payment_status: editPaymentStatus as any,
+                                        payment_method: editPaymentMethod as any,
+                                        created_at: new Date(editDate)
+                                    }
+                                });
+                            }}
                         >
                             {updateMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Save Metadata'}
                         </Button>
@@ -467,7 +479,7 @@ export function WholesaleOrdersPage() {
                         <AlertDialogCancel className="rounded-2xl h-11 px-6 border-slate-200">Keep Order</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700 text-white rounded-2xl h-11 px-6"
-                            onClick={() => deletingOrder && deleteMutation.mutate(deletingOrder.id)}
+                            onClick={() => deletingOrder && deleteMutation.mutate(deletingOrder)}
                         >
                             Confirm Delete
                         </AlertDialogAction>
