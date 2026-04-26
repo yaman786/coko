@@ -274,6 +274,26 @@ export const wholesaleApi = {
         if (error) throw error;
     },
 
+    async updateOrder(id: string, updates: Partial<WsOrder>): Promise<void> {
+        const { error } = await supabase
+            .from('ws_orders')
+            .update({
+                ...updates,
+                updated_at: new Date()
+            })
+            .eq('id', id);
+        if (error) throw error;
+    },
+
+    async deleteOrder(id: string): Promise<void> {
+        // Note: This is a hard delete. Stock reversal should be handled by cancelSupplyOrder if needed.
+        const { error } = await supabase
+            .from('ws_orders')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+    },
+
     // ─── Composite Operations ─────────────────────────────
 
     /**
