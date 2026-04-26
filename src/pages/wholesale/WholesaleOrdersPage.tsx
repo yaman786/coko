@@ -56,9 +56,9 @@ export function WholesaleOrdersPage() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (order: WsOrder) => wholesaleApi.deleteOrder(order.id, order.items, order.status),
+        mutationFn: (id: string) => wholesaleApi.deleteOrder(id),
         onSuccess: () => {
-            toast.success("Order deleted permanently and stock restored.");
+            toast.success("Order deleted and stock restored via DB Trigger.");
             setDeletingOrder(null);
             queryClient.invalidateQueries({ queryKey: ['ws_orders'] });
             queryClient.invalidateQueries({ queryKey: ['ws_products'] });
@@ -67,10 +67,10 @@ export function WholesaleOrdersPage() {
     });
 
     const cancelMutation = useMutation({
-        mutationFn: ({ id, client_id, items }: { id: string; client_id: string; items: any }) => 
-            wholesaleApi.cancelSupplyOrder(id, client_id, items),
+        mutationFn: ({ id, client_id }: { id: string; client_id: string }) => 
+            wholesaleApi.cancelSupplyOrder(id, client_id),
         onSuccess: () => {
-            toast.success("Order cancelled securely. Inventory and debts restored.");
+            toast.success("Order cancelled. Inventory restored via DB Trigger.");
             queryClient.invalidateQueries({ queryKey: ['ws_orders'] });
             queryClient.invalidateQueries({ queryKey: ['ws_clients'] }); 
             queryClient.invalidateQueries({ queryKey: ['ws_products'] });
@@ -79,10 +79,10 @@ export function WholesaleOrdersPage() {
     });
 
     const handleCancelOrder = (order: WsOrder) => {
-        if (!window.confirm("CRITICAL WARNING:\n\nAre you absolutely sure you want to cancel this order?\n\nThis will reverse the inventory stock and wipe the generated debt.")) {
+        if (!window.confirm("Are you sure you want to cancel this order?\n\nThe stock will be automatically returned to your warehouse.")) {
             return;
         }
-        cancelMutation.mutate({ id: order.id, client_id: order.client_id, items: order.items });
+        cancelMutation.mutate({ id: order.id, client_id: order.client_id });
     };
 
     const openEditModal = (order: WsOrder) => {
@@ -479,7 +479,7 @@ export function WholesaleOrdersPage() {
                         <AlertDialogCancel className="rounded-2xl h-11 px-6 border-slate-200">Keep Order</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700 text-white rounded-2xl h-11 px-6"
-                            onClick={() => deletingOrder && deleteMutation.mutate(deletingOrder)}
+                            onClick={() => deletingOrder && deleteMutation.mutate(deletingOrder.id)}
                         >
                             Confirm Delete
                         </AlertDialogAction>

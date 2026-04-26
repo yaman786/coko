@@ -288,27 +288,8 @@ export const wholesaleApi = {
         if (error) throw error;
     },
 
-    async revertOrderInventory(items: { product_id: string; qty: number }[]): Promise<void> {
-        for (const item of items) {
-            const { data: product } = await supabase
-                .from('ws_products')
-                .select('stock')
-                .eq('id', item.product_id)
-                .single();
-
-            if (product) {
-                const newStock = (product.stock || 0) + item.qty;
-                await this.updateStock(item.product_id, newStock);
-            }
-        }
-    },
-
-    async deleteOrder(id: string, items?: { product_id: string; qty: number }[], status?: string): Promise<void> {
-        // If order was completed/active, we should restore stock on delete
-        if (items && items.length > 0 && status !== 'cancelled') {
-            await this.revertOrderInventory(items);
-        }
-
+    async deleteOrder(id: string): Promise<void> {
+        // SQL TRIGGER: tr_ws_repopulate_inventory handles stock restoration automatically
         const { error } = await supabase
             .from('ws_orders')
             .delete()
@@ -370,22 +351,20 @@ export const wholesaleApi = {
 
     /**
      * Cancel a supply order: 
-     * 1. Revert Inventory (+qty for all items)
+     * 1. Revert Inventory (+qty for all items) -> NOW HANDLED BY SQL TRIGGER
      * 2. Delete the created ORDER_CREDIT from client timeline (which automatically reverses balance)
      * 3. Change order status to 'cancelled' (so it drops from analytics)
      */
-    async cancelSupplyOrder(orderId: string, clientId: string, items: { product_id: string; qty: number }[]): Promise<void> {
+    async cancelSupplyOrder(orderId: string, clientId: string): Promise<void> {
         // 1. Mark Order as Cancelled
+        // SQL TRIGGER: tr_ws_repopulate_inventory handles stock restoration automatically on status change
         const { error: orderError } = await supabase
             .from('ws_orders')
             .update({ status: 'cancelled', updated_at: new Date() })
             .eq('id', orderId);
         if (orderError) throw orderError;
 
-        // 2. Revert Inventory (Add stock back)
-        await this.revertOrderInventory(items);
-
-        // 3. Revert Ledger Debt (Find the ORDER_CREDIT and delete it)
+        // 2. Revert Ledger Debt (Find the ORDER_CREDIT and delete it)
         const { data: tx } = await supabase
             .from('ws_client_transactions')
             .select('id, amount, type')
