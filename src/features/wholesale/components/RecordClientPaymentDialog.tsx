@@ -16,6 +16,7 @@ export function RecordClientPaymentDialog({ open, onOpenChange, client, onSucces
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('Cash');
     const [notes, setNotes] = useState('');
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!client) return null;
@@ -33,7 +34,8 @@ export function RecordClientPaymentDialog({ open, onOpenChange, client, onSucces
                 client.id,
                 Number(amount),
                 method,
-                notes || undefined
+                notes || undefined,
+                paymentDate
             );
             toast.success(`Payment of Rs. ${Number(amount).toLocaleString()} recorded successfully for ${client.name}`);
             onSuccess();
@@ -102,6 +104,16 @@ export function RecordClientPaymentDialog({ open, onOpenChange, client, onSucces
                             <option value="Cheque">Cheque</option>
                             <option value="eSewa/Fonepay">eSewa / Fonepay</option>
                         </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Payment Date</label>
+                        <input
+                            type="date"
+                            value={paymentDate}
+                            onChange={(e) => setPaymentDate(e.target.value)}
+                            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm font-medium focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                        />
                     </div>
 
                     <div className="space-y-2">

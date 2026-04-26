@@ -137,10 +137,12 @@ export const wholesaleApi = {
         return data || [];
     },
 
-    async recordClientPayment(clientId: string, amount: number, method: string, notes?: string): Promise<void> {
+    async recordClientPayment(clientId: string, amount: number, method: string, notes?: string, date?: string): Promise<void> {
         // 1. Get current balance
         const client = await this.getClientById(clientId);
         if (!client) throw new Error("Client not found");
+        
+        const timestamp = date ? new Date(date).toISOString() : new Date().toISOString();
 
         // 2. Insert PAYMENT_RECEIVED transaction
         const { error: txError } = await supabase
@@ -150,7 +152,8 @@ export const wholesaleApi = {
                 amount: amount,
                 type: 'PAYMENT_RECEIVED',
                 payment_method: method,
-                reference_note: notes
+                reference_note: notes,
+                created_at: timestamp
             });
         if (txError) throw txError;
 
@@ -333,7 +336,8 @@ export const wholesaleApi = {
                             amount: creditAmount,
                             type: 'ORDER_CREDIT',
                             reference_id: createdOrder.id,
-                            reference_note: 'Supply order credit'
+                            reference_note: 'Supply order credit',
+                            created_at: order.created_at // Use same date for ledger
                         });
 
                     await this.updateClientBalance(

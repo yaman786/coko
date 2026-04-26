@@ -30,6 +30,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
     const [paidAmount, setPaidAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'mixed'>('credit');
     const [notes, setNotes] = useState('');
+    const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
 
     const { data: clients = [] } = useQuery({
         queryKey: ['ws_clients'],
@@ -136,6 +137,7 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                 payment_method: paymentMethod,
                 notes: notes.trim() || undefined,
                 created_by: user?.email || 'admin',
+                created_at: new Date(orderDate),
             },
             cart.map(item => ({ product_id: item.product_id, qty: item.qty }))
         ),
@@ -180,21 +182,32 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                 </div>
 
                 <div className="p-6 space-y-5">
-                    {/* Select Client */}
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Client *</label>
-                        <select
-                            value={selectedClientId}
-                            onChange={(e) => setSelectedClientId(e.target.value)}
-                            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                        >
-                            <option value="">Select a client...</option>
-                            {clients.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name} {c.balance > 0 ? `(Owes Rs.${c.balance.toLocaleString()})` : ''}
-                                </option>
-                            ))}
-                        </select>
+                    {/* Select Client & Date */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Client *</label>
+                            <select
+                                value={selectedClientId}
+                                onChange={(e) => setSelectedClientId(e.target.value)}
+                                className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(c => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name} {c.balance > 0 ? `(Owes Rs.${c.balance.toLocaleString()})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Order Date</label>
+                            <Input
+                                type="date"
+                                value={orderDate}
+                                onChange={(e) => setOrderDate(e.target.value)}
+                                className="h-11 focus:ring-sky-500 focus:border-sky-500"
+                            />
+                        </div>
                     </div>
 
                     {/* Add Products */}
