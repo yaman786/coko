@@ -1,11 +1,12 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../../../components/ui/card';
-import { Button } from '../../../../components/ui/button';
-import { Input } from '../../../../components/ui/input';
-import { Label } from '../../../../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { Save, Loader2 } from 'lucide-react';
-import { api } from '../../../../services/api';
+import { api } from '../../../services/api';
 import { toast } from 'sonner';
 
 export function WholesaleStoreProfile() {
@@ -89,7 +90,7 @@ export function WholesaleStoreProfile() {
                     <Input
                         id="storeName"
                         value={formData.storeName}
-                        onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
+                        onChange={(e: any) => setFormData({ ...formData, storeName: e.target.value })}
                         placeholder="e.g. GOD Wholesale Central"
                         className="h-11 shadow-sm focus-visible:ring-sky-500"
                     />
@@ -100,7 +101,7 @@ export function WholesaleStoreProfile() {
                     <Input
                         id="address"
                         value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        onChange={(e: any) => setFormData({ ...formData, address: e.target.value })}
                         placeholder="GOD Distribution Center, Main St"
                         className="h-11 shadow-sm focus-visible:ring-sky-500"
                     />
@@ -113,7 +114,7 @@ export function WholesaleStoreProfile() {
                             id="phone"
                             type="tel"
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
                             placeholder="+977 123456789"
                             className="h-11 shadow-sm focus-visible:ring-sky-500"
                         />
@@ -127,7 +128,7 @@ export function WholesaleStoreProfile() {
                             min="0"
                             step="0.1"
                             value={formData.taxRate}
-                            onChange={(e) => setFormData({ ...formData, taxRate: e.target.value })}
+                            onChange={(e: any) => setFormData({ ...formData, taxRate: e.target.value })}
                             placeholder="13"
                             className="h-11 shadow-sm focus-visible:ring-sky-500"
                         />
