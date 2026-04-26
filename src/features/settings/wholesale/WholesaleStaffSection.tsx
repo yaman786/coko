@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -196,7 +196,7 @@ export function WholesaleStaffSection() {
                                     <div className="space-y-4 py-4">
                                         <div className="space-y-2">
                                             <Label>Full Name</Label>
-                                            <Input value={formData.name} onChange={(e: any) => setFormData({ ...formData, name: e.target.value })} placeholder="GOD Operator" className="focus-visible:ring-sky-500" />
+                                            <Input value={formData.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })} placeholder="GOD Operator" className="focus-visible:ring-sky-500" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Login Email</Label>
@@ -204,7 +204,7 @@ export function WholesaleStaffSection() {
                                                 type="email"
                                                 value={formData.email}
                                                 disabled={!!editingStaff}
-                                                onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
                                                 placeholder="user@godhub.com"
                                                 className={editingStaff ? "bg-slate-50 text-slate-500" : "focus-visible:ring-sky-500"}
                                             />
@@ -212,7 +212,7 @@ export function WholesaleStaffSection() {
                                         {!editingStaff && (
                                             <div className="space-y-2">
                                                 <Label>Password</Label>
-                                                <Input type="password" value={formData.password} onChange={(e: any) => setFormData({ ...formData, password: e.target.value })} placeholder="Min 6 characters" className="focus-visible:ring-sky-500" />
+                                                <Input type="password" value={formData.password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, password: e.target.value })} placeholder="Min 6 characters" className="focus-visible:ring-sky-500" />
                                             </div>
                                         )}
                                         <div className="space-y-2">
@@ -236,7 +236,7 @@ export function WholesaleStaffSection() {
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    <Input placeholder="Search team directory..." value={searchQuery} onChange={(e: any) => setSearchQuery(e.target.value)} className="mb-6 max-w-sm h-11 focus-visible:ring-sky-500" />
+                    <Input placeholder="Search team directory..." value={searchQuery} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)} className="mb-6 max-w-sm h-11 focus-visible:ring-sky-500" />
                     <div className="rounded-xl border border-slate-200 overflow-x-auto overflow-hidden shadow-sm">
                         <Table className="min-w-[600px]">
                             <TableHeader className="bg-slate-50">

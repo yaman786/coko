@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { WholesaleStoreProfile } from '../../features/settings/wholesale/WholesaleStoreProfile';
 import { WholesaleStaffSection } from '../../features/settings/wholesale/WholesaleStaffSection';
@@ -7,8 +7,7 @@ import { ChangePassword } from '../../features/settings/components/ChangePasswor
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 export default function WholesaleSettingsPage() {
-    // Hard-coded to Wholesale
-    // const currentPortal = "wholesale";
+
     usePageTitle('Settings', 'GOD');
 
     return (

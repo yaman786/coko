@@ -43,7 +43,7 @@ export function PosTerminal() {
     // Fetch store settings for dynamic tax rate
     const { data: storeSettings } = useQuery({
         queryKey: ['storeSettings'],
-        queryFn: api.getStoreSettings,
+        queryFn: () => api.getStoreSettings(),
         staleTime: 1000 * 60 * 5, // Cache for 5 min
     });
     const taxRate = (storeSettings?.taxRate ?? 0) / 100; // e.g. 13 → 0.13

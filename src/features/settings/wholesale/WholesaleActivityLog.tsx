@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -106,7 +106,7 @@ export function WholesaleActivityLog() {
                         <Input
                             placeholder="Search wholesale actions..."
                             value={searchQuery}
-                            onChange={(e: any) => setSearchQuery(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                             className="pl-9 h-9 text-sm bg-white focus-visible:ring-sky-500"
                         />
                     </div>

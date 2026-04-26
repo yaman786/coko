@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { supabase } from '../lib/supabase';
 import type { Product, Order, Staff, StoreSettings, AuditLogEntry, Expense, Supplier, SupplierTransaction } from '../types';
 
@@ -239,7 +239,7 @@ export const api = {
             .upsert({
                 ...staff,
                 user_id: staff.user_id, // Ensure user_id is passed
-                portal: staff.role === 'admin' ? 'all' : ((staff as any).portal || 'retail'),
+                portal: staff.role === 'admin' ? 'all' : (staff.portal || 'retail'),
                 updatedAt: new Date()
             });
 
@@ -259,7 +259,7 @@ export const api = {
     },
 
     // Store Settings
-    async getStoreSettings(): Promise<StoreSettings | null> {
+    async getStoreSettings(_portal?: 'retail' | 'wholesale'): Promise<StoreSettings | null> {
         const { data, error } = await supabase
             .from('storeSettings')
             .select('*')
@@ -275,7 +275,7 @@ export const api = {
             .from('storeSettings')
             .upsert({
                 ...settings,
-                portal: (settings as any).portal || 'retail',
+                portal: settings.portal || 'retail',
                 updatedAt: new Date()
             });
 

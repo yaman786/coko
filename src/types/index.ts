@@ -103,6 +103,7 @@ export interface Staff {
     name: string;
     email: string;
     role: 'admin' | 'cashier';
+    portal?: 'retail' | 'wholesale' | 'all';
     updatedAt: Date;
     isDeleted?: boolean;
     user_id?: string;
@@ -114,6 +115,7 @@ export interface StoreSettings {
     address: string;
     phone: string;
     taxRate: number;
+    portal?: 'retail' | 'wholesale';
     updatedAt: Date;
 }
 

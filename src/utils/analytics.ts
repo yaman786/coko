@@ -1,13 +1,72 @@
-// @ts-nocheck
-
-export interface DashboardMetrics { revenue: number; orders: number; customers: number; }
-export interface RevenueData { date: string; amount: number; }
-export interface TopProduct { id: string; name: string; sales: number; revenue: number; }
-export interface RecentOrder { id: string; customer: string; amount: number; status: string; date: string; }
-
 import { api } from '../services/api';
 import { startOfDay, endOfDay, subDays, eachDayOfInterval, format } from 'date-fns';
-// Types removed to fix build
+import type { Order } from '../types';
+
+/** Comprehensive metrics returned by getDashboardMetrics */
+export interface DashboardMetrics {
+    totalRevenue: number;
+    totalOrders: number;
+    averageOrderValue: number;
+    totalProductsSold: number;
+    cashTotal: number;
+    cardTotal: number;
+    totalDiscounts: number;
+    grossRevenue: number;
+    totalOffers: number;
+    totalComplimentary: number;
+    totalLoyalty: number;
+    totalExpenses: number;
+    totalCOGS: number;
+    wasteValue: number;
+    wasteCount: number;
+    overYieldValue: number;
+    overYieldCount: number;
+    trends: {
+        revenueDeltaPct: number;
+        ordersDeltaPct: number;
+        aovDeltaPct: number;
+        productsDeltaPct: number;
+    };
+}
+
+/** A single day's revenue data point for trend charts */
+export interface RevenueData {
+    date: string;
+    revenue: number;
+    orders: number;
+}
+
+/** Detailed product analytics row */
+export interface TopProduct {
+    id: string;
+    name: string;
+    revenue: number;
+    quantity: number;
+    cost: number;
+    profit: number;
+    marginPct: number;
+    revenueDeltaPct: number;
+    quantityDeltaPct: number;
+    profitDeltaPct: number;
+    category: string;
+    parentId: string | null;
+    /** @deprecated alias for quantity, kept for backward compatibility */
+    sales?: number;
+    discounts?: number;
+}
+
+/** A recent order summary */
+export interface RecentOrder {
+    id: string;
+    items: Order['items'];
+    totalAmount: number;
+    status: Order['status'];
+    paymentMethod?: Order['paymentMethod'];
+    cashierId?: string;
+    cashierName?: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
 
 /**
  * Dashboard Metrics — strictly isolated by portal.
