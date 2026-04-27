@@ -145,6 +145,8 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
             queryClient.invalidateQueries({ queryKey: ['ws_products'] });
             queryClient.invalidateQueries({ queryKey: ['ws_clients'] });
             queryClient.invalidateQueries({ queryKey: ['ws_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['ws_client_product_analytics'] });
+            queryClient.invalidateQueries({ queryKey: ['ws_client_transactions'] });
             toast.success('Supply order created!');
             onClose();
         },

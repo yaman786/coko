@@ -37,6 +37,20 @@ export function WholesaleOrdersPage() {
     const [editPaymentMethod, setEditPaymentMethod] = useState<string>('');
     const [editDate, setEditDate] = useState<string>('');
 
+    const [confirmConfig, setConfirmConfig] = useState<{
+        open: boolean;
+        title: string;
+        description: string;
+        action: () => void;
+        variant: 'danger' | 'warning' | 'info';
+    }>({
+        open: false,
+        title: '',
+        description: '',
+        action: () => {},
+        variant: 'info'
+    });
+
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ['ws_orders'],
         queryFn: () => wholesaleApi.getOrders(500),
@@ -79,10 +93,13 @@ export function WholesaleOrdersPage() {
     });
 
     const handleCancelOrder = (order: WsOrder) => {
-        if (!window.confirm("Are you sure you want to cancel this order?\n\nThe stock will be automatically returned to your warehouse.")) {
-            return;
-        }
-        cancelMutation.mutate({ id: order.id, client_id: order.client_id });
+        setConfirmConfig({
+            open: true,
+            title: 'Cancel Supply Order',
+            description: `Are you sure you want to cancel order ${order.order_number}? The stock for all items will be automatically returned to your warehouse.`,
+            variant: 'warning',
+            action: () => cancelMutation.mutate({ id: order.id, client_id: order.client_id })
+        });
     };
 
     const openEditModal = (order: WsOrder) => {
@@ -491,6 +508,37 @@ export function WholesaleOrdersPage() {
                 open={createOpen}
                 onClose={() => setCreateOpen(false)}
             />
+
+            {/* Professional Confirm Dialog */}
+            <AlertDialog open={confirmConfig.open} onOpenChange={(open) => setConfirmConfig(prev => ({ ...prev, open }))}>
+                <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className={`flex items-center gap-2 ${
+                            confirmConfig.variant === 'danger' ? 'text-rose-600' : 
+                            confirmConfig.variant === 'warning' ? 'text-amber-600' : 'text-sky-600'
+                        }`}>
+                            {confirmConfig.variant === 'warning' ? <Ban className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                            {confirmConfig.title}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 font-medium">
+                            {confirmConfig.description}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-2xl h-11 px-6 border-slate-200 font-semibold">Keep Order</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmConfig.action}
+                            className={`rounded-2xl h-11 px-6 font-bold text-white shadow-lg ${
+                                confirmConfig.variant === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-100' : 
+                                confirmConfig.variant === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-100' : 
+                                'bg-sky-600 hover:bg-sky-700 shadow-sky-100'
+                            }`}
+                        >
+                            Confirm Cancellation
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

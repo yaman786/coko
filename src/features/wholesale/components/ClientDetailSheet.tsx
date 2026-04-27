@@ -96,7 +96,7 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
         onError: () => toast.error("Failed to delete client permanently. Check if they have linked orders.")
     });
 
-    const { data: orders = [], refetch: refetchOrders, isFetching: isFetchingOrders } = useQuery({
+    const { data: orders = [] } = useQuery({
         queryKey: ['ws_orders', 'client', client.id],
         queryFn: () => wholesaleApi.getOrdersByClient(client.id, client.name),
     });
@@ -106,17 +106,10 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
         queryFn: () => wholesaleApi.getClientTransactions(client.id),
     });
 
-    const { data: productInsights = [], isLoading: isLoadingInsights, refetch: refetchInsights } = useQuery({
+    const { data: productInsights = [], isLoading: isLoadingInsights } = useQuery({
         queryKey: ['ws_client_product_analytics', client.id],
         queryFn: () => wholesaleApi.getClientProductAnalytics(client.id),
     });
-
-    const handleRefreshData = () => {
-        refetchOrders();
-        refetchInsights();
-        queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
-        toast.success("Syncing client data...");
-    };
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -272,13 +265,6 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
                                 Recent Orders ({orders.length})
                             </h3>
-                            <button 
-                                onClick={handleRefreshData}
-                                className={`text-[10px] font-bold uppercase tracking-widest text-sky-600 hover:text-sky-700 transition-colors flex items-center gap-1 ${isFetchingOrders ? 'animate-pulse' : ''}`}
-                            >
-                                <RotateCcw className={`w-3 h-3 ${isFetchingOrders ? 'animate-spin' : ''}`} />
-                                Sync Data
-                            </button>
                         </div>
                         {orders.length === 0 ? (
                             <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl">
@@ -470,7 +456,8 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                 onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: ['ws_client_transactions', client.id] });
                     queryClient.invalidateQueries({ queryKey: ['ws_clients'] });
-                    // Balance will be updated globally via query invalidation
+                    queryClient.invalidateQueries({ queryKey: ['ws_orders', 'client', client.id] });
+                    queryClient.invalidateQueries({ queryKey: ['ws_client_product_analytics', client.id] });
                 }}
             />
 
