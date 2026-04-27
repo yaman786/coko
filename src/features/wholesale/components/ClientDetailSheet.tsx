@@ -26,7 +26,7 @@ interface Props {
 
 export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'details' | 'ledger' | 'reports'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'ledger' | 'reports' | 'orders'>('details');
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     
     const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -203,6 +203,12 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                         Ledger History
                     </button>
                     <button
+                        onClick={() => setActiveTab('orders')}
+                        className={`py-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'orders' ? 'border-sky-600 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    >
+                        Order History
+                    </button>
+                    <button
                         onClick={() => setActiveTab('reports')}
                         className={`py-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'reports' ? 'border-sky-600 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
                     >
@@ -213,96 +219,150 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                 {/* Content */}
                 <div className="p-6 pt-4 space-y-6">
                     {activeTab === 'details' && (
-                        <>
-                    {/* Balance Card */}
-                    <div className={`rounded-2xl p-6 shadow-sm border ${client.balance > 0 ? 'bg-amber-50/50 border-amber-200/50' : 'bg-emerald-50/50 border-emerald-200/50'}`}>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] mb-2">Outstanding Balance</p>
-                        <p className={`text-4xl font-black font-['DM_Sans',sans-serif] tracking-tighter ${client.balance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                            Rs. {Math.abs(client.balance).toLocaleString()}
-                        </p>
-                        <p className="text-xs text-slate-500 font-medium mt-2">
-                            {client.balance > 0 ? 'Client owes you' : client.balance < 0 ? 'You owe client (advance)' : 'All settled ✓'}
-                        </p>
-                    </div>
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            {/* Balance Card */}
+                            <div className={`rounded-2xl p-6 shadow-sm border ${client.balance > 0 ? 'bg-amber-50/50 border-amber-200/50' : 'bg-emerald-50/50 border-emerald-200/50'}`}>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-['DM_Sans',sans-serif] mb-2">Outstanding Balance</p>
+                                <p className={`text-4xl font-black font-['DM_Sans',sans-serif] tracking-tighter ${client.balance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                    Rs. {Math.abs(client.balance).toLocaleString()}
+                                </p>
+                                <p className="text-xs text-slate-500 font-medium mt-2">
+                                    {client.balance > 0 ? 'Client owes you' : client.balance < 0 ? 'You owe client (advance)' : 'All settled ✓'}
+                                </p>
+                            </div>
 
-                    {/* Contact Info */}
-                    <div className="space-y-2.5">
-                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Details</h3>
-                        {client.phone && (
-                            <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                                <Phone className="w-4 h-4 text-sky-500" />
-                                <span>{client.phone}</span>
-                            </div>
-                        )}
-                        {client.email && (
-                            <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                                <Mail className="w-4 h-4 text-sky-500" />
-                                <span>{client.email}</span>
-                            </div>
-                        )}
-                        {client.address && (
-                            <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                                <MapPin className="w-4 h-4 text-sky-500" />
-                                <span>{client.address}{client.city ? `, ${client.city}` : ''}</span>
-                            </div>
-                        )}
-                        {client.notes && (
-                            <div className="flex items-start gap-2.5 text-sm text-slate-600">
-                                <FileText className="w-4 h-4 text-sky-500 mt-0.5" />
-                                <span>{client.notes}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Custom Pricing */}
-                    <div>
-                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Custom Pricing</h3>
-                        <ClientPricingTable clientId={client.id} />
-                    </div>
-
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                                Recent Orders ({orders.length})
-                            </h3>
-                        </div>
-                        {orders.length === 0 ? (
-                            <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl">
-                                <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                                <p className="text-sm font-medium">No orders yet</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {orders.slice(0, 10).map((order) => (
-                                    <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                                        <div>
-                                            <p className="text-sm font-semibold text-slate-800">
-                                                {order.order_number || 'Order'}
-                                            </p>
-                                            <p className="text-xs text-slate-500">
-                                                {new Date(order.created_at).toLocaleDateString('en-IN', {
-                                                    day: 'numeric', month: 'short', year: 'numeric'
-                                                })}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-bold text-slate-800">
-                                                Rs. {order.total_amount?.toLocaleString()}
-                                            </p>
-                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                                order.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
-                                                order.payment_status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                                                'bg-red-100 text-red-700'
-                                            }`}>
-                                                {order.payment_status}
-                                            </span>
-                                        </div>
+                            {/* Contact Info */}
+                            <div className="space-y-2.5">
+                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Details</h3>
+                                {client.phone && (
+                                    <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                                        <Phone className="w-4 h-4 text-sky-500" />
+                                        <span>{client.phone}</span>
                                     </div>
-                                ))}
+                                )}
+                                {client.email && (
+                                    <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                                        <Mail className="w-4 h-4 text-sky-500" />
+                                        <span>{client.email}</span>
+                                    </div>
+                                )}
+                                {client.address && (
+                                    <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                                        <MapPin className="w-4 h-4 text-sky-500" />
+                                        <span>{client.address}{client.city ? `, ${client.city}` : ''}</span>
+                                    </div>
+                                )}
+                                {client.notes && (
+                                    <div className="flex items-start gap-2.5 text-sm text-slate-600">
+                                        <FileText className="w-4 h-4 text-sky-500 mt-0.5" />
+                                        <span>{client.notes}</span>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                        </>
+
+                            {/* Custom Pricing */}
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Custom Pricing</h3>
+                                <ClientPricingTable clientId={client.id} />
+                            </div>
+
+                            {/* Recent Orders Snippet */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Recent Orders</h3>
+                                    {orders.length > 5 && (
+                                        <button 
+                                            onClick={() => setActiveTab('orders')}
+                                            className="text-[10px] font-bold uppercase tracking-widest text-sky-600 hover:text-sky-700 transition-colors"
+                                        >
+                                            View All →
+                                        </button>
+                                    )}
+                                </div>
+                                {orders.length === 0 ? (
+                                    <p className="text-xs text-slate-400 italic">No orders recorded yet.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {orders.slice(0, 5).map((order) => (
+                                            <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-transparent hover:border-slate-200 transition-all">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                                                        {order.order_number || 'Order'}
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                                            order.status === 'cancelled' ? 'bg-slate-200 text-slate-600' :
+                                                            order.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                                                            'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                            {order.status === 'cancelled' ? 'Cancelled' : order.payment_status}
+                                                        </span>
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {new Date(order.created_at).toLocaleDateString('en-IN', {
+                                                            day: 'numeric', month: 'short', year: 'numeric'
+                                                        })}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right text-sm font-bold text-slate-800">
+                                                    Rs. {order.total_amount?.toLocaleString()}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'orders' && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Full Order History ({orders.length})</h3>
+                            </div>
+
+                            {orders.length === 0 ? (
+                                <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-100">
+                                    <Package className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                                    <p className="text-slate-500 font-bold tracking-tight">No orders recorded yet</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {orders.map((order) => (
+                                        <div key={order.id} className={`p-4 rounded-2xl border transition-all ${order.status === 'cancelled' ? 'bg-slate-50/50 border-slate-100 grayscale opacity-75' : 'bg-white border-slate-100 hover:border-sky-200 shadow-sm'}`}>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${order.status === 'cancelled' ? 'bg-slate-100 text-slate-400' : 'bg-sky-50 text-sky-600'}`}>
+                                                        <Package className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-800">{order.order_number || 'Supply Order'}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`text-base font-black tracking-tight ${order.status === 'cancelled' ? 'text-slate-400' : 'text-slate-800'}`}>Rs. {order.total_amount.toLocaleString()}</p>
+                                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                                        order.status === 'cancelled' ? 'bg-slate-100 text-slate-500' :
+                                                        order.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' :
+                                                        'bg-amber-50 text-amber-600'
+                                                    }`}>
+                                                        {order.status === 'cancelled' ? 'Cancelled' : order.payment_status}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-50">
+                                                {order.items.slice(0, 4).map((item, idx) => (
+                                                    <div key={idx} className="text-[11px] text-slate-500 font-medium flex justify-between">
+                                                        <span className="truncate mr-2">• {item.name}</span>
+                                                        <span className="whitespace-nowrap font-bold">x{item.qty}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     {activeTab === 'ledger' && (
@@ -329,7 +389,6 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                     <div className="text-center py-10 text-slate-400 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                                         <FileText className="w-8 h-8 mx-auto mb-3 text-slate-300" />
                                         <p className="text-sm font-semibold text-slate-500">No transactions recorded</p>
-                                        <p className="text-xs mt-1">Payments and order credits will appear here.</p>
                                     </div>
                                 ) : (
                                     transactions.map(tx => (
@@ -352,14 +411,12 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                                             <button 
                                                                 onClick={() => { setEditingTx(tx); setEditDialogOpen(true); }}
                                                                 className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-md transition-colors"
-                                                                title="Edit Transaction"
                                                             >
                                                                 <Pencil className="w-3.5 h-3.5" />
                                                             </button>
                                                             <button 
                                                                 onClick={() => handleDeleteTransaction(tx)}
                                                                 className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-                                                                title="Delete Transaction"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </button>
@@ -367,12 +424,9 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500 font-medium">
-                                                    <span>{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    <span>{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                                                     {tx.payment_method && (
-                                                        <>
-                                                            <span className="text-slate-300">•</span>
-                                                            <span className="px-2 py-0.5 bg-slate-100 rounded-md text-slate-600 font-semibold">{tx.payment_method}</span>
-                                                        </>
+                                                        <span className="px-2 py-0.5 bg-slate-100 rounded-md text-slate-600 font-semibold">{tx.payment_method}</span>
                                                     )}
                                                 </div>
                                                 {tx.reference_note && (
@@ -402,18 +456,16 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                     className="flex items-center gap-2 px-3 py-2 bg-white border border-sky-200 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors text-xs font-bold shadow-sm print:hidden"
                                 >
                                     <FileText className="w-4 h-4" />
-                                    Download PDF
+                                    PDF
                                 </button>
                             </div>
 
-                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 mt-6">Top Purchased Products</h3>
+                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 mt-6">Top Products</h3>
                             {isLoadingInsights ? (
                                 <div className="text-center py-8 text-slate-400">Crunching analytics...</div>
                             ) : productInsights.length === 0 ? (
                                 <div className="text-center py-10 text-slate-400 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
-                                    <Package className="w-8 h-8 mx-auto mb-3 text-slate-300" />
                                     <p className="text-sm font-semibold text-slate-500">No purchase history</p>
-                                    <p className="text-xs mt-1">This client hasn't bought anything yet.</p>
                                 </div>
                             ) : (
                                 <div className="bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm">
@@ -428,15 +480,13 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                         <tbody className="divide-y divide-slate-50">
                                             {productInsights.map((item, idx) => (
                                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-4 py-3">
-                                                        <span className="font-semibold text-slate-800">{item.name}</span>
-                                                    </td>
+                                                    <td className="px-4 py-3 font-semibold text-slate-800">{item.name}</td>
                                                     <td className="px-4 py-3 text-right">
                                                         <span className="font-semibold text-slate-600">{Number(item.total_qty).toLocaleString()}</span>
                                                         <span className="text-xs text-slate-400 ml-1">{item.unit}</span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <span className="font-bold text-slate-800">Rs. {Number(item.total_revenue).toLocaleString()}</span>
+                                                    <td className="px-4 py-3 text-right font-bold text-slate-800">
+                                                        Rs. {Number(item.total_revenue).toLocaleString()}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -472,7 +522,6 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                 }}
             />
 
-            {/* Professional Confirm Dialog */}
             <AlertDialog open={confirmConfig.open} onOpenChange={(open) => setConfirmConfig(prev => ({ ...prev, open }))}>
                 <AlertDialogContent className="rounded-3xl border-0 shadow-2xl">
                     <AlertDialogHeader>
