@@ -270,12 +270,20 @@ export const wholesaleApi = {
         return data || [];
     },
 
-    async getOrdersByClient(clientId: string): Promise<WsOrder[]> {
-        const { data, error } = await supabase
+    async getOrdersByClient(clientId: string, clientName?: string): Promise<WsOrder[]> {
+        let query = supabase
             .from('ws_orders')
-            .select('*')
-            .eq('client_id', clientId)
-            .order('created_at', { ascending: false });
+            .select('*');
+            
+        if (clientId && clientName) {
+            query = query.or(`client_id.eq.${clientId},client_name.eq."${clientName}"`);
+        } else if (clientId) {
+            query = query.eq('client_id', clientId);
+        } else if (clientName) {
+            query = query.eq('client_name', clientName);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
         if (error) throw error;
         return data || [];
     },
