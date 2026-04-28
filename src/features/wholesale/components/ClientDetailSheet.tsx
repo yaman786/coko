@@ -5,8 +5,12 @@ import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, Trash2, Rotat
 import { ClientPricingTable } from './ClientPricingTable';
 import { RecordClientPaymentDialog } from './RecordClientPaymentDialog';
 import { EditTransactionDialog } from './EditTransactionDialog';
+import { SetOpeningBalanceDialog } from './SetOpeningBalanceDialog';
 import type { WsClient, WsClientTransaction } from '../../../types';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Download, CalendarIcon } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -28,9 +32,11 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<'details' | 'ledger' | 'reports' | 'orders'>('details');
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+    const [openingBalanceDialogOpen, setOpeningBalanceDialogOpen] = useState(false);
     
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingTx, setEditingTx] = useState<WsClientTransaction | null>(null);
+    const [dateRange, setDateRange] = useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
 
     const [confirmConfig, setConfirmConfig] = useState<{
         open: boolean;
@@ -112,7 +118,7 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     });
 
     // Calculate Running Balance & Totals
-    const ledgerData = [...transactions]
+    const allLedgerData = [...transactions]
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         .reduce((acc, tx) => {
             const amount = Number(tx.amount);
@@ -121,11 +127,32 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
             
             acc.push({
                 ...tx,
-                runningBalance: newBalance
+                runningBalance: newBalance,
+                balanceType: newBalance > 0 ? 'Dr' : newBalance < 0 ? 'Cr' : ''
             });
             return acc;
-        }, [] as (WsClientTransaction & { runningBalance: number })[])
-        .reverse(); // Show newest first for the table
+        }, [] as (WsClientTransaction & { runningBalance: number, balanceType: string })[]);
+
+    let filteredLedgerData = [...allLedgerData];
+    let broughtForwardBalance = 0;
+    let broughtForwardType = '';
+
+    if (dateRange.start) {
+        const beforeStart = allLedgerData.filter(tx => new Date(tx.created_at) < dateRange.start!);
+        if (beforeStart.length > 0) {
+            broughtForwardBalance = beforeStart[beforeStart.length - 1].runningBalance;
+            broughtForwardType = beforeStart[beforeStart.length - 1].balanceType;
+        }
+        filteredLedgerData = allLedgerData.filter(tx => new Date(tx.created_at) >= dateRange.start!);
+    }
+
+    if (dateRange.end) {
+        const endOfDate = new Date(dateRange.end);
+        endOfDate.setHours(23, 59, 59, 999);
+        filteredLedgerData = filteredLedgerData.filter(tx => new Date(tx.created_at) <= endOfDate);
+    }
+
+    filteredLedgerData.reverse(); // Show newest first for the table
 
     const totalBilled = transactions
         .filter(t => t.type === 'ORDER_CREDIT')
@@ -134,6 +161,71 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
     const totalCollected = transactions
         .filter(t => t.type === 'PAYMENT_RECEIVED')
         .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text(`Statement of Account`, 14, 20);
+        doc.setFontSize(12);
+        doc.text(`Client: ${client.name}`, 14, 30);
+        if (dateRange.start || dateRange.end) {
+            doc.text(`Period: ${dateRange.start ? dateRange.start.toLocaleDateString() : 'Beginning'} to ${dateRange.end ? dateRange.end.toLocaleDateString() : 'Current'}`, 14, 38);
+        }
+        
+        const tableBody = [];
+        if (dateRange.start && broughtForwardBalance !== 0) {
+            tableBody.push([
+                dateRange.start.toLocaleDateString(),
+                'Brought Forward (B/F)',
+                '-',
+                '-',
+                `${Math.abs(broughtForwardBalance).toLocaleString()} ${broughtForwardType}`
+            ]);
+        }
+
+        [...filteredLedgerData].reverse().forEach(tx => {
+            tableBody.push([
+                new Date(tx.created_at).toLocaleDateString(),
+                tx.reference_note === 'Opening Balance' ? 'Opening Balance' : (tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : (tx as any).order_number || 'Order Credit'),
+                tx.type === 'ORDER_CREDIT' ? tx.amount.toLocaleString() : '-',
+                tx.type === 'PAYMENT_RECEIVED' ? tx.amount.toLocaleString() : '-',
+                `${Math.abs(tx.runningBalance).toLocaleString()} ${tx.balanceType}`
+            ]);
+        });
+
+        autoTable(doc, {
+            startY: 45,
+            head: [['Date', 'Particulars', 'Debit (Dr)', 'Credit (Cr)', 'Balance']],
+            body: tableBody,
+        });
+
+        doc.save(`${client.name}_Statement.pdf`);
+    };
+
+    const handleExportCSV = () => {
+        const headers = ['Date', 'Particulars', 'Debit (Dr)', 'Credit (Cr)', 'Balance'];
+        let csvContent = headers.join(',') + '\n';
+        
+        if (dateRange.start && broughtForwardBalance !== 0) {
+            csvContent += `${dateRange.start.toLocaleDateString()},"Brought Forward (B/F)",-,-,${Math.abs(broughtForwardBalance).toLocaleString()} ${broughtForwardType}\n`;
+        }
+
+        [...filteredLedgerData].reverse().forEach(tx => {
+            const date = new Date(tx.created_at).toLocaleDateString();
+            const particulars = `"${tx.reference_note === 'Opening Balance' ? 'Opening Balance' : (tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : (tx as any).order_number || 'Order Credit')}"`;
+            const debit = tx.type === 'ORDER_CREDIT' ? tx.amount : '';
+            const credit = tx.type === 'PAYMENT_RECEIVED' ? tx.amount : '';
+            const balance = `${Math.abs(tx.runningBalance)} ${tx.balanceType}`;
+            csvContent += `${date},${particulars},${debit},${credit},${balance}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${client.name}_Statement.csv`;
+        link.click();
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -148,6 +240,12 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                         )}
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setOpeningBalanceDialogOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors shadow-sm"
+                        >
+                            Opening Balance
+                        </button>
                         <button
                             onClick={() => setPaymentDialogOpen(true)}
                             className="flex items-center gap-2 px-3 py-1.5 bg-sky-600 text-white rounded-lg font-bold text-xs hover:bg-sky-700 transition-colors shadow-sm"
@@ -403,6 +501,52 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                 </div>
                             </div>
 
+                            {/* Toolbar (Filters & Exports) */}
+                            <div className="flex items-center justify-between gap-4 flex-wrap bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-lg bg-white">
+                                        <CalendarIcon className="w-4 h-4 text-slate-400" />
+                                        <input 
+                                            type="date" 
+                                            className="text-xs text-slate-600 bg-transparent outline-none cursor-pointer"
+                                            value={dateRange.start ? dateRange.start.toISOString().split('T')[0] : ''}
+                                            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value ? new Date(e.target.value) : null }))}
+                                        />
+                                        <span className="text-slate-300 font-bold px-1">to</span>
+                                        <input 
+                                            type="date" 
+                                            className="text-xs text-slate-600 bg-transparent outline-none cursor-pointer"
+                                            value={dateRange.end ? dateRange.end.toISOString().split('T')[0] : ''}
+                                            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value ? new Date(e.target.value) : null }))}
+                                        />
+                                    </div>
+                                    {(dateRange.start || dateRange.end) && (
+                                        <button 
+                                            onClick={() => setDateRange({ start: null, end: null })}
+                                            className="text-xs text-slate-400 hover:text-rose-500 font-bold px-2"
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={handleExportCSV}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-xs hover:bg-slate-50 transition-colors"
+                                    >
+                                        <Download className="w-3.5 h-3.5 text-slate-400" />
+                                        CSV
+                                    </button>
+                                    <button 
+                                        onClick={handleExportPDF}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-xs hover:bg-slate-50 transition-colors"
+                                    >
+                                        <Download className="w-3.5 h-3.5 text-slate-400" />
+                                        PDF
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Statement Table */}
                             <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
@@ -417,7 +561,24 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {ledgerData.length === 0 ? (
+                                            {dateRange.start && broughtForwardBalance !== 0 && (
+                                                <tr className="bg-amber-50/30">
+                                                    <td className="px-4 py-3 text-slate-500 font-medium whitespace-nowrap">
+                                                        {dateRange.start.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="font-bold text-amber-700">Brought Forward (B/F)</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-slate-300 font-bold">-</td>
+                                                    <td className="px-4 py-3 text-right text-slate-300 font-bold">-</td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <span className="font-black text-amber-800 whitespace-nowrap">
+                                                            Rs. {Math.abs(broughtForwardBalance).toLocaleString()} <span className={broughtForwardType === 'Dr' ? 'text-rose-500' : 'text-emerald-500'}>{broughtForwardType}</span>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {filteredLedgerData.length === 0 ? (
                                                 <tr>
                                                     <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
                                                         <FileText className="w-8 h-8 mx-auto mb-2 opacity-20" />
@@ -425,18 +586,18 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                ledgerData.map((tx) => (
+                                                filteredLedgerData.map((tx) => (
                                                     <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors group">
                                                         <td className="px-4 py-3 text-slate-500 font-medium whitespace-nowrap">
                                                             {new Date(tx.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                                                         </td>
                                                         <td className="px-4 py-3">
                                                             <div className="flex flex-col">
-                                                                <span className="font-bold text-slate-700">
-                                                                    {tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : (tx as any).order_number || 'Order Credit'}
-                                                                    {tx.payment_method && <span className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[9px] text-slate-500 uppercase">{tx.payment_method}</span>}
+                                                                <span className={tx.reference_note === 'Opening Balance' ? 'font-bold text-amber-600' : 'font-bold text-slate-700'}>
+                                                                    {tx.reference_note === 'Opening Balance' ? 'Opening Balance' : (tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : (tx as any).order_number || 'Order Credit')}
+                                                                    {tx.payment_method && tx.payment_method !== 'N/A' && <span className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[9px] text-slate-500 uppercase">{tx.payment_method}</span>}
                                                                 </span>
-                                                                {tx.reference_note && <span className="text-[10px] text-slate-400 italic truncate max-w-[120px]">{tx.reference_note}</span>}
+                                                                {tx.reference_note && tx.reference_note !== 'Opening Balance' && <span className="text-[10px] text-slate-400 italic truncate max-w-[120px]">{tx.reference_note}</span>}
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-bold text-rose-600 whitespace-nowrap">
@@ -448,7 +609,8 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                                                         <td className="px-4 py-3 text-right">
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <span className="font-black text-slate-800 whitespace-nowrap">
-                                                                    Rs. {Math.abs(tx.runningBalance).toLocaleString()}
+                                                                    {tx.runningBalance === 0 ? 'NIL' : `Rs. ${Math.abs(tx.runningBalance).toLocaleString()}`}
+                                                                    {tx.runningBalance !== 0 && <span className={`ml-1 text-[10px] ${tx.balanceType === 'Dr' ? 'text-rose-500' : 'text-emerald-500'}`}>{tx.balanceType}</span>}
                                                                 </span>
                                                                 <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
                                                                     <button 
@@ -587,6 +749,13 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            {openingBalanceDialogOpen && (
+                <SetOpeningBalanceDialog
+                    client={client}
+                    open={openingBalanceDialogOpen}
+                    onClose={() => setOpeningBalanceDialogOpen(false)}
+                />
+            )}
         </div>
     );
 }

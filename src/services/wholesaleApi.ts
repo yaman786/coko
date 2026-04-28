@@ -154,15 +154,33 @@ export const wholesaleApi = {
     async getClientTransactions(clientId: string): Promise<WsClientTransaction[]> {
         const { data, error } = await supabase
             .from('ws_client_transactions')
-            .select('*, ws_orders(order_number)')
+            .select('*')
             .eq('client_id', clientId)
             .eq('is_deleted', false)
             .order('created_at', { ascending: false });
         if (error) throw error;
         
-        return (data || []).map(tx => ({
+        const txs = data || [];
+        
+        // Batch-lookup order numbers for ORDER_CREDIT transactions that have a reference_id
+        const orderRefIds = txs
+            .filter(tx => tx.type === 'ORDER_CREDIT' && tx.reference_id)
+            .map(tx => tx.reference_id);
+        
+        let orderMap: Record<string, string> = {};
+        if (orderRefIds.length > 0) {
+            const { data: orders } = await supabase
+                .from('ws_orders')
+                .select('id, order_number')
+                .in('id', orderRefIds);
+            if (orders) {
+                orderMap = Object.fromEntries(orders.map(o => [o.id, o.order_number]));
+            }
+        }
+        
+        return txs.map(tx => ({
             ...tx,
-            order_number: (tx as any).ws_orders?.order_number
+            order_number: tx.reference_id ? orderMap[tx.reference_id] : undefined
         }));
     },
 
@@ -188,6 +206,26 @@ export const wholesaleApi = {
 
         // 3. Deduct from balance
         const newBalance = client.balance - amount;
+        await this.updateClientBalance(clientId, newBalance);
+    },
+
+    async recordOpeningBalance(clientId: string, amount: number, type: 'ORDER_CREDIT' | 'PAYMENT_RECEIVED'): Promise<void> {
+        const client = await this.getClientById(clientId);
+        if (!client) throw new Error("Client not found");
+
+        const { error: txError } = await supabase
+            .from('ws_client_transactions')
+            .insert({
+                client_id: clientId,
+                amount: amount,
+                type: type,
+                reference_note: 'Opening Balance',
+                created_at: new Date(1970, 0, 1).toISOString() // Backdate it so it shows up first
+            });
+        
+        if (txError) throw txError;
+
+        const newBalance = type === 'ORDER_CREDIT' ? client.balance + amount : client.balance - amount;
         await this.updateClientBalance(clientId, newBalance);
     },
 
