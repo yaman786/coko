@@ -25,6 +25,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m 
 const CashLedgerPage = lazy(() => import('./pages/CashLedgerPage').then(m => ({ default: m.CashLedgerPage })));
 const WholesaleSuppliersPage = lazy(() => import('./pages/wholesale/WholesaleSuppliersPage'));
 const WholesaleSettingsPage = lazy(() => import('./pages/wholesale/WholesaleSettingsPage'));
+const WholesaleCashLedgerPage = lazy(() => import('./pages/wholesale/WholesaleCashLedgerPage').then(m => ({ default: m.WholesaleCashLedgerPage })));
 
 function PageLoader() {
   return (
@@ -108,6 +109,8 @@ export function App() {
                    <Route path="inventory" element={<AdminRoute><WholesaleInventoryPage /></AdminRoute>} />
                    <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
                    <Route path="orders" element={<AdminRoute><WholesaleOrdersPage /></AdminRoute>} />
+                   <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
+                   <Route path="ledger" element={<AdminRoute><WholesaleCashLedgerPage /></AdminRoute>} />
                    <Route path="suppliers" element={<AdminRoute><WholesaleSuppliersPage /></AdminRoute>} />
                    <Route path="settings" element={<AdminRoute><WholesaleSettingsPage /></AdminRoute>} />
                 </Route>

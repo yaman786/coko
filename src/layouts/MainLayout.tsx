@@ -40,6 +40,8 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 { name: 'Stock Warehouse', href: '/wholesale/inventory', icon: Boxes },
                 { name: 'Client Ledger', href: '/wholesale/clients', icon: Users },
                 { name: 'Supply Orders', href: '/wholesale/orders', icon: Receipt },
+                { name: 'GOD Expenses', href: '/wholesale/expenses', icon: Wallet },
+                { name: 'GOD Ledger', href: '/wholesale/ledger', icon: Wallet },
                 { name: 'Supplier Ledger', href: '/wholesale/suppliers', icon: Truck },
                 { name: 'System Settings', href: '/wholesale/settings', icon: Settings }
             ];

@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Separator } from '../components/ui/separator';
 import {
     Wallet,
     CreditCard,
@@ -17,11 +18,8 @@ import {
     Clock,
     PlayCircle,
     StopCircle,
-    AlertTriangle,
     TrendingUp,
     Loader2,
-    CheckCircle2,
-    XCircle,
     Receipt,
     ShoppingBag,
     MinusCircle,
@@ -39,6 +37,9 @@ interface Shift {
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
+    expectedClosingCard: number | null;
+    actualClosingCard: number | null;
+    cardVariance: number | null;
     status: string;
 }
 
@@ -63,10 +64,13 @@ export function CashLedgerPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
+    const [closingCardInput, setClosingCardInput] = useState('');
     const [backdateStartingCash, setBackdateStartingCash] = useState('');
     const [backdateClosingCash, setBackdateClosingCash] = useState('');
+    const [backdateClosingCard, setBackdateClosingCard] = useState('');
     const [editStartingCash, setEditStartingCash] = useState('');
     const [editClosingCash, setEditClosingCash] = useState('');
+    const [editClosingCard, setEditClosingCard] = useState('');
     const [selectedDate, setSelectedDate] = useState(() => {
         const now = new Date();
         return now.toISOString().split('T')[0];
@@ -82,6 +86,7 @@ export function CashLedgerPage() {
                 .from('shifts')
                 .select('*')
                 .eq('status', 'open')
+                .eq('portal', 'retail')
                 .order('startTime', { ascending: false })
                 .limit(1)
                 .maybeSingle();
@@ -100,6 +105,7 @@ export function CashLedgerPage() {
             const { data } = await supabase
                 .from('shifts')
                 .select('*')
+                .eq('portal', 'retail')
                 .gte('startTime', start.toISOString())
                 .lte('startTime', end.toISOString())
                 .order('startTime', { ascending: false })
@@ -179,6 +185,7 @@ export function CashLedgerPage() {
                 .from('shifts')
                 .select('*')
                 .eq('status', 'closed')
+                .eq('portal', 'retail')
                 .order('startTime', { ascending: false })
                 .limit(10);
             return data || [];
@@ -240,6 +247,7 @@ export function CashLedgerPage() {
         // Use selectedDateShift for historical, activeShift for today
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
         const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
+        const expectedCardTotal = netCard; // Card usually starts at 0 every shift
         const hasShiftData = !!shiftForCalc;
 
         return {
@@ -248,6 +256,7 @@ export function CashLedgerPage() {
             totalRevenue: cashIn + cardIn,
             totalExpenses: cashExpenses + cardExpenses,
             expectedDrawer,
+            expectedCardTotal,
             hasShiftData,
             totalOrders,
             totalExpenseCount
@@ -307,6 +316,7 @@ export function CashLedgerPage() {
                 startTime: new Date().toISOString(),
                 startingCash,
                 status: 'open',
+                portal: 'retail',
                 user_id: user?.id
             });
             if (error) throw error;
@@ -330,36 +340,55 @@ export function CashLedgerPage() {
     });
 
     const closeShiftMutation = useMutation({
-        mutationFn: async (actualCash: number) => {
+        mutationFn: async (payload: { actualCash: number, actualCard: number }) => {
             if (!activeShift) throw new Error('No active shift');
-            const variance = actualCash - financials.expectedDrawer;
+            const variance = payload.actualCash - financials.expectedDrawer;
+            const cardVariance = payload.actualCard - financials.expectedCardTotal;
+            
             const { error } = await supabase
                 .from('shifts')
                 .update({
                     endTime: new Date().toISOString(),
                     expectedClosingCash: financials.expectedDrawer,
-                    actualClosingCash: actualCash,
+                    actualClosingCash: payload.actualCash,
                     variance,
+                    expectedClosingCard: financials.expectedCardTotal,
+                    actualClosingCard: payload.actualCard,
+                    cardVariance,
                     status: 'closed'
                 })
                 .eq('id', activeShift.id);
             if (error) throw error;
-            return variance;
+            return { variance, cardVariance };
         },
-        onSuccess: (variance) => {
+        onSuccess: ({ variance, cardVariance }) => {
             queryClient.invalidateQueries({ queryKey: ['active-shift'] });
             queryClient.invalidateQueries({ queryKey: ['shift-history'] });
             setIsCloseDialogOpen(false);
             setClosingCashInput('');
-            const desc = variance === 0
-                ? 'Perfect match! No variance.'
-                : variance > 0 ? `OVER by Nrs. ${variance}` : `SHORT by Nrs. ${Math.abs(variance as number)}`;
-            toast.success('Day Closed', { description: desc });
+            setClosingCardInput('');
+            
+            const cashDesc = variance === 0
+                ? 'Cash matches.'
+                : variance > 0 ? `Cash OVER by Nrs. ${variance}` : `Cash SHORT by Nrs. ${Math.abs(variance)}`;
+            const cardDesc = cardVariance === 0
+                ? 'Card matches.'
+                : cardVariance > 0 ? `Card OVER by Nrs. ${cardVariance}` : `Card SHORT by Nrs. ${Math.abs(cardVariance)}`;
+                
+            toast.success('Day Closed', { description: `${cashDesc} ${cardDesc}` });
+            
             api.logActivity({
                 action: 'SHIFT_CLOSED',
                 category: 'POS',
-                description: `Shift closed. Expected: Nrs. ${financials.expectedDrawer}, Actual: Nrs. ${closingCashInput}, Variance: Nrs. ${variance}`,
-                metadata: { expected: financials.expectedDrawer, actual: parseFloat(closingCashInput), variance },
+                description: `Shift closed. Cash Variance: Nrs. ${variance}, Card Variance: Nrs. ${cardVariance}`,
+                metadata: { 
+                    expectedCash: financials.expectedDrawer, 
+                    actualCash: parseFloat(closingCashInput), 
+                    variance,
+                    expectedCard: financials.expectedCardTotal,
+                    actualCard: parseFloat(closingCardInput),
+                    cardVariance
+                },
                 actor_email: user?.email || 'system',
                 actor_name: user?.email?.split('@')[0] || 'System',
             });
@@ -372,8 +401,11 @@ export function CashLedgerPage() {
         mutationFn: async () => {
             const start = parseFloat(backdateStartingCash) || 0;
             const actual = parseFloat(backdateClosingCash) || 0;
+            const actualCard = parseFloat(backdateClosingCard) || 0;
             const expected = start + financials.netCash; // netCash is based on selectedDate
             const variance = actual - expected;
+            const expectedCard = financials.netCard;
+            const cardVariance = actualCard - expectedCard;
 
             const shiftStart = new Date(selectedDate);
             shiftStart.setHours(9, 0, 0, 0); // Pretend it started at 9 AM
@@ -389,7 +421,11 @@ export function CashLedgerPage() {
                 expectedClosingCash: expected,
                 actualClosingCash: actual,
                 variance,
+                expectedClosingCard: expectedCard,
+                actualClosingCard: actualCard,
+                cardVariance,
                 status: 'closed',
+                portal: 'retail',
                 user_id: user?.id
             });
             if (error) throw error;
@@ -400,6 +436,7 @@ export function CashLedgerPage() {
             setIsBackdateDialogOpen(false);
             setBackdateStartingCash('');
             setBackdateClosingCash('');
+            setBackdateClosingCard('');
             toast.success('Historical Shift Added', { description: 'Past date successfully backdated.' });
         },
         onError: (err: Error) => toast.error('Failed to backdate shift', { description: err.message })
@@ -411,8 +448,11 @@ export function CashLedgerPage() {
             if (!selectedDateShift) throw new Error('No shift to edit');
             const start = parseFloat(editStartingCash) || 0;
             const actual = parseFloat(editClosingCash) || 0;
+            const actualCard = parseFloat(editClosingCard) || 0;
             const expected = start + financials.netCash;
             const variance = actual - expected;
+            const expectedCard = financials.netCard;
+            const cardVariance = actualCard - expectedCard;
 
             const { error } = await supabase
                 .from('shifts')
@@ -421,6 +461,9 @@ export function CashLedgerPage() {
                     expectedClosingCash: expected,
                     actualClosingCash: actual,
                     variance,
+                    expectedClosingCard: expectedCard,
+                    actualClosingCard: actualCard,
+                    cardVariance,
                 })
                 .eq('id', selectedDateShift.id);
             if (error) throw error;
@@ -488,7 +531,7 @@ export function CashLedgerPage() {
 
             {/* Active Shift Banner */}
             {activeShift && isToday && (
-                <div className="bg-emerald-50/40 backdrop-blur-3xl border-emerald-200/40 rounded-[2rem] p-6 flex items-center justify-between shadow-xl border">
+                <div className="bg-emerald-50/40 backdrop-blur-3xl border-emerald-200/40 rounded-[2rem] p-6 flex flex-col md:flex-row md:items-center justify-between shadow-xl border gap-6">
                     <div className="flex items-center gap-4">
                         <div className="w-4 h-4 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                         <div>
@@ -499,9 +542,16 @@ export function CashLedgerPage() {
                             <p className="text-[11px] text-emerald-600 font-medium">Float: Rs. {activeShift.startingCash.toLocaleString()} • Responsible: {activeShift.cashierName}</p>
                         </div>
                     </div>
-                    <div className="text-right">
-                        <p className="text-[10px] font-black text-emerald-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Projected Drawer</p>
-                        <p className="text-2xl font-black text-emerald-800 font-['DM_Sans',sans-serif]">Rs. {financials.expectedDrawer.toLocaleString()}</p>
+                    <div className="flex items-center gap-8">
+                        <div className="text-right">
+                            <p className="text-[10px] font-black text-emerald-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Cash Drawer</p>
+                            <p className="text-2xl font-black text-emerald-800 font-['DM_Sans',sans-serif]">Rs. {financials.expectedDrawer.toLocaleString()}</p>
+                        </div>
+                        <div className="w-px h-10 bg-emerald-200/50 hidden md:block" />
+                        <div className="text-right">
+                            <p className="text-[10px] font-black text-blue-600/70 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Digital Total</p>
+                            <p className="text-2xl font-black text-blue-800 font-['DM_Sans',sans-serif]">Rs. {financials.expectedCardTotal.toLocaleString()}</p>
+                        </div>
                     </div>
                 </div>
             )}
@@ -531,9 +581,9 @@ export function CashLedgerPage() {
 
             {/* Historical: Closed Shift Banner */}
             {!isToday && selectedDateShift && (
-                <div className={`rounded-2xl p-4 flex items-center justify-between border ${
-                    (selectedDateShift.variance ?? 0) === 0 ? 'bg-emerald-50 border-emerald-200' :
-                    (selectedDateShift.variance ?? 0) < 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
+                <div className={`rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between border gap-4 ${
+                    (selectedDateShift.variance ?? 0) === 0 && (selectedDateShift.cardVariance ?? 0) === 0 ? 'bg-emerald-50 border-emerald-200' :
+                    (selectedDateShift.variance ?? 0) < 0 || (selectedDateShift.cardVariance ?? 0) < 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
                 }`}>
                     <div>
                         <p className="text-sm font-black text-slate-700">
@@ -546,6 +596,7 @@ export function CashLedgerPage() {
                                     onClick={() => {
                                         setEditStartingCash(String(selectedDateShift.startingCash));
                                         setEditClosingCash(String(selectedDateShift.actualClosingCash ?? 0));
+                                        setEditClosingCard(String(selectedDateShift.actualClosingCard ?? 0));
                                         setIsEditDialogOpen(true);
                                     }}
                                     className="text-indigo-600 hover:text-indigo-800 underline font-bold px-2 ml-1"
@@ -555,14 +606,24 @@ export function CashLedgerPage() {
                             )}
                         </p>
                     </div>
-                    {selectedDateShift.variance !== null && (
-                        <Badge className={`font-black ${
-                            selectedDateShift.variance === 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                            selectedDateShift.variance < 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'
-                        }`}>
-                            Variance: {selectedDateShift.variance > 0 ? '+' : ''}{selectedDateShift.variance.toLocaleString()}
-                        </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {selectedDateShift.variance !== null && (
+                            <Badge className={`font-black ${
+                                selectedDateShift.variance === 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                selectedDateShift.variance < 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'
+                            }`}>
+                                Cash Var: {selectedDateShift.variance > 0 ? '+' : ''}{selectedDateShift.variance.toLocaleString()}
+                            </Badge>
+                        )}
+                        {selectedDateShift.cardVariance !== null && (
+                            <Badge className={`font-black ${
+                                selectedDateShift.cardVariance === 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                selectedDateShift.cardVariance < 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'
+                            }`}>
+                                Card Var: {selectedDateShift.cardVariance > 0 ? '+' : ''}{selectedDateShift.cardVariance.toLocaleString()}
+                            </Badge>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -739,39 +800,35 @@ export function CashLedgerPage() {
                             ) : (
                                 shiftHistory.map((s) => {
                                     const v = s.variance ?? 0;
-                                    const isOver = v > 0;
                                     const isShort = v < 0;
                                     const isPerfect = v === 0;
                                     return (
                                         <div key={s.id} className={`p-3 rounded-xl border ${
-                                            isPerfect ? 'bg-emerald-50/50 border-emerald-100' :
-                                            isShort ? 'bg-red-50/50 border-red-100' :
+                                            isPerfect && (s.cardVariance ?? 0) === 0 ? 'bg-emerald-50/50 border-emerald-100' :
+                                            isShort || (s.cardVariance ?? 0) < 0 ? 'bg-red-50/50 border-red-100' :
                                             'bg-blue-50/50 border-blue-100'
                                         }`}>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[10px] font-bold text-slate-500">
-                                                    {new Date(s.startTime).toLocaleDateString()}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                                    {new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                                 </span>
-                                                {isPerfect && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                                                {isShort && <XCircle className="w-4 h-4 text-red-500" />}
-                                                {isOver && <AlertTriangle className="w-4 h-4 text-blue-500" />}
+                                                <div className="flex gap-1">
+                                                    <Badge variant="outline" className={`text-[8px] font-black ${isPerfect ? 'text-emerald-600 border-emerald-200' : isShort ? 'text-red-600 border-red-200' : 'text-blue-600 border-blue-200'}`}>
+                                                        Cash {v > 0 ? '+' : ''}{v.toLocaleString()}
+                                                    </Badge>
+                                                    <Badge variant="outline" className={`text-[8px] font-black ${(s.cardVariance ?? 0) === 0 ? 'text-emerald-600 border-emerald-200' : (s.cardVariance ?? 0) < 0 ? 'text-red-600 border-red-200' : 'text-blue-600 border-blue-200'}`}>
+                                                        Card {s.cardVariance && s.cardVariance > 0 ? '+' : ''}{(s.cardVariance ?? 0).toLocaleString()}
+                                                    </Badge>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center justify-between">
+                                            <div className="grid grid-cols-2 gap-2 text-[10px]">
                                                 <div>
-                                                    <p className="text-[10px] text-slate-400">Expected</p>
-                                                    <p className="text-xs font-black text-slate-700">{(s.expectedClosingCash ?? 0).toLocaleString()}</p>
+                                                    <p className="text-slate-400 font-medium">Cash Actual</p>
+                                                    <p className="font-black text-slate-700">{(s.actualClosingCash ?? 0).toLocaleString()}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] text-slate-400">Actual</p>
-                                                    <p className="text-xs font-black text-slate-700">{(s.actualClosingCash ?? 0).toLocaleString()}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-slate-400">Variance</p>
-                                                    <p className={`text-xs font-black ${
-                                                        isPerfect ? 'text-emerald-600' : isShort ? 'text-red-600' : 'text-blue-600'
-                                                    }`}>
-                                                        {v > 0 ? '+' : ''}{v.toLocaleString()}
-                                                    </p>
+                                                <div className="text-right">
+                                                    <p className="text-slate-400 font-medium">Card Actual</p>
+                                                    <p className="font-black text-slate-700">{(s.actualClosingCard ?? 0).toLocaleString()}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -820,7 +877,6 @@ export function CashLedgerPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Close Day Dialog */}
             <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -830,68 +886,86 @@ export function CashLedgerPage() {
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-2">
-                        <div className="p-4 bg-slate-50 rounded-xl space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Starting Cash</span>
-                                <span className="font-black text-slate-700">Nrs. {(activeShift?.startingCash || 0).toLocaleString()}</span>
+                        {/* Summary Section */}
+                        <div className="p-4 bg-slate-50 rounded-xl space-y-3">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cash Reconciliation</p>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Expected in Drawer</span>
+                                    <span className="font-black text-slate-800">Nrs. {financials.expectedDrawer.toLocaleString()}</span>
+                                </div>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-emerald-600">+ Cash Sales</span>
-                                <span className="font-black text-emerald-600">+{financials.cashIn.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-orange-600">- Cash Expenses</span>
-                                <span className="font-black text-orange-600">-{financials.cashExpenses.toLocaleString()}</span>
-                            </div>
-                            <div className="border-t border-slate-200 pt-2 flex justify-between text-sm">
-                                <span className="font-black text-slate-800">Expected in Drawer</span>
-                                <span className="font-black text-lg text-purple-700">Nrs. {financials.expectedDrawer.toLocaleString()}</span>
+                            <Separator />
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Card Reconciliation</p>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Expected Card Total</span>
+                                    <span className="font-black text-slate-800">Nrs. {financials.expectedCardTotal.toLocaleString()}</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Actual Cash Count (Nrs.)</label>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={closingCashInput}
-                                onChange={(e) => setClosingCashInput(e.target.value)}
-                                placeholder="Count and enter exact amount"
-                                className="h-12 text-lg font-black text-center"
-                                autoFocus
-                            />
+
+                        {/* Inputs */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Actual Cash (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={closingCashInput}
+                                    onChange={(e) => setClosingCashInput(e.target.value)}
+                                    placeholder="Count cash"
+                                    className="h-12 text-lg font-black text-center"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Actual Card (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={closingCardInput}
+                                    onChange={(e) => setClosingCardInput(e.target.value)}
+                                    placeholder="Slip total"
+                                    className="h-12 text-lg font-black text-center"
+                                />
+                            </div>
                         </div>
-                        {closingCashInput && (
-                            <div className={`p-3 rounded-xl border text-center ${
-                                parseFloat(closingCashInput) === financials.expectedDrawer
-                                    ? 'bg-emerald-50 border-emerald-200'
-                                    : parseFloat(closingCashInput) < financials.expectedDrawer
-                                    ? 'bg-red-50 border-red-200'
-                                    : 'bg-blue-50 border-blue-200'
-                            }`}>
-                                <p className={`text-sm font-black ${
-                                    parseFloat(closingCashInput) === financials.expectedDrawer
-                                        ? 'text-emerald-700'
-                                        : parseFloat(closingCashInput) < financials.expectedDrawer
-                                        ? 'text-red-700'
-                                        : 'text-blue-700'
-                                }`}>
-                                    {parseFloat(closingCashInput) === financials.expectedDrawer
-                                        ? '✅ Perfect Match!'
-                                        : parseFloat(closingCashInput) < financials.expectedDrawer
-                                        ? `🔴 SHORT by Nrs. ${(financials.expectedDrawer - parseFloat(closingCashInput)).toLocaleString()}`
-                                        : `🔵 OVER by Nrs. ${(parseFloat(closingCashInput) - financials.expectedDrawer).toLocaleString()}`
-                                    }
-                                </p>
+
+                        {/* Variances */}
+                        {(closingCashInput || closingCardInput) && (
+                            <div className="space-y-2">
+                                {closingCashInput && (
+                                    <div className={`p-2.5 rounded-xl border text-center ${
+                                        parseFloat(closingCashInput) === financials.expectedDrawer ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-200'
+                                    }`}>
+                                        <p className="text-[11px] font-black text-slate-700">
+                                            Cash Variance: {parseFloat(closingCashInput) - financials.expectedDrawer === 0 ? '✅ Perfect' : `${parseFloat(closingCashInput) - financials.expectedDrawer > 0 ? '+' : ''}${(parseFloat(closingCashInput) - financials.expectedDrawer).toLocaleString()}`}
+                                        </p>
+                                    </div>
+                                )}
+                                {closingCardInput && (
+                                    <div className={`p-2.5 rounded-xl border text-center ${
+                                        parseFloat(closingCardInput) === financials.expectedCardTotal ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-200'
+                                    }`}>
+                                        <p className="text-[11px] font-black text-slate-700">
+                                            Card Variance: {parseFloat(closingCardInput) - financials.expectedCardTotal === 0 ? '✅ Perfect' : `${parseFloat(closingCardInput) - financials.expectedCardTotal > 0 ? '+' : ''}${(parseFloat(closingCardInput) - financials.expectedCardTotal).toLocaleString()}`}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         )}
+
                         <Button
-                            onClick={() => closeShiftMutation.mutate(parseFloat(closingCashInput) || 0)}
-                            disabled={!closingCashInput || closeShiftMutation.isPending}
-                            variant="outline"
-                            className="w-full h-11 border-red-200 text-red-600 hover:bg-red-50 font-black text-sm"
+                            onClick={() => closeShiftMutation.mutate({ 
+                                actualCash: parseFloat(closingCashInput) || 0, 
+                                actualCard: parseFloat(closingCardInput) || 0 
+                            })}
+                            disabled={!closingCashInput || !closingCardInput || closeShiftMutation.isPending}
+                            className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-black text-sm"
                         >
                             {closeShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Close & Lock Drawer
+                            Terminate Shift & Lock Data
                         </Button>
                     </div>
                 </DialogContent>
@@ -925,7 +999,7 @@ export function CashLedgerPage() {
                         </div>
                         <div className="space-y-3">
                             <div>
-                                <label className="text-xs font-black text-slate-600 uppercase">Starting Cash (Float)</label>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Starting Cash (Float)</label>
                                 <Input
                                     type="number"
                                     value={backdateStartingCash}
@@ -933,19 +1007,30 @@ export function CashLedgerPage() {
                                     placeholder="Enter opening amount"
                                 />
                             </div>
-                            <div>
-                                <label className="text-xs font-black text-slate-600 uppercase">Actual Closing Cash</label>
-                                <Input
-                                    type="number"
-                                    value={backdateClosingCash}
-                                    onChange={(e) => setBackdateClosingCash(e.target.value)}
-                                    placeholder="Enter final count"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Cash</label>
+                                    <Input
+                                        type="number"
+                                        value={backdateClosingCash}
+                                        onChange={(e) => setBackdateClosingCash(e.target.value)}
+                                        placeholder="Enter final count"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Card</label>
+                                    <Input
+                                        type="number"
+                                        value={backdateClosingCard}
+                                        onChange={(e) => setBackdateClosingCard(e.target.value)}
+                                        placeholder="Enter final total"
+                                    />
+                                </div>
                             </div>
                         </div>
                         <Button
                             onClick={() => addHistoricalShiftMutation.mutate()}
-                            disabled={!backdateStartingCash || !backdateClosingCash || addHistoricalShiftMutation.isPending}
+                            disabled={!backdateStartingCash || !backdateClosingCash || !backdateClosingCard || addHistoricalShiftMutation.isPending}
                             className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm relative overflow-hidden"
                         >
                             {addHistoricalShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin relative z-10" />}
@@ -969,29 +1054,39 @@ export function CashLedgerPage() {
                         </p>
                         <div className="space-y-3">
                             <div>
-                                <label className="text-xs font-black text-slate-600 uppercase">Corrected Starting Cash</label>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Corrected Starting Cash</label>
                                 <Input
                                     type="number"
                                     value={editStartingCash}
                                     onChange={(e) => setEditStartingCash(e.target.value)}
                                 />
                             </div>
-                            <div>
-                                <label className="text-xs font-black text-slate-600 uppercase">Corrected Closing Cash</label>
-                                <Input
-                                    type="number"
-                                    value={editClosingCash}
-                                    onChange={(e) => setEditClosingCash(e.target.value)}
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Cash</label>
+                                    <Input
+                                        type="number"
+                                        value={editClosingCash}
+                                        onChange={(e) => setEditClosingCash(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Card</label>
+                                    <Input
+                                        type="number"
+                                        value={editClosingCard}
+                                        onChange={(e) => setEditClosingCard(e.target.value)}
+                                    />
+                                </div>
                             </div>
                         </div>
                         <Button
                             onClick={() => editShiftMutation.mutate()}
-                            disabled={!editStartingCash || !editClosingCash || editShiftMutation.isPending}
+                            disabled={!editStartingCash || !editClosingCash || !editClosingCard || editShiftMutation.isPending}
                             className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm relative overflow-hidden"
                         >
                             {editShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin relative z-10" />}
-                            <span className="relative z-10">Update Shift</span>
+                            <span className="relative z-10">Update Shift Record</span>
                         </Button>
                     </div>
                 </DialogContent>

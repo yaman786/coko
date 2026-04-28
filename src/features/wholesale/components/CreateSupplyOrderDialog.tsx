@@ -28,7 +28,9 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [discount, setDiscount] = useState('0');
     const [paidAmount, setPaidAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'mixed'>('credit');
+    const [cashAmount, setCashAmount] = useState('');
+    const [cardAmount, setCardAmount] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'card' | 'mixed'>('credit');
     const [notes, setNotes] = useState('');
     const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -133,6 +135,8 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                 discount: discountAmount,
                 total_amount: totalAmount,
                 paid_amount: paid,
+                cash_amount: paymentMethod === 'cash' ? paid : (paymentMethod === 'mixed' ? Number(cashAmount) || 0 : 0),
+                card_amount: paymentMethod === 'card' ? paid : (paymentMethod === 'mixed' ? Number(cardAmount) || 0 : 0),
                 payment_status: paymentStatus as 'paid' | 'partial' | 'unpaid',
                 payment_method: paymentMethod,
                 notes: notes.trim() || undefined,
@@ -322,36 +326,79 @@ export function CreateSupplyOrderDialog({ open, onClose }: Props) {
                             <hr className="border-slate-100" />
 
                             {/* Payment */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment</label>
-                                    <select
-                                        value={paymentMethod}
-                                        onChange={(e) => {
-                                            const method = e.target.value as 'cash' | 'credit' | 'mixed';
-                                            setPaymentMethod(method);
-                                            if (method === 'cash') setPaidAmount(String(totalAmount));
-                                            if (method === 'credit') setPaidAmount('0');
-                                        }}
-                                        className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold focus:ring-sky-500 focus:border-sky-500"
-                                    >
-                                        <option value="cash">Full Cash</option>
-                                        <option value="credit">Full Credit (Udhari)</option>
-                                        <option value="mixed">Partial Payment</option>
-                                    </select>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Payment Method</label>
+                                        <select
+                                            value={paymentMethod}
+                                            onChange={(e) => {
+                                                const method = e.target.value as 'cash' | 'credit' | 'card' | 'mixed';
+                                                setPaymentMethod(method);
+                                                if (method === 'cash') {
+                                                    setPaidAmount(String(totalAmount));
+                                                    setCashAmount(String(totalAmount));
+                                                    setCardAmount('0');
+                                                } else if (method === 'card') {
+                                                    setPaidAmount(String(totalAmount));
+                                                    setCardAmount(String(totalAmount));
+                                                    setCashAmount('0');
+                                                } else if (method === 'credit') {
+                                                    setPaidAmount('0');
+                                                    setCashAmount('0');
+                                                    setCardAmount('0');
+                                                } else {
+                                                    setPaidAmount('0');
+                                                    setCashAmount('');
+                                                    setCardAmount('');
+                                                }
+                                            }}
+                                            className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold focus:ring-sky-500 focus:border-sky-500"
+                                        >
+                                            <option value="cash">Full Cash</option>
+                                            <option value="card">Card / Bank Transfer</option>
+                                            <option value="credit">Full Credit (Udhari)</option>
+                                            <option value="mixed">Split Payment / Partial</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Total Paid</label>
+                                        <div className="h-11 flex items-center px-3 rounded-lg border border-slate-100 bg-slate-50 text-sm font-black text-slate-800">
+                                            Rs. {paid.toLocaleString()}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Paid Amount</label>
-                                    <Input
-                                        type="number"
-                                        value={paidAmount}
-                                        onChange={(e) => setPaidAmount(e.target.value)}
-                                        className="h-11 focus-visible:ring-sky-500 focus-visible:border-sky-500"
-                                        min="0"
-                                        max={totalAmount}
-                                        disabled={paymentMethod === 'cash' || paymentMethod === 'credit'}
-                                    />
-                                </div>
+
+                                {paymentMethod === 'mixed' && (
+                                    <div className="grid grid-cols-2 gap-4 p-4 bg-sky-50/50 rounded-2xl border border-sky-100 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black text-sky-700 uppercase tracking-widest">Cash Portion</label>
+                                            <Input
+                                                type="number"
+                                                value={cashAmount}
+                                                onChange={(e) => {
+                                                    setCashAmount(e.target.value);
+                                                    setPaidAmount(String((Number(e.target.value) || 0) + (Number(cardAmount) || 0)));
+                                                }}
+                                                placeholder="0"
+                                                className="h-10 border-sky-200 focus-visible:ring-sky-500"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black text-sky-700 uppercase tracking-widest">Card Portion</label>
+                                            <Input
+                                                type="number"
+                                                value={cardAmount}
+                                                onChange={(e) => {
+                                                    setCardAmount(e.target.value);
+                                                    setPaidAmount(String((Number(e.target.value) || 0) + (Number(cashAmount) || 0)));
+                                                }}
+                                                placeholder="0"
+                                                className="h-10 border-sky-200 focus-visible:ring-sky-500"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Credit Preview */}

@@ -204,8 +204,10 @@ export interface WsOrder {
     discount: number;
     total_amount: number;
     paid_amount: number;
+    cash_amount?: number;
+    card_amount?: number;
     payment_status: 'unpaid' | 'partial' | 'paid';
-    payment_method: 'cash' | 'credit' | 'mixed';
+    payment_method: 'cash' | 'credit' | 'card' | 'mixed';
     notes?: string;
     created_by?: string;
     created_at: Date;
