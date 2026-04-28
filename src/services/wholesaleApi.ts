@@ -154,12 +154,16 @@ export const wholesaleApi = {
     async getClientTransactions(clientId: string): Promise<WsClientTransaction[]> {
         const { data, error } = await supabase
             .from('ws_client_transactions')
-            .select('*')
+            .select('*, ws_orders(order_number)')
             .eq('client_id', clientId)
             .eq('is_deleted', false)
             .order('created_at', { ascending: false });
         if (error) throw error;
-        return data || [];
+        
+        return (data || []).map(tx => ({
+            ...tx,
+            order_number: (tx as any).ws_orders?.order_number
+        }));
     },
 
     async recordClientPayment(clientId: string, amount: number, method: string, notes?: string, date?: string): Promise<void> {

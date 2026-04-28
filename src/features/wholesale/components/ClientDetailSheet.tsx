@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { wholesaleApi } from '../../../services/wholesaleApi';
-import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, ArrowDownLeft, ArrowUpRight, Trash2, RotateCcw, Ban, AlertTriangle } from 'lucide-react';
+import { X, Pencil, Phone, MapPin, Mail, FileText, Package, Coins, Trash2, RotateCcw, Ban, AlertTriangle } from 'lucide-react';
 import { ClientPricingTable } from './ClientPricingTable';
 import { RecordClientPaymentDialog } from './RecordClientPaymentDialog';
 import { EditTransactionDialog } from './EditTransactionDialog';
@@ -110,6 +110,30 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
         queryKey: ['ws_client_product_analytics', client.id],
         queryFn: () => wholesaleApi.getClientProductAnalytics(client.id),
     });
+
+    // Calculate Running Balance & Totals
+    const ledgerData = [...transactions]
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .reduce((acc, tx) => {
+            const amount = Number(tx.amount);
+            const prevBalance = acc.length > 0 ? acc[acc.length - 1].runningBalance : 0;
+            const newBalance = tx.type === 'PAYMENT_RECEIVED' ? prevBalance - amount : prevBalance + amount;
+            
+            acc.push({
+                ...tx,
+                runningBalance: newBalance
+            });
+            return acc;
+        }, [] as (WsClientTransaction & { runningBalance: number })[])
+        .reverse(); // Show newest first for the table
+
+    const totalBilled = transactions
+        .filter(t => t.type === 'ORDER_CREDIT')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const totalCollected = transactions
+        .filter(t => t.type === 'PAYMENT_RECEIVED')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -366,78 +390,90 @@ export function ClientDetailSheet({ client, onClose, onEdit }: Props) {
                     )}
 
                     {activeTab === 'ledger' && (
-                        <div className="space-y-4 animate-in fade-in duration-300">
-                            {/* Balance Summary */}
-                            <div className="flex items-center justify-between p-5 bg-slate-50 rounded-xl border border-slate-100">
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Current Balance</p>
-                                    <p className={`text-2xl font-black mt-0.5 ${client.balance > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                                        Rs. {Math.abs(client.balance).toLocaleString()}
-                                    </p>
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Billed</p>
+                                    <p className="text-xl font-black text-slate-800">Rs. {totalBilled.toLocaleString()}</p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-slate-500 font-medium bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                                        {client.balance > 0 ? 'Client owes you' : client.balance < 0 ? 'Advance credit' : 'Account Settled ✓'}
-                                    </p>
+                                <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                                    <p className="text-[10px] font-bold text-emerald-600/60 uppercase tracking-widest mb-1">Total Collected</p>
+                                    <p className="text-xl font-black text-emerald-700">Rs. {totalCollected.toLocaleString()}</p>
                                 </div>
                             </div>
 
-                            {/* Timeline */}
-                            <div className="space-y-3 pt-4">
-                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Transaction Timeline</h3>
-                                {transactions.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
-                                        <FileText className="w-8 h-8 mx-auto mb-3 text-slate-300" />
-                                        <p className="text-sm font-semibold text-slate-500">No transactions recorded</p>
-                                    </div>
-                                ) : (
-                                    transactions.map(tx => (
-                                        <div key={tx.id} className="group flex items-start gap-3.5 p-4 bg-white border border-slate-100 rounded-xl hover:border-slate-200 hover:shadow-sm transition-all shadow-sm">
-                                            <div className={`mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                                                tx.type === 'PAYMENT_RECEIVED' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
-                                            }`}>
-                                                {tx.type === 'PAYMENT_RECEIVED' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start">
-                                                    <p className="text-sm font-bold text-slate-800">
-                                                        {tx.type === 'PAYMENT_RECEIVED' ? 'Payment Received' : 'Order Credit Added'}
-                                                    </p>
-                                                    <div className="flex flex-col items-end gap-1">
-                                                        <p className={`text-sm font-bold whitespace-nowrap ${tx.type === 'PAYMENT_RECEIVED' ? 'text-green-600' : 'text-rose-600'}`}>
-                                                            {tx.type === 'PAYMENT_RECEIVED' ? '-' : '+'} Rs. {tx.amount.toLocaleString()}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button 
-                                                                onClick={() => { setEditingTx(tx); setEditDialogOpen(true); }}
-                                                                className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-md transition-colors"
-                                                            >
-                                                                <Pencil className="w-3.5 h-3.5" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDeleteTransaction(tx)}
-                                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-                                                            >
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500 font-medium">
-                                                    <span>{new Date(tx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                                    {tx.payment_method && (
-                                                        <span className="px-2 py-0.5 bg-slate-100 rounded-md text-slate-600 font-semibold">{tx.payment_method}</span>
-                                                    )}
-                                                </div>
-                                                {tx.reference_note && (
-                                                    <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100 italic">
-                                                        "{tx.reference_note}"
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
+                            {/* Statement Table */}
+                            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs text-left">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider">Particulars</th>
+                                                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-right">Debit (Dr)</th>
+                                                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-right">Credit (Cr)</th>
+                                                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wider text-right">Balance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {ledgerData.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
+                                                        <FileText className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                                                        <p className="font-bold">No transactions found</p>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                ledgerData.map((tx) => (
+                                                    <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                        <td className="px-4 py-3 text-slate-500 font-medium whitespace-nowrap">
+                                                            {new Date(tx.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-700">
+                                                                    {tx.type === 'PAYMENT_RECEIVED' ? 'Payment' : (tx as any).order_number || 'Order Credit'}
+                                                                    {tx.payment_method && <span className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[9px] text-slate-500 uppercase">{tx.payment_method}</span>}
+                                                                </span>
+                                                                {tx.reference_note && <span className="text-[10px] text-slate-400 italic truncate max-w-[120px]">{tx.reference_note}</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-bold text-rose-600 whitespace-nowrap">
+                                                            {tx.type === 'ORDER_CREDIT' ? `Rs. ${tx.amount.toLocaleString()}` : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">
+                                                            {tx.type === 'PAYMENT_RECEIVED' ? `Rs. ${tx.amount.toLocaleString()}` : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <span className="font-black text-slate-800 whitespace-nowrap">
+                                                                    Rs. {Math.abs(tx.runningBalance).toLocaleString()}
+                                                                </span>
+                                                                <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <button 
+                                                                        onClick={() => { setEditingTx(tx); setEditDialogOpen(true); }}
+                                                                        className="p-1 text-slate-400 hover:text-sky-600"
+                                                                        title="Edit"
+                                                                    >
+                                                                        <Pencil className="w-3 h-3" />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteTransaction(tx)}
+                                                                        className="p-1 text-slate-400 hover:text-rose-600"
+                                                                        title="Delete"
+                                                                    >
+                                                                        <Trash2 className="w-3 h-3" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}

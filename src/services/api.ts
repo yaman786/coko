@@ -137,7 +137,7 @@ export const api = {
             p_complimentary_amount: params.complimentaryAmount || 0,
             p_is_waste: params.isWaste || false,
             p_created_at: params.createdAt || null,
-            p_portal: params.portal || 'retail'
+            p_status: params.isWaste ? 'waste' : 'completed'
         });
 
         if (error) throw error;
