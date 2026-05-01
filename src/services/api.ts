@@ -2,6 +2,25 @@
 import { supabase } from '../lib/supabase';
 import type { Product, Order, Staff, StoreSettings, AuditLogEntry, Expense, Supplier, SupplierTransaction } from '../types';
 
+export interface Shift {
+    id: number;
+    cashierId: string;
+    cashierName: string;
+    startTime: string;
+    endTime: string | null;
+    startingCash: number;
+    startingCard: number; // Added
+    expectedClosingCash: number | null;
+    actualClosingCash: number | null;
+    variance: number | null;
+    expectedClosingCard: number | null;
+    actualClosingCard: number | null;
+    cardVariance: number | null;
+    status: 'open' | 'closed';
+    portal: 'retail' | 'wholesale';
+    user_id: string;
+}
+
 /** Strongly-typed payload for order items sent to the checkout RPC */
 export interface OrderItemPayload {
     product_id: string;
@@ -482,5 +501,154 @@ export const api = {
             .getPublicUrl(filePath);
 
         return data.publicUrl;
+    },
+
+    // ─── Shift / Register Management ───────────────────────
+    async getActiveShift(portal: 'retail' | 'wholesale'): Promise<Shift | null> {
+        const { data, error } = await supabase
+            .from('shifts')
+            .select('*')
+            .eq('status', 'open')
+            .eq('portal', portal)
+            .order('startTime', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async openShift(params: {
+        startingCash: number;
+        startingCard: number; // Added
+        cashierId: string;
+        cashierName: string;
+        portal: 'retail' | 'wholesale';
+        user_id?: string;
+    }): Promise<Shift> {
+        const { data, error } = await supabase
+            .from('shifts')
+            .insert({
+                cashierId: params.cashierId,
+                cashierName: params.cashierName,
+                startTime: new Date().toISOString(),
+                startingCash: params.startingCash,
+                startingCard: params.startingCard, // Added
+                status: 'open',
+                portal: params.portal,
+                user_id: params.user_id
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async closeShift(params: {
+        shiftId: number;
+        actualCash: number;
+        actualCard: number;
+        expectedCash: number;
+        expectedCard: number;
+    }): Promise<void> {
+        const variance = params.actualCash - params.expectedCash;
+        const cardVariance = params.actualCard - params.expectedCard;
+
+        const { error } = await supabase
+            .from('shifts')
+            .update({
+                endTime: new Date().toISOString(),
+                expectedClosingCash: params.expectedCash,
+                actualClosingCash: params.actualCash,
+                variance,
+                expectedClosingCard: params.expectedCard,
+                actualClosingCard: params.actualCard,
+                cardVariance,
+                status: 'closed'
+            })
+            .eq('id', params.shiftId);
+
+        if (error) throw error;
+    },
+
+    async getShiftStats(shiftId: number, portal: 'retail' | 'wholesale'): Promise<any> {
+        const { data: shift } = await supabase
+            .from('shifts')
+            .select('*')
+            .eq('id', shiftId)
+            .single();
+
+        if (!shift) return null;
+
+        const start = shift.startTime;
+        const end = shift.endTime || new Date().toISOString();
+
+        let cashIn = 0;
+        let cardIn = 0;
+        let cashOut = 0;
+
+        if (portal === 'retail') {
+            const { data: orders } = await supabase
+                .from('orders')
+                .select('*')
+                .gte('createdAt', start)
+                .lte('createdAt', end)
+                .eq('status', 'completed');
+
+            (orders || []).forEach((o: any) => {
+                if (o.isWaste) return;
+                const method = (o.paymentMethod || '').toLowerCase();
+                if (method === 'cash') cashIn += Number(o.totalAmount) || 0;
+                else if (method === 'card') cardIn += Number(o.totalAmount) || 0;
+                else if (method === 'split') {
+                    cashIn += Number(o.cashAmount) || 0;
+                    cardIn += Number(o.cardAmount) || 0;
+                }
+            });
+        } else {
+            const { data: orders } = await supabase
+                .from('ws_orders')
+                .select('*')
+                .gte('created_at', start)
+                .lte('created_at', end)
+                .neq('status', 'cancelled');
+
+            (orders || []).forEach((o: any) => {
+                const cash = Number(o.cash_amount) || 0;
+                const card = Number(o.card_amount) || 0;
+                const paid = Number(o.paid_amount) || 0;
+
+                if (cash === 0 && card === 0 && paid > 0) {
+                    const method = (o.payment_method || '').toLowerCase();
+                    if (method === 'cash' || method === 'mixed') cashIn += paid;
+                    else if (method === 'card') cardIn += paid;
+                } else {
+                    cashIn += cash;
+                    cardIn += card;
+                }
+            });
+        }
+
+        const { data: expenses } = await supabase
+            .from('expenses')
+            .select('*')
+            .eq('portal', portal)
+            .gte('date', start)
+            .lte('date', end);
+
+        (expenses || []).forEach((e: any) => {
+            if ((e.payment_method || '').toLowerCase() === 'cash') {
+                cashOut += Number(e.amount) || 0;
+            }
+        });
+
+        return {
+            cashIn,
+            cardIn,
+            cashOut,
+            expectedCash: shift.startingCash + cashIn - cashOut,
+            expectedCard: (shift.startingCard || 0) + cardIn
+        };
     }
 };
