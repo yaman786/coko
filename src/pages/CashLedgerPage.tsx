@@ -721,145 +721,166 @@ export function CashLedgerPage() {
             </Card>
 
             {/* Transaction Feed + Shift History */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Transaction Feed */}
-                <Card className="lg:col-span-2 border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                    <CardHeader className="pb-3 border-b border-slate-100 mb-2">
-                        <CardTitle className="text-base font-black text-slate-800 flex items-center justify-between font-['DM_Sans',sans-serif]">
-                            <span className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-slate-500" />
-                                Transaction Feed
-                            </span>
-                            <Badge variant="outline" className="font-bold text-indigo-500 bg-indigo-50 border-indigo-100">
-                                {transactions.length} entries
-                            </Badge>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                            {transactions.length === 0 ? (
-                                <div className="text-center py-12 text-slate-400">
-                                    <Receipt className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                                    <p className="text-sm font-bold">No transactions for this date</p>
-                                </div>
-                            ) : (
-                                transactions.map((t) => (
-                                    <div key={t.id} className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${
-                                        t.type === 'sale'
-                                            ? 'bg-white border-slate-100 hover:border-emerald-200'
-                                            : 'bg-orange-50/50 border-orange-100 hover:border-orange-200'
-                                    }`}>
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-none ${
-                                                t.type === 'sale' ? 'bg-emerald-100' : 'bg-orange-100'
-                                            }`}>
-                                                {t.type === 'sale' ? (
-                                                    <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                                                ) : t.description.includes('Payment:') ? (
-                                                    <Truck className="w-4 h-4 text-orange-600" />
-                                                ) : (
-                                                    <MinusCircle className="w-4 h-4 text-orange-600" />
-                                                )}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-bold text-slate-700 truncate">{t.description}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium">
-                                                    {t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    {t.cashierName && ` • ${t.cashierName}`}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-none">
-                                            <Badge variant="outline" className={`text-[9px] font-black uppercase ${
-                                                t.method.toLowerCase() === 'cash' ? 'text-emerald-600 border-emerald-200' : 'text-blue-600 border-blue-200'
-                                            }`}>
-                                                {t.method}
-                                            </Badge>
-                                            <span className={`text-sm font-black ${t.type === 'sale' ? 'text-emerald-700' : 'text-orange-600'}`}>
-                                                {t.type === 'sale' ? '+' : '-'}{t.amount.toLocaleString()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+            {/* Executive Shift Reconciliation Command Center */}
+            <div className="relative group/ledger">
+                {/* Background Glow Accent */}
+                <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-500/5 via-transparent to-sky-500/5 rounded-[3rem] blur-3xl -z-10 opacity-0 group-hover/ledger:opacity-100 transition-opacity duration-1000" />
+                
+                <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] bg-white/60 backdrop-blur-2xl rounded-[3rem] overflow-hidden">
+                    <CardHeader className="p-10 pb-6 flex flex-row items-center justify-between border-b border-slate-100/50">
+                        <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center shadow-2xl shadow-indigo-200 ring-4 ring-indigo-50">
+                                <Clock className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-2xl font-black text-slate-800 tracking-tight font-['Outfit',sans-serif]">
+                                    Shift Audit <span className="text-indigo-600">Intelligence</span>
+                                </CardTitle>
+                                <p className="text-sm font-medium text-slate-400 mt-1">Live reconciliation tracking & historical performance.</p>
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Shift History */}
-                <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                    <CardHeader className="pb-3 border-b border-slate-100 mb-2">
-                        <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2 font-['DM_Sans',sans-serif]">
-                            <Clock className="w-4 h-4 text-slate-500" />
-                            Shift History
-                        </CardTitle>
+                        <div className="flex items-center gap-4">
+                            <div className="px-5 py-2.5 rounded-2xl bg-slate-100/50 border border-slate-200/50 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] shadow-inner">
+                                {shiftHistory.length} Sessions Logged
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    
+                    <CardContent className="p-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8">
                             {shiftHistory.length === 0 ? (
-                                <div className="text-center py-12 text-slate-400">
-                                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                                    <p className="text-sm font-bold">No closed shifts yet</p>
+                                <div className="col-span-full py-24 flex flex-col items-center justify-center space-y-4">
+                                    <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center">
+                                        <Clock className="w-10 h-10 text-slate-200" />
+                                    </div>
+                                    <p className="text-xl font-black text-slate-300 tracking-tight">No intelligence data yet.</p>
                                 </div>
                             ) : (
                                 shiftHistory.map((s) => {
-                                const v = s.variance ?? 0;
-                                const cv = s.cardVariance ?? 0;
-                                const isProblematic = v < 0 || cv < 0;
-                                const isPerfect = v === 0 && cv === 0;
+                                    const v = s.variance ?? 0;
+                                    const cv = s.cardVariance ?? 0;
+                                    const isShort = v < 0 || cv < 0;
+                                    const isPerfect = v === 0 && cv === 0;
 
-                                return (
-                                    <div key={s.id} className="group relative bg-white border border-slate-100 rounded-2xl p-4 hover:shadow-md hover:border-indigo-100 transition-all duration-300">
-                                        <div className="flex items-center justify-between gap-4">
-                                            {/* Date & Time Info */}
-                                            <div className="flex items-center gap-4 min-w-0">
-                                                <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-none ${
-                                                    isPerfect ? 'bg-emerald-50 text-emerald-600' : 
-                                                    isProblematic ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
-                                                }`}>
-                                                    <span className="text-[10px] font-black uppercase leading-none">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short' })}</span>
-                                                    <span className="text-sm font-black leading-none mt-0.5">{new Date(s.startTime).getDate()}</span>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-black text-slate-700 truncate">{s.cashierName}</p>
-                                                    <p className="text-[10px] text-slate-400 font-medium">
-                                                        {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
-                                                        {s.endTime ? ` → ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (Open)'}
-                                                    </p>
-                                                </div>
-                                            </div>
+                                    return (
+                                        <div key={s.id} className="group/item relative bg-white/40 border border-white rounded-[2.5rem] p-8 hover:bg-white hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-1">
+                                            {/* Status Indicator Strip */}
+                                            <div className={`absolute left-0 top-12 bottom-12 w-1.5 rounded-r-full transition-all duration-500 group-hover/item:top-8 group-hover/item:bottom-8 ${
+                                                isPerfect ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 
+                                                isShort ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)]' : 
+                                                'bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.4)]'
+                                            }`} />
 
-                                            {/* Variance Badges */}
-                                            <div className="flex flex-col items-end gap-1.5 flex-none">
-                                                <div className="flex gap-1.5">
-                                                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 ${
-                                                        v === 0 ? 'bg-emerald-100/50 text-emerald-700' : 
-                                                        v < 0 ? 'bg-rose-100/50 text-rose-700' : 'bg-blue-100/50 text-blue-700'
-                                                    }`}>
-                                                        <Banknote className="w-2.5 h-2.5" />
-                                                        {v > 0 ? '+' : ''}{v.toLocaleString()}
+                                            <div className="flex flex-col gap-6">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 flex flex-col items-center justify-center border border-slate-100 shadow-inner group-hover/item:bg-indigo-50 group-hover/item:border-indigo-100 transition-colors duration-500">
+                                                            <span className="text-[10px] font-black uppercase text-slate-400 group-hover/item:text-indigo-400">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short' })}</span>
+                                                            <span className="text-2xl font-black text-slate-700 group-hover/item:text-indigo-700">{new Date(s.startTime).getDate()}</span>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-lg font-black text-slate-800 tracking-tight group-hover/item:text-indigo-900 transition-colors">{s.cashierName}</h3>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                                                                    {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                                                                    {s.endTime ? ` → ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (Live Now)'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 ${
-                                                        cv === 0 ? 'bg-emerald-100/50 text-emerald-700' : 
-                                                        cv < 0 ? 'bg-rose-100/50 text-rose-700' : 'bg-blue-100/50 text-blue-700'
-                                                    }`}>
-                                                        <CreditCard className="w-2.5 h-2.5" />
-                                                        {cv > 0 ? '+' : ''}{cv.toLocaleString()}
+                                                    
+                                                    <div className="flex flex-col items-end">
+                                                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Session Total</p>
+                                                        <p className="text-xl font-black text-slate-700 tabular-nums tracking-tighter">
+                                                            Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
-                                                    Actual: Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
-                                                </p>
+
+                                                {/* Variance Analytics */}
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className={`p-4 rounded-3xl border transition-all duration-500 ${
+                                                        v === 0 ? 'bg-emerald-50/30 border-emerald-100/50' : 
+                                                        v < 0 ? 'bg-rose-50/30 border-rose-100/50' : 'bg-indigo-50/30 border-indigo-100/50'
+                                                    }`}>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-[10px] font-black uppercase text-slate-400">Cash Flow</span>
+                                                            <Banknote className={`w-3 h-3 ${v === 0 ? 'text-emerald-500' : v < 0 ? 'text-rose-500' : 'text-indigo-500'}`} />
+                                                        </div>
+                                                        <p className={`text-sm font-black ${v === 0 ? 'text-emerald-600' : v < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                                                            {v > 0 ? '+' : ''}{v.toLocaleString()}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className={`p-4 rounded-3xl border transition-all duration-500 ${
+                                                        cv === 0 ? 'bg-emerald-50/30 border-emerald-100/50' : 
+                                                        cv < 0 ? 'bg-rose-50/30 border-rose-100/50' : 'bg-indigo-50/30 border-indigo-100/50'
+                                                    }`}>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-[10px] font-black uppercase text-slate-400">Digital Flow</span>
+                                                            <CreditCard className={`w-3 h-3 ${cv === 0 ? 'text-emerald-500' : cv < 0 ? 'text-rose-500' : 'text-indigo-500'}`} />
+                                                        </div>
+                                                        <p className={`text-sm font-black ${cv === 0 ? 'text-emerald-600' : cv < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                                                            {cv > 0 ? '+' : ''}{cv.toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )
-                            })
+                                    );
+                                })
                             )}
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Transaction Ledger Feed */}
+            <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl rounded-[2.5rem]">
+                <CardHeader className="p-8 pb-3 border-b border-slate-100">
+                    <CardTitle className="text-base font-black flex items-center gap-2 text-slate-700 font-['DM_Sans',sans-serif]">
+                        <Receipt className="w-4 h-4 text-slate-500" />
+                        Detailed Daily Ledger Feed
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-8">
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                        {transactions.length === 0 ? (
+                            <div className="text-center py-12 text-slate-400">
+                                <p className="text-sm font-bold">No ledger activity for the selected date.</p>
+                            </div>
+                        ) : (
+                            transactions.map((t) => (
+                                <div key={t.id} className="flex items-center justify-between p-5 rounded-[1.5rem] border border-slate-50 bg-white hover:border-indigo-100 hover:shadow-lg hover:shadow-indigo-500/5 transition-all group">
+                                    <div className="flex items-center gap-5">
+                                        <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center transition-transform group-hover:scale-110 duration-300 ${t.type === 'sale' ? 'bg-emerald-50 text-emerald-600 shadow-inner' : 'bg-rose-50 text-rose-600 shadow-inner'}`}>
+                                            {t.type === 'sale' ? <ArrowUpRight className="w-6 h-6" /> : <ArrowDownRight className="w-6 h-6" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-slate-700 group-hover:text-indigo-600 transition-colors">{t.description}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t.cashierName}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        <Badge variant="outline" className={`text-[10px] font-black uppercase px-4 py-1.5 rounded-full border-slate-100 ${t.method.toLowerCase() === 'cash' ? 'bg-emerald-50/50 text-emerald-600' : 'bg-blue-50/50 text-blue-600'}`}>
+                                            {t.method}
+                                        </Badge>
+                                        <span className={`text-lg font-black tabular-nums ${t.type === 'sale' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {t.type === 'sale' ? '+' : '−'}Rs. {t.amount.toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
 
             {/* Start Day Dialog */}
             <Dialog open={isStartDialogOpen} onOpenChange={setIsStartDialogOpen}>

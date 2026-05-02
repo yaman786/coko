@@ -54,6 +54,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+
 }
 
 // Higher Order Component to restrict access to Admins only
@@ -69,6 +70,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+
 }
 
 export function App() {
