@@ -317,6 +317,22 @@ export function CashLedgerPage() {
         return items.sort((a, b) => b.time.getTime() - a.time.getTime());
     }, [orders, expenses, supplierPayments]);
 
+    // ── Filtered & Paginated Shift History ──
+    const filteredShifts = useMemo(() => {
+        return shiftHistory.filter(s => {
+            const matchesSearch = s.cashierName.toLowerCase().includes(shiftSearch.toLowerCase());
+            const totalVariance = (s.variance ?? 0) + (s.cardVariance ?? 0);
+            const isPerfect = totalVariance === 0;
+            
+            if (statusFilter === 'balanced') return matchesSearch && isPerfect;
+            if (statusFilter === 'variance') return matchesSearch && !isPerfect;
+            return matchesSearch;
+        });
+    }, [shiftHistory, shiftSearch, statusFilter]);
+
+    const totalPages = Math.ceil(filteredShifts.length / rowsPerPage);
+    const paginatedShifts = filteredShifts.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
     // ── Mutations ──
     const openShiftMutation = useMutation({
         mutationFn: async (startingCash: number) => {
@@ -676,6 +692,49 @@ export function CashLedgerPage() {
                 </div>
             </div>
 
+            {/* Transaction Feed - TOP SECTION */}
+            <Card className="border border-slate-200/60 shadow-sm bg-white rounded-xl mb-8">
+                <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 font-['DM_Sans',sans-serif]">
+                        <Receipt className="w-4 h-4 text-slate-500" />
+                        Live Transaction Stream
+                    </CardTitle>
+                    <Badge variant="outline" className="text-[10px] font-black uppercase px-3 py-1 bg-white text-slate-400 border-slate-200">
+                        {transactions.length} Records
+                    </Badge>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto custom-scrollbar">
+                        {transactions.length === 0 ? (
+                            <div className="text-center py-12 text-slate-400 font-medium">
+                                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                                <p className="text-xs">No activity recorded for this period.</p>
+                            </div>
+                        ) : (
+                            transactions.map((t) => (
+                                <div key={t.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'sale' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                            {t.type === 'sale' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800">{t.description}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.cashierName}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-8">
+                                        <Badge variant="outline" className="text-[10px] font-bold uppercase px-3 py-0.5 border-slate-200 text-slate-500">{t.method}</Badge>
+                                        <span className={`text-sm font-bold tabular-nums ${t.type === 'sale' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {t.type === 'sale' ? '+' : '−'}Rs. {t.amount.toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Cash Flow Summary */}
             <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
                 <CardHeader className="pb-3 border-b border-slate-100">
@@ -887,6 +946,7 @@ export function CashLedgerPage() {
                 </CardContent>
             </Card>
 
+            <Dialog open={isStartDialogOpen} onOpenChange={setIsStartDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-lg font-black">
