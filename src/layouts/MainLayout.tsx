@@ -25,23 +25,23 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
         if (isRetail) {
             return [
                 { name: 'POS', href: '/pos', icon: ShoppingCart },
+                { name: 'Dashboard', href: '/pos/dashboard', icon: Home },
+                { name: 'Cash Ledger', href: '/pos/ledger', icon: Wallet },
+                { name: 'Analytics', href: '/pos/analytics', icon: TrendingUp },
                 { name: 'Orders', href: '/pos/orders', icon: Receipt },
                 { name: 'Inventory', href: '/pos/inventory', icon: Package },
-                { name: 'Dashboard', href: '/pos/dashboard', icon: Home },
-                { name: 'Analytics', href: '/pos/analytics', icon: TrendingUp },
                 { name: 'Suppliers', href: '/pos/suppliers', icon: Truck },
                 { name: 'Expenses', href: '/pos/expenses', icon: Receipt },
-                { name: 'Cash Ledger', href: '/pos/ledger', icon: Wallet },
                 { name: 'Settings', href: '/pos/settings', icon: Settings }
             ];
         } else {
             return [
                 { name: 'GOD Dashboard', href: '/wholesale/dashboard', icon: Home },
+                { name: 'GOD Ledger', href: '/wholesale/ledger', icon: Wallet },
                 { name: 'Stock Warehouse', href: '/wholesale/inventory', icon: Boxes },
                 { name: 'Client Ledger', href: '/wholesale/clients', icon: Users },
                 { name: 'Supply Orders', href: '/wholesale/orders', icon: Receipt },
                 { name: 'GOD Expenses', href: '/wholesale/expenses', icon: Wallet },
-                { name: 'GOD Ledger', href: '/wholesale/ledger', icon: Wallet },
                 { name: 'Supplier Ledger', href: '/wholesale/suppliers', icon: Truck },
                 { name: 'System Settings', href: '/wholesale/settings', icon: Settings }
             ];
@@ -112,12 +112,13 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 <nav className={`flex-1 py-6 space-y-1 overflow-y-auto ${isCollapsed ? 'lg:px-2 px-4' : 'px-4'}`}>
                     {navigation
                         .filter(item => {
-                            if (role !== 'admin') {
-                                if (item.name === 'Dashboard') return false;
-                                if (item.name === 'Cash Ledger') return false;
-                                if (item.name === 'GOD Ledger') return false;
-                                if (item.name === 'Analytics') return false;
-                            }
+                            // If we're an admin, we see everything
+                            if (role === 'admin') return true;
+                            
+                            // For non-admins (or during loading), hide sensitive financial/admin sections
+                            const adminSections = ['Dashboard', 'Cash Ledger', 'GOD Ledger', 'Analytics', 'GOD Dashboard', 'GOD Expenses', 'GOD Ledger'];
+                            if (adminSections.includes(item.name)) return false;
+                            
                             return true;
                         })
                         .map((item) => {
