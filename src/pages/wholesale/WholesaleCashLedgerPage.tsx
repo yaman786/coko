@@ -23,7 +23,6 @@ import {
     MinusCircle,
     Truck,
     Search,
-    Boxes,
     Building2
 } from 'lucide-react';
 import { toast } from 'sonner';

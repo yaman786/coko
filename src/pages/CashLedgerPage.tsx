@@ -21,13 +21,8 @@ import {
     TrendingUp,
     Loader2,
     Receipt,
-    ShoppingBag,
     MinusCircle,
-    Truck,
-    Search,
-    User,
-    ShieldCheck,
-    History
+    Search
 } from 'lucide-react';
 import { toast } from 'sonner';
 
