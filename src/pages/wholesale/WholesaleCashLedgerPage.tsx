@@ -22,6 +22,8 @@ import {
     Receipt,
     MinusCircle,
     Truck,
+    Search,
+    Boxes,
     Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -57,7 +59,7 @@ export function WholesaleCashLedgerPage() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
-    // State
+    // UI & Modal State
     const [isStartDialogOpen, setIsStartDialogOpen] = useState(false);
     const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
     const [closingCashInput, setClosingCashInput] = useState('');
@@ -67,6 +69,12 @@ export function WholesaleCashLedgerPage() {
         const now = new Date();
         return now.toISOString().split('T')[0];
     });
+
+    // Shift Audit Ledger State
+    const [shiftSearch, setShiftSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'variance'>('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage] = useState(10);
 
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
@@ -155,7 +163,7 @@ export function WholesaleCashLedgerPage() {
                 .eq('status', 'closed')
                 .eq('portal', 'wholesale')
                 .order('startTime', { ascending: false })
-                .limit(10);
+                .limit(100);
             return data || [];
         }
     });
@@ -244,6 +252,22 @@ export function WholesaleCashLedgerPage() {
         return items.sort((a, b) => b.time.getTime() - a.time.getTime());
     }, [orders, expenses]);
 
+    // ── Filtered & Paginated Shift History ──
+    const filteredShifts = useMemo(() => {
+        return shiftHistory.filter(s => {
+            const matchesSearch = s.cashierName.toLowerCase().includes(shiftSearch.toLowerCase());
+            const totalVariance = (s.variance ?? 0) + (s.cardVariance ?? 0);
+            const isPerfect = totalVariance === 0;
+            
+            if (statusFilter === 'balanced') return matchesSearch && isPerfect;
+            if (statusFilter === 'variance') return matchesSearch && !isPerfect;
+            return matchesSearch;
+        });
+    }, [shiftHistory, shiftSearch, statusFilter]);
+
+    const totalPages = Math.ceil(filteredShifts.length / rowsPerPage);
+    const paginatedShifts = filteredShifts.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
     // ── Mutations ──
     const openShiftMutation = useMutation({
         mutationFn: async (startingCash: number) => {
@@ -309,9 +333,9 @@ export function WholesaleCashLedgerPage() {
     }
 
     return (
-        <div className="p-4 md:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24">
+        <div className="max-w-7xl mx-auto space-y-8 p-6 md:p-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-2">
                 <div className="flex flex-col gap-1">
                     <h1 className="text-3xl font-black text-slate-800 tracking-tight font-['DM_Sans',sans-serif] flex items-center gap-4">
                         <div className="w-12 h-12 bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-sky-200/50">
@@ -413,10 +437,53 @@ export function WholesaleCashLedgerPage() {
                 </div>
             </div>
 
-            {/* Summary Table */}
+            {/* Transaction Feed - TOP SECTION */}
+            <Card className="border border-slate-200/60 shadow-sm bg-white rounded-xl mb-8">
+                <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 font-['DM_Sans',sans-serif]">
+                        <Receipt className="w-4 h-4 text-slate-500" />
+                        Wholesale Transaction Feed
+                    </CardTitle>
+                    <Badge variant="outline" className="text-[10px] font-black uppercase px-3 py-1 bg-white text-slate-400 border-slate-200">
+                        {transactions.length} Records
+                    </Badge>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto custom-scrollbar">
+                        {transactions.length === 0 ? (
+                            <div className="text-center py-12 text-slate-400 font-medium">
+                                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                                <p className="text-xs">No activity recorded for this period.</p>
+                            </div>
+                        ) : (
+                            transactions.map((t) => (
+                                <div key={t.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'sale' ? 'bg-sky-50 text-sky-600' : 'bg-rose-50 text-rose-600'}`}>
+                                            {t.type === 'sale' ? <Truck className="w-4 h-4" /> : <MinusCircle className="w-4 h-4" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800">{t.description}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.cashierName}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-8">
+                                        <Badge variant="outline" className="text-[10px] font-bold uppercase px-3 py-0.5 border-slate-200 text-slate-500">{t.method}</Badge>
+                                        <span className={`text-sm font-bold tabular-nums ${t.type === 'sale' ? 'text-sky-600' : 'text-rose-600'}`}>
+                                            {t.type === 'sale' ? '+' : '−'}Rs. {t.amount.toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Financial Summary Table */}
             <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
                 <CardHeader className="pb-3 border-b border-slate-100">
-                    <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2">
+                    <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2 font-['DM_Sans',sans-serif]">
                         <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
                             <Wallet className="w-4 h-4 text-sky-600" />
                         </div>
@@ -424,121 +491,199 @@ export function WholesaleCashLedgerPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="bg-slate-50/50 text-[10px] uppercase tracking-widest text-slate-400 font-bold">
-                                <th className="text-left py-4 px-6">Metric</th>
-                                <th className="text-right py-4 px-6">Cash</th>
-                                <th className="text-right py-4 px-6">Card / Bank</th>
-                                <th className="text-right py-4 px-6">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            <tr className="hover:bg-slate-50 transition-colors">
-                                <td className="py-4 px-6 font-bold text-sky-700 flex items-center gap-2">
-                                    <ArrowUpRight className="w-4 h-4" /> Paid Orders
-                                </td>
-                                <td className="py-4 px-6 text-right font-bold text-sky-600">+{financials.cashIn.toLocaleString()}</td>
-                                <td className="py-4 px-6 text-right font-bold text-sky-600">+{financials.cardIn.toLocaleString()}</td>
-                                <td className="py-4 px-6 text-right font-black text-sky-700">+{financials.totalRevenue.toLocaleString()}</td>
-                            </tr>
-                            <tr className="hover:bg-slate-50 transition-colors">
-                                <td className="py-4 px-6 font-bold text-rose-600 flex items-center gap-2">
-                                    <ArrowDownRight className="w-4 h-4" /> Expenses
-                                </td>
-                                <td className="py-4 px-6 text-right font-bold text-rose-500">-{financials.cashExpenses.toLocaleString()}</td>
-                                <td className="py-4 px-6 text-right font-bold text-rose-500">-{financials.cardExpenses.toLocaleString()}</td>
-                                <td className="py-4 px-6 text-right font-black text-rose-600">-{financials.totalExpenses.toLocaleString()}</td>
-                            </tr>
-                            <tr className="bg-sky-50/30">
-                                <td className="py-4 px-6 text-slate-800 font-black">Net Position</td>
-                                <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCash.toLocaleString()}</td>
-                                <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCard.toLocaleString()}</td>
-                                <td className="py-4 px-6 text-right text-sky-900 font-black text-base">{(financials.netCash + financials.netCard).toLocaleString()}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div className="overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50/50 text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold font-['DM_Sans',sans-serif]">
+                                    <th className="text-left py-4 px-6">Metric</th>
+                                    <th className="text-right py-4 px-6">💵 Cash</th>
+                                    <th className="text-right py-4 px-6">💳 Digital</th>
+                                    <th className="text-right py-4 px-6">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-['DM_Sans',sans-serif]">
+                                <tr className="hover:bg-slate-50 transition-colors">
+                                    <td className="py-4 px-6 font-bold text-sky-700 flex items-center gap-2">
+                                        <ArrowUpRight className="w-4 h-4" /> Wholesale Sales
+                                    </td>
+                                    <td className="py-4 px-6 text-right font-bold text-sky-600">+{financials.cashIn.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-bold text-sky-600">+{financials.cardIn.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-black text-sky-700">+{financials.totalRevenue.toLocaleString()}</td>
+                                </tr>
+                                <tr className="hover:bg-slate-50 transition-colors">
+                                    <td className="py-4 px-6 font-bold text-rose-600 flex items-center gap-2">
+                                        <ArrowDownRight className="w-4 h-4" /> Operational Expenses
+                                    </td>
+                                    <td className="py-4 px-6 text-right font-bold text-rose-500">-{financials.cashExpenses.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-bold text-rose-500">-{financials.cardExpenses.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-black text-rose-600">-{financials.totalExpenses.toLocaleString()}</td>
+                                </tr>
+                                <tr className="bg-sky-50/30">
+                                    <td className="py-4 px-6 text-slate-800 font-black">Net Distribution Flow</td>
+                                    <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCash.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCard.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right text-sky-900 font-black text-base">{(financials.netCash + financials.netCard).toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </CardContent>
             </Card>
 
-            {/* Feed + History */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                    <CardHeader className="pb-3 border-b border-slate-100">
-                        <CardTitle className="text-base font-black flex items-center gap-2">
-                            <Receipt className="w-4 h-4 text-slate-500" />
-                            Wholesale Ledger Feed
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                            {transactions.length === 0 ? (
-                                <div className="text-center py-12 text-slate-400">
-                                    <p className="text-sm font-bold">No ledger entries for this date</p>
-                                </div>
-                            ) : (
-                                transactions.map((t) => (
-                                    <div key={t.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-white hover:border-sky-200 transition-all">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'sale' ? 'bg-sky-100' : 'bg-rose-100'}`}>
-                                                {t.type === 'sale' ? <Truck className="w-4 h-4 text-sky-600" /> : <MinusCircle className="w-4 h-4 text-rose-600" />}
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-700">{t.description}</p>
-                                                <p className="text-[10px] text-slate-400">{t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.cashierName}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant="outline" className="text-[9px] font-black uppercase text-slate-500">{t.method}</Badge>
-                                            <span className={`text-sm font-black ${t.type === 'sale' ? 'text-sky-700' : 'text-rose-600'}`}>
-                                                {t.type === 'sale' ? '+' : '-'}{t.amount.toLocaleString()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+            {/* Historical Shift Reconciliation Audit Ledger */}
+            <Card className="border border-slate-200 shadow-sm bg-white rounded-xl overflow-hidden mt-8">
+                <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                                <Clock className="w-4 h-4 text-slate-500" />
+                                Historical Shift Reconciliation
+                            </CardTitle>
+                            <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-widest">Formal audit ledger for wholesale operations</p>
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                    <CardHeader className="pb-3 border-b border-slate-100">
-                        <CardTitle className="text-base font-black flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-slate-500" />
-                            GOD Shift History
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                        <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                            {shiftHistory.map((s) => {
-                                const v = s.variance ?? 0;
-                                const isPerfect = v === 0;
-                                return (
-                                    <div key={s.id} className={`p-3 rounded-xl border ${isPerfect && (s.cardVariance ?? 0) === 0 ? 'bg-emerald-50/40 border-emerald-100' : 'bg-slate-50 border-slate-200'}`}>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                            <div className="flex gap-1">
-                                                <Badge variant="outline" className="text-[8px] font-black">Cash {v > 0 ? '+' : ''}{v.toLocaleString()}</Badge>
-                                                <Badge variant="outline" className="text-[8px] font-black">Card {s.cardVariance && s.cardVariance > 0 ? '+' : ''}{(s.cardVariance ?? 0).toLocaleString()}</Badge>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                            <div>
-                                                <p className="text-slate-400">Cash Actual</p>
-                                                <p className="font-black">{(s.actualClosingCash ?? 0).toLocaleString()}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-slate-400">Card Actual</p>
-                                                <p className="font-black">{(s.actualClosingCard ?? 0).toLocaleString()}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        
+                        {/* Filter Bar */}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative">
+                                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Input 
+                                    placeholder="Search Manager..." 
+                                    className="h-9 w-[180px] pl-9 text-xs border-slate-200 rounded-lg focus:ring-1 focus:ring-sky-500"
+                                    value={shiftSearch}
+                                    onChange={(e) => {
+                                        setShiftSearch(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                />
+                            </div>
+                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                {['all', 'balanced', 'variance'].map((filter) => (
+                                    <button
+                                        key={filter}
+                                        onClick={() => {
+                                            setStatusFilter(filter as any);
+                                            setCurrentPage(1);
+                                        }}
+                                        className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
+                                            statusFilter === filter 
+                                                ? 'bg-white text-sky-600 shadow-sm font-black' 
+                                                : 'text-slate-500 hover:text-slate-700 font-bold'
+                                        }`}
+                                    >
+                                        {filter}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                <tr>
+                                    <th className="py-4 px-6 text-left font-bold">Session Date</th>
+                                    <th className="py-4 px-6 text-left font-bold">Manager / Staff</th>
+                                    <th className="py-4 px-6 text-right font-bold">Expected (Cash/Card)</th>
+                                    <th className="py-4 px-6 text-right font-bold">Actual Collected</th>
+                                    <th className="py-4 px-6 text-right font-bold">Variance</th>
+                                    <th className="py-4 px-6 text-center font-bold">Audit Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {paginatedShifts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-12 text-center text-slate-400 font-medium italic">
+                                            {shiftSearch || statusFilter !== 'all' ? 'No records match your filters.' : 'No historical shift data recorded.'}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    paginatedShifts.map((s) => {
+                                        const v = s.variance ?? 0;
+                                        const cv = s.cardVariance ?? 0;
+                                        const totalVariance = v + cv;
+                                        return (
+                                            <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                <td className="py-4 px-6">
+                                                    <p className="font-bold text-slate-800">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium">{new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {s.endTime ? new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Open'}</p>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-sky-100 flex items-center justify-center text-[10px] font-black text-sky-600 uppercase">
+                                                            {s.cashierName.charAt(0)}
+                                                        </div>
+                                                        <span className="font-bold text-slate-700">{s.cashierName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-right font-medium text-slate-500">
+                                                    <p>Nrs. {(s.expectedClosingCash ?? 0).toLocaleString()}</p>
+                                                    <p className="text-[10px]">Bank: {(s.expectedClosingCard ?? 0).toLocaleString()}</p>
+                                                </td>
+                                                <td className="py-4 px-6 text-right font-bold text-slate-800">
+                                                    <p>Nrs. {(s.actualClosingCash ?? 0).toLocaleString()}</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">Bank: {(s.actualClosingCard ?? 0).toLocaleString()}</p>
+                                                </td>
+                                                <td className="py-4 px-6 text-right">
+                                                    <span className={`font-black ${totalVariance === 0 ? 'text-emerald-600' : totalVariance < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
+                                                        {totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-6 text-center">
+                                                    {totalVariance === 0 ? (
+                                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 font-black uppercase text-[9px] px-2 py-0.5">Balanced</Badge>
+                                                    ) : (
+                                                        <Badge className={`${totalVariance < 0 ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-blue-100 text-blue-700 border-blue-200'} font-black uppercase text-[9px] px-2 py-0.5`}>
+                                                            {totalVariance < 0 ? 'Deficit' : 'Surplus'}
+                                                        </Badge>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    {/* Pagination Footer */}
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            Showing {(currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, filteredShifts.length)} of {filteredShifts.length} Sessions
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(p => p - 1)}
+                                className="h-8 text-[10px] font-black uppercase border-slate-200"
+                            >
+                                Previous
+                            </Button>
+                            {[...Array(totalPages)].map((_, i) => (
+                                <Button
+                                    key={i}
+                                    variant={currentPage === i + 1 ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(i + 1)}
+                                    className={`h-8 w-8 text-[10px] font-black ${currentPage === i + 1 ? 'bg-sky-600 hover:bg-sky-700' : 'border-slate-200'}`}
+                                >
+                                    {i + 1}
+                                </Button>
+                            ))}
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                disabled={currentPage === totalPages || totalPages === 0}
+                                onClick={() => setCurrentPage(p => p + 1)}
+                                className="h-8 text-[10px] font-black uppercase border-slate-200"
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Start Shift Dialog */}
             <Dialog open={isStartDialogOpen} onOpenChange={setIsStartDialogOpen}>
@@ -607,7 +752,7 @@ export function WholesaleCashLedgerPage() {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-600 uppercase">Actual Card</label>
+                                <label className="text-[10px] font-black text-slate-600 uppercase">Actual Digital</label>
                                 <Input
                                     type="number"
                                     value={closingCardInput}
