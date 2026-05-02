@@ -112,7 +112,12 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 <nav className={`flex-1 py-6 space-y-1 overflow-y-auto ${isCollapsed ? 'lg:px-2 px-4' : 'px-4'}`}>
                     {navigation
                         .filter(item => {
-                            if (role !== 'admin' && item.name === 'Dashboard') return false; 
+                            if (role !== 'admin') {
+                                if (item.name === 'Dashboard') return false;
+                                if (item.name === 'Cash Ledger') return false;
+                                if (item.name === 'GOD Ledger') return false;
+                                if (item.name === 'Analytics') return false;
+                            }
                             return true;
                         })
                         .map((item) => {
