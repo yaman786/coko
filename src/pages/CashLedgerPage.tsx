@@ -65,6 +65,7 @@ export function CashLedgerPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
     const [startingCardInput, setStartingCardInput] = useState('0');
+    const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
     const [closingCashInput, setClosingCashInput] = useState('');
     const [closingCardInput, setClosingCardInput] = useState('');
     const [backdateStartingCash, setBackdateStartingCash] = useState('');
@@ -721,115 +722,238 @@ export function CashLedgerPage() {
             </Card>
 
             {/* Transaction Feed + Shift History */}
-            {/* Executive Shift Reconciliation Command Center */}
-            <div className="relative group/ledger">
-                {/* Background Glow Accent */}
-                <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-500/5 via-transparent to-sky-500/5 rounded-[3rem] blur-3xl -z-10 opacity-0 group-hover/ledger:opacity-100 transition-opacity duration-1000" />
-                
-                <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] bg-white/60 backdrop-blur-2xl rounded-[3rem] overflow-hidden">
-                    <CardHeader className="p-10 pb-6 flex flex-row items-center justify-between border-b border-slate-100/50">
-                        <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center shadow-2xl shadow-indigo-200 ring-4 ring-indigo-50">
-                                <Clock className="w-7 h-7 text-white" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-2xl font-black text-slate-800 tracking-tight font-['Outfit',sans-serif]">
-                                    Shift Audit <span className="text-indigo-600">Intelligence</span>
-                                </CardTitle>
-                                <p className="text-sm font-medium text-slate-400 mt-1">Live reconciliation tracking & historical performance.</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="px-5 py-2.5 rounded-2xl bg-slate-100/50 border border-slate-200/50 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] shadow-inner">
-                                {shiftHistory.length} Sessions Logged
-                            </div>
-                        </div>
-                    </CardHeader>
+            {/* Elite Audit Console: Master-Detail Layout */}
+            <div className="flex flex-col lg:flex-row gap-8 min-h-[700px]">
+                {/* Master: Shift Sidebar */}
+                <div className="w-full lg:w-[350px] flex flex-col gap-4">
+                    <div className="flex items-center justify-between px-6 py-2">
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Audit Log</p>
+                        <Badge variant="outline" className="rounded-full bg-slate-50 text-[9px] font-black border-slate-200">{shiftHistory.length} Total</Badge>
+                    </div>
                     
-                    <CardContent className="p-10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8">
-                            {shiftHistory.length === 0 ? (
-                                <div className="col-span-full py-24 flex flex-col items-center justify-center space-y-4">
-                                    <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center">
-                                        <Clock className="w-10 h-10 text-slate-200" />
-                                    </div>
-                                    <p className="text-xl font-black text-slate-300 tracking-tight">No intelligence data yet.</p>
-                                </div>
-                            ) : (
-                                shiftHistory.map((s) => {
-                                    const v = s.variance ?? 0;
-                                    const cv = s.cardVariance ?? 0;
-                                    const isShort = v < 0 || cv < 0;
-                                    const isPerfect = v === 0 && cv === 0;
+                    <div className="flex flex-col gap-3 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                        {shiftHistory.length === 0 ? (
+                            <div className="text-center py-12 bg-white/40 rounded-[2rem] border border-dashed border-slate-200">
+                                <p className="text-xs font-bold text-slate-400">No history available</p>
+                            </div>
+                        ) : (
+                            shiftHistory.map((s) => {
+                                const isSelected = selectedShiftId === s.id;
+                                const isPerfect = (s.variance ?? 0) === 0 && (s.cardVariance ?? 0) === 0;
+                                const isProblematic = (s.variance ?? 0) < 0 || (s.cardVariance ?? 0) < 0;
 
-                                    return (
-                                        <div key={s.id} className="group/item relative bg-white/40 border border-white rounded-[2.5rem] p-8 hover:bg-white hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-1">
-                                            {/* Status Indicator Strip */}
-                                            <div className={`absolute left-0 top-12 bottom-12 w-1.5 rounded-r-full transition-all duration-500 group-hover/item:top-8 group-hover/item:bottom-8 ${
-                                                isPerfect ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 
-                                                isShort ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)]' : 
-                                                'bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.4)]'
+                                return (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => setSelectedShiftId(s.id)}
+                                        className={`w-full text-left p-6 rounded-[2rem] border transition-all duration-300 group flex flex-col gap-3 ${
+                                            isSelected 
+                                                ? 'bg-indigo-600 border-indigo-500 shadow-xl shadow-indigo-200 translate-x-2' 
+                                                : 'bg-white/60 border-slate-100 hover:bg-white hover:border-indigo-100 hover:shadow-lg'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${
+                                                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                    {new Date(s.startTime).getDate()}
+                                                </div>
+                                                <div>
+                                                    <p className={`text-sm font-black tracking-tight ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                                                        {new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}
+                                                    </p>
+                                                    <p className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                                                        {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className={`w-2 h-2 rounded-full ${
+                                                isPerfect ? 'bg-emerald-400' : isProblematic ? 'bg-rose-400' : 'bg-indigo-400'
                                             }`} />
+                                        </div>
+                                        <p className={`text-[11px] font-bold truncate ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                            Responsible: {s.cashierName}
+                                        </p>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
 
-                                            <div className="flex flex-col gap-6">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex items-center gap-5">
-                                                        <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 flex flex-col items-center justify-center border border-slate-100 shadow-inner group-hover/item:bg-indigo-50 group-hover/item:border-indigo-100 transition-colors duration-500">
-                                                            <span className="text-[10px] font-black uppercase text-slate-400 group-hover/item:text-indigo-400">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short' })}</span>
-                                                            <span className="text-2xl font-black text-slate-700 group-hover/item:text-indigo-700">{new Date(s.startTime).getDate()}</span>
-                                                        </div>
-                                                        <div>
-                                                            <h3 className="text-lg font-black text-slate-800 tracking-tight group-hover/item:text-indigo-900 transition-colors">{s.cashierName}</h3>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                                                                    {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
-                                                                    {s.endTime ? ` → ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (Live Now)'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
+                {/* Detail: Intelligence Report */}
+                <div className="flex-1">
+                    {!selectedShiftId ? (
+                        <div className="h-full rounded-[3rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-12 text-center bg-slate-50/50">
+                            <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-sm mb-6">
+                                <ArrowUpRight className="w-8 h-8 text-slate-300" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-800 tracking-tight">Select an Audit Entry</h3>
+                            <p className="text-sm font-medium text-slate-400 mt-2 max-w-[280px]">Choose a shift from the left to view a deep-dive intelligence report.</p>
+                        </div>
+                    ) : (
+                        (() => {
+                            const s = shiftHistory.find(x => x.id === selectedShiftId);
+                            if (!s) return null;
+                            const v = s.variance ?? 0;
+                            const cv = s.cardVariance ?? 0;
+                            const isPerfect = v === 0 && cv === 0;
+
+                            return (
+                                <div className="animate-in fade-in slide-in-from-right-8 duration-500 h-full">
+                                    <Card className="h-full border-0 shadow-[0_20px_60px_rgba(0,0,0,0.05)] bg-white/80 backdrop-blur-3xl rounded-[3rem] overflow-hidden flex flex-col">
+                                        <CardHeader className="p-10 pb-8 border-b border-slate-100/50 bg-gradient-to-r from-slate-50/50 to-transparent">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                                <div className="flex items-center gap-6">
+                                                    <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-2xl ${
+                                                        isPerfect ? 'bg-emerald-500 text-white shadow-emerald-200' : 'bg-indigo-600 text-white shadow-indigo-200'
+                                                    }`}>
+                                                        <Clock className="w-8 h-8" />
                                                     </div>
-                                                    
-                                                    <div className="flex flex-col items-end">
-                                                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Session Total</p>
-                                                        <p className="text-xl font-black text-slate-700 tabular-nums tracking-tighter">
-                                                            Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">Intelligence Report</p>
+                                                        <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-none">
+                                                            Shift #{s.id} <span className="text-slate-300 mx-2">/</span> {s.cashierName}
+                                                        </h2>
+                                                        <p className="text-sm font-bold text-slate-400 mt-2">
+                                                            {new Date(s.startTime).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                                         </p>
                                                     </div>
                                                 </div>
+                                                <Badge className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest border-0 ${
+                                                    isPerfect ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-amber-500 text-white shadow-lg shadow-amber-200'
+                                                }`}>
+                                                    {isPerfect ? '✅ Audit Passed' : '⚠️ Action Required'}
+                                                </Badge>
+                                            </div>
+                                        </CardHeader>
+                                        
+                                        <CardContent className="p-10 space-y-10 flex-1 overflow-y-auto">
+                                            {/* Top Metrics Row */}
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="bg-slate-50/50 rounded-[2rem] p-8 border border-slate-100">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Expected Total</p>
+                                                    <p className="text-3xl font-black text-slate-800 tracking-tighter tabular-nums">
+                                                        Rs. {((s.expectedClosingCash ?? 0) + (s.expectedClosingCard ?? 0)).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm">
+                                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Actual Collected</p>
+                                                    <p className="text-3xl font-black text-indigo-700 tracking-tighter tabular-nums">
+                                                        Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <div className={`rounded-[2rem] p-8 border transition-colors ${
+                                                    isPerfect ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'
+                                                }`}>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Total Variance</p>
+                                                    <p className={`text-3xl font-black tracking-tighter tabular-nums ${isPerfect ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                                        {v + cv > 0 ? '+' : ''}{(v + cv).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                                {/* Variance Analytics */}
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className={`p-4 rounded-3xl border transition-all duration-500 ${
-                                                        v === 0 ? 'bg-emerald-50/30 border-emerald-100/50' : 
-                                                        v < 0 ? 'bg-rose-50/30 border-rose-100/50' : 'bg-indigo-50/30 border-indigo-100/50'
-                                                    }`}>
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className="text-[10px] font-black uppercase text-slate-400">Cash Flow</span>
-                                                            <Banknote className={`w-3 h-3 ${v === 0 ? 'text-emerald-500' : v < 0 ? 'text-rose-500' : 'text-indigo-500'}`} />
-                                                        </div>
-                                                        <p className={`text-sm font-black ${v === 0 ? 'text-emerald-600' : v < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
-                                                            {v > 0 ? '+' : ''}{v.toLocaleString()}
-                                                        </p>
+                                            {/* Detailed Analytics Breakdown */}
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                                <div className="space-y-6">
+                                                    <div className="flex items-center gap-3 px-2">
+                                                        <Banknote className="w-5 h-5 text-slate-400" />
+                                                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Physical Cash Audit</h4>
                                                     </div>
-
-                                                    <div className={`p-4 rounded-3xl border transition-all duration-500 ${
-                                                        cv === 0 ? 'bg-emerald-50/30 border-emerald-100/50' : 
-                                                        cv < 0 ? 'bg-rose-50/30 border-rose-100/50' : 'bg-indigo-50/30 border-indigo-100/50'
-                                                    }`}>
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className="text-[10px] font-black uppercase text-slate-400">Digital Flow</span>
-                                                            <CreditCard className={`w-3 h-3 ${cv === 0 ? 'text-emerald-500' : cv < 0 ? 'text-rose-500' : 'text-indigo-500'}`} />
+                                                    <div className="bg-white border border-slate-100 rounded-[2rem] p-8 space-y-6">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-bold text-slate-400">Opening Float</span>
+                                                            <span className="font-black text-slate-700">Rs. {s.startingCash.toLocaleString()}</span>
                                                         </div>
-                                                        <p className={`text-sm font-black ${cv === 0 ? 'text-emerald-600' : cv < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
-                                                            {cv > 0 ? '+' : ''}{cv.toLocaleString()}
-                                                        </p>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-bold text-slate-400">Closing Expected</span>
+                                                            <span className="font-black text-slate-700">Rs. {s.expectedClosingCash?.toLocaleString()}</span>
+                                                        </div>
+                                                        <Separator className="bg-slate-100" />
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-base font-black text-slate-800">Actual Counted</span>
+                                                            <span className="text-xl font-black text-indigo-600">Rs. {s.actualClosingCash?.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-6">
+                                                    <div className="flex items-center gap-3 px-2">
+                                                        <CreditCard className="w-5 h-5 text-slate-400" />
+                                                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Digital Card Audit</h4>
+                                                    </div>
+                                                    <div className="bg-white border border-slate-100 rounded-[2rem] p-8 space-y-6">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-bold text-slate-400">Starting Balance</span>
+                                                            <span className="font-black text-slate-700">Rs. {(s.startingCard ?? 0).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-bold text-slate-400">Expected Total</span>
+                                                            <span className="font-black text-slate-700">Rs. {s.expectedClosingCard?.toLocaleString()}</span>
+                                                        </div>
+                                                        <Separator className="bg-slate-100" />
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-base font-black text-slate-800">Actual Settlement</span>
+                                                            <span className="text-xl font-black text-indigo-600">Rs. {s.actualClosingCard?.toLocaleString()}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* Transaction Feed Hook (Simulated Shift Feed) */}
+                                            <div className="bg-indigo-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden group/cta">
+                                                <div className="relative z-10">
+                                                    <h3 className="text-2xl font-black tracking-tight mb-2">Shift Transaction Integrity</h3>
+                                                    <p className="text-indigo-200 text-sm max-w-[400px]">All sales, expenses, and split payments recorded during this specific session are locked in the audit vault.</p>
+                                                </div>
+                                                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                                <TrendingUp className="absolute bottom-[-20px] right-8 w-40 h-40 text-indigo-800/40 -rotate-12 group-hover/cta:scale-110 transition-transform duration-700" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            );
+                        })()
+                    )}
+                </div>
+            </div>
+
+            {/* Global Transaction Ledger Feed - Collapsible or Separate Section */}
+            <div className="pt-12">
+                <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl rounded-[2.5rem]">
+                    <CardHeader className="p-8 pb-3 border-b border-slate-100">
+                        <CardTitle className="text-base font-black flex items-center gap-2 text-slate-700 font-['DM_Sans',sans-serif]">
+                            <Receipt className="w-4 h-4 text-slate-500" />
+                            Live Transaction Stream
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-8">
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                            {transactions.length === 0 ? (
+                                <div className="text-center py-12 text-slate-400">
+                                    <p className="text-sm font-bold">No ledger activity for the selected date.</p>
+                                </div>
+                            ) : (
+                                transactions.map((t) => (
+                                    <div key={t.id} className="flex items-center justify-between p-4 rounded-[1.25rem] border border-slate-50 bg-white hover:border-indigo-100 transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.type === 'sale' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                {t.type === 'sale' ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-700">{t.description}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.cashierName}</p>
+                                            </div>
                                         </div>
-                                    );
-                                })
+                                        <div className="flex items-center gap-6">
+                                            <Badge variant="outline" className="text-[10px] font-black uppercase px-3 py-1 bg-slate-50/50">{t.method}</Badge>
+                                            <span className={`text-base font-black tabular-nums ${t.type === 'sale' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                {t.type === 'sale' ? '+' : '−'}Rs. {t.amount.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
                             )}
                         </div>
                     </CardContent>
