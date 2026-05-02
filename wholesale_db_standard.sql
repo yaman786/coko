@@ -13,7 +13,7 @@ DECLARE
 BEGIN
     -- SCENARIO A: ORDER IS CANCELLED (Status update)
     IF (TG_OP = 'UPDATE' AND OLD.status != 'cancelled' AND NEW.status = 'cancelled') THEN
-        FOR item IN SELECT * FROM jsonb_to_recordset(NEW.items) AS x(product_id TEXT, qty NUMERIC) LOOP
+        FOR item IN SELECT * FROM jsonb_to_recordset(NEW.items) AS x(product_id UUID, qty NUMERIC) LOOP
             UPDATE ws_products 
             SET stock = stock + item.qty,
                 updated_at = NOW()
@@ -22,7 +22,7 @@ BEGIN
         
     -- SCENARIO B: ORDER IS PERMANENTLY DELETED
     ELSIF (TG_OP = 'DELETE' AND OLD.status != 'cancelled') THEN
-        FOR item IN SELECT * FROM jsonb_to_recordset(OLD.items) AS x(product_id TEXT, qty NUMERIC) LOOP
+        FOR item IN SELECT * FROM jsonb_to_recordset(OLD.items) AS x(product_id UUID, qty NUMERIC) LOOP
             UPDATE ws_products 
             SET stock = stock + item.qty,
                 updated_at = NOW()
@@ -54,6 +54,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_ws_products_modtime ON ws_products;
 CREATE TRIGGER update_ws_products_modtime BEFORE UPDATE ON ws_products FOR EACH ROW EXECUTE FUNCTION update_ws_modified_column();
+
+DROP TRIGGER IF EXISTS update_ws_orders_modtime ON ws_orders;
 CREATE TRIGGER update_ws_orders_modtime BEFORE UPDATE ON ws_orders FOR EACH ROW EXECUTE FUNCTION update_ws_modified_column();
+
+DROP TRIGGER IF EXISTS update_ws_clients_modtime ON ws_clients;
 CREATE TRIGGER update_ws_clients_modtime BEFORE UPDATE ON ws_clients FOR EACH ROW EXECUTE FUNCTION update_ws_modified_column();

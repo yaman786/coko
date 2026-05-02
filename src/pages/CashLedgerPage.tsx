@@ -34,6 +34,7 @@ interface Shift {
     startTime: string;
     endTime: string | null;
     startingCash: number;
+    startingCard: number; // Added
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
@@ -63,6 +64,7 @@ export function CashLedgerPage() {
     const [isBackdateDialogOpen, setIsBackdateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
+    const [startingCardInput, setStartingCardInput] = useState('0');
     const [closingCashInput, setClosingCashInput] = useState('');
     const [closingCardInput, setClosingCardInput] = useState('');
     const [backdateStartingCash, setBackdateStartingCash] = useState('');
@@ -247,7 +249,7 @@ export function CashLedgerPage() {
         // Use selectedDateShift for historical, activeShift for today
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
         const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
-        const expectedCardTotal = netCard; // Card usually starts at 0 every shift
+        const expectedCardTotal = (shiftForCalc?.startingCard || 0) + netCard; 
         const hasShiftData = !!shiftForCalc;
 
         return {
@@ -309,29 +311,31 @@ export function CashLedgerPage() {
 
     // ── Mutations ──
     const openShiftMutation = useMutation({
-        mutationFn: async (startingCash: number) => {
+        mutationFn: async (params: { startingCash: number, startingCard: number }) => {
             const { error } = await supabase.from('shifts').insert({
                 cashierId: user?.email || 'unknown',
                 cashierName: user?.email?.split('@')[0] || 'Unknown',
                 startTime: new Date().toISOString(),
-                startingCash,
+                startingCash: params.startingCash,
+                startingCard: params.startingCard,
                 status: 'open',
                 portal: 'retail',
                 user_id: user?.id
             });
             if (error) throw error;
         },
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['active-shift'] });
             queryClient.invalidateQueries({ queryKey: ['shift-history'] });
             setIsStartDialogOpen(false);
             setStartingCashInput('');
-            toast.success('Day Started', { description: `Drawer opened with Nrs. ${startingCashInput}` });
+            setStartingCardInput('0');
+            toast.success('Day Started', { description: `Drawer opened with Cash: Rs. ${variables.startingCash}, Card: Rs. ${variables.startingCard}` });
             api.logActivity({
                 action: 'SHIFT_OPENED',
                 category: 'POS',
-                description: `Shift opened with Nrs. ${startingCashInput} starting cash.`,
-                metadata: { startingCash: parseFloat(startingCashInput) },
+                description: `Shift opened. Cash: Rs. ${variables.startingCash}, Card: Rs. ${variables.startingCard}`,
+                metadata: { startingCash: variables.startingCash, startingCard: variables.startingCard },
                 actor_email: user?.email || 'system',
                 actor_name: user?.email?.split('@')[0] || 'System',
             });
@@ -799,41 +803,58 @@ export function CashLedgerPage() {
                                 </div>
                             ) : (
                                 shiftHistory.map((s) => {
-                                    const v = s.variance ?? 0;
-                                    const isShort = v < 0;
-                                    const isPerfect = v === 0;
-                                    return (
-                                        <div key={s.id} className={`p-3 rounded-xl border ${
-                                            isPerfect && (s.cardVariance ?? 0) === 0 ? 'bg-emerald-50/50 border-emerald-100' :
-                                            isShort || (s.cardVariance ?? 0) < 0 ? 'bg-red-50/50 border-red-100' :
-                                            'bg-blue-50/50 border-blue-100'
-                                        }`}>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                                    {new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                </span>
-                                                <div className="flex gap-1">
-                                                    <Badge variant="outline" className={`text-[8px] font-black ${isPerfect ? 'text-emerald-600 border-emerald-200' : isShort ? 'text-red-600 border-red-200' : 'text-blue-600 border-blue-200'}`}>
-                                                        Cash {v > 0 ? '+' : ''}{v.toLocaleString()}
-                                                    </Badge>
-                                                    <Badge variant="outline" className={`text-[8px] font-black ${(s.cardVariance ?? 0) === 0 ? 'text-emerald-600 border-emerald-200' : (s.cardVariance ?? 0) < 0 ? 'text-red-600 border-red-200' : 'text-blue-600 border-blue-200'}`}>
-                                                        Card {s.cardVariance && s.cardVariance > 0 ? '+' : ''}{(s.cardVariance ?? 0).toLocaleString()}
-                                                    </Badge>
+                                const v = s.variance ?? 0;
+                                const cv = s.cardVariance ?? 0;
+                                const isProblematic = v < 0 || cv < 0;
+                                const isPerfect = v === 0 && cv === 0;
+
+                                return (
+                                    <div key={s.id} className="group relative bg-white border border-slate-100 rounded-2xl p-4 hover:shadow-md hover:border-indigo-100 transition-all duration-300">
+                                        <div className="flex items-center justify-between gap-4">
+                                            {/* Date & Time Info */}
+                                            <div className="flex items-center gap-4 min-w-0">
+                                                <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-none ${
+                                                    isPerfect ? 'bg-emerald-50 text-emerald-600' : 
+                                                    isProblematic ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
+                                                }`}>
+                                                    <span className="text-[10px] font-black uppercase leading-none">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short' })}</span>
+                                                    <span className="text-sm font-black leading-none mt-0.5">{new Date(s.startTime).getDate()}</span>
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-black text-slate-700 truncate">{s.cashierName}</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium">
+                                                        {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                                                        {s.endTime ? ` → ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (Open)'}
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                                <div>
-                                                    <p className="text-slate-400 font-medium">Cash Actual</p>
-                                                    <p className="font-black text-slate-700">{(s.actualClosingCash ?? 0).toLocaleString()}</p>
+
+                                            {/* Variance Badges */}
+                                            <div className="flex flex-col items-end gap-1.5 flex-none">
+                                                <div className="flex gap-1.5">
+                                                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 ${
+                                                        v === 0 ? 'bg-emerald-100/50 text-emerald-700' : 
+                                                        v < 0 ? 'bg-rose-100/50 text-rose-700' : 'bg-blue-100/50 text-blue-700'
+                                                    }`}>
+                                                        <Banknote className="w-2.5 h-2.5" />
+                                                        {v > 0 ? '+' : ''}{v.toLocaleString()}
+                                                    </div>
+                                                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 ${
+                                                        cv === 0 ? 'bg-emerald-100/50 text-emerald-700' : 
+                                                        cv < 0 ? 'bg-rose-100/50 text-rose-700' : 'bg-blue-100/50 text-blue-700'
+                                                    }`}>
+                                                        <CreditCard className="w-2.5 h-2.5" />
+                                                        {cv > 0 ? '+' : ''}{cv.toLocaleString()}
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-slate-400 font-medium">Card Actual</p>
-                                                    <p className="font-black text-slate-700">{(s.actualClosingCard ?? 0).toLocaleString()}</p>
-                                                </div>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                                                    Actual: Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
+                                                </p>
                                             </div>
                                         </div>
-                                    );
-                                })
+                                    </div>
+                                )
+                            })
                             )}
                         </div>
                     </CardContent>
@@ -853,21 +874,37 @@ export function CashLedgerPage() {
                         <p className="text-sm text-slate-500">
                             Count the physical cash in the drawer right now and enter the exact amount below.
                         </p>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Starting Cash (Nrs.)</label>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={startingCashInput}
-                                onChange={(e) => setStartingCashInput(e.target.value)}
-                                placeholder="e.g. 5000"
-                                className="h-12 text-lg font-black text-center"
-                                autoFocus
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Starting Cash (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCashInput}
+                                    onChange={(e) => setStartingCashInput(e.target.value)}
+                                    placeholder="e.g. 5000"
+                                    className="h-12 text-lg font-black text-center"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Starting Card (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCardInput}
+                                    onChange={(e) => setStartingCardInput(e.target.value)}
+                                    placeholder="0"
+                                    className="h-12 text-lg font-black text-center"
+                                />
+                            </div>
                         </div>
                         <Button
-                            onClick={() => openShiftMutation.mutate(parseFloat(startingCashInput) || 0)}
-                            disabled={!startingCashInput || openShiftMutation.isPending}
+                            onClick={() => openShiftMutation.mutate({ 
+                                startingCash: parseFloat(startingCashInput) || 0, 
+                                startingCard: parseFloat(startingCardInput) || 0 
+                            })}
+                            disabled={startingCashInput === '' || startingCardInput === '' || openShiftMutation.isPending}
                             className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm"
                         >
                             {openShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
