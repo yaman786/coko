@@ -163,7 +163,7 @@ export function PosRegisterControl() {
                                     cash: parseFloat(startingCash) || 0, 
                                     card: parseFloat(startingCard) || 0 
                                 })}
-                                disabled={startingCash === '' || startingCard === '' || openRegisterMutation.isPending}
+                                disabled={!startingCash || !startingCard || openRegisterMutation.isPending}
                             >
                                 {openRegisterMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <PlayCircle className="w-4 h-4 mr-2" />}
                                 Initialize Register
@@ -231,7 +231,7 @@ export function PosRegisterControl() {
                                     actualCash: parseFloat(actualCash) || 0, 
                                     actualCard: parseFloat(actualCard) || 0 
                                 })}
-                                disabled={actualCash === '' || actualCard === '' || closeRegisterMutation.isPending}
+                                disabled={!actualCash || !actualCard || closeRegisterMutation.isPending}
                             >
                                 {closeRegisterMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <StopCircle className="w-4 h-4 mr-2" />}
                                 Close Register & Reconcile
