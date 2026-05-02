@@ -112,12 +112,19 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 <nav className={`flex-1 py-6 space-y-1 overflow-y-auto ${isCollapsed ? 'lg:px-2 px-4' : 'px-4'}`}>
                     {navigation
                         .filter(item => {
-                            // If we're an admin, we see everything
-                            if (role === 'admin') return true;
+                            // Definitive Permission Check
+                            const adminOnlySections = [
+                                'Dashboard', 'Cash Ledger', 'Analytics', 
+                                'GOD Dashboard', 'GOD Ledger', 'GOD Expenses',
+                                'Expenses', 'Settings', 'System Settings'
+                            ];
                             
-                            // For non-admins (or during loading), hide sensitive financial/admin sections
-                            const adminSections = ['Dashboard', 'Cash Ledger', 'GOD Ledger', 'Analytics', 'GOD Dashboard', 'GOD Expenses', 'GOD Ledger'];
-                            if (adminSections.includes(item.name)) return false;
+                            const isSensitive = adminOnlySections.includes(item.name);
+                            
+                            // If it's a sensitive section, only show it to 'admin'
+                            if (isSensitive) {
+                                return role === 'admin';
+                            }
                             
                             return true;
                         })
