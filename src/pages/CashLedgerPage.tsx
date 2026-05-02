@@ -23,7 +23,11 @@ import {
     Receipt,
     ShoppingBag,
     MinusCircle,
-    Truck
+    Truck,
+    Search,
+    User,
+    ShieldCheck,
+    History
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -75,6 +79,12 @@ export function CashLedgerPage() {
         const now = new Date();
         return now.toISOString().split('T')[0];
     });
+
+    // Shift Audit Ledger State
+    const [shiftSearch, setShiftSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'variance'>('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage] = useState(10);
 
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
@@ -187,7 +197,7 @@ export function CashLedgerPage() {
                 .eq('status', 'closed')
                 .eq('portal', 'retail')
                 .order('startTime', { ascending: false })
-                .limit(10);
+                .limit(100);
             return data || [];
         }
     });
@@ -716,132 +726,167 @@ export function CashLedgerPage() {
                 </CardContent>
             </Card>
 
-            {/* Transaction Feed + Shift History */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Transaction Feed */}
-                <Card className="lg:col-span-2 border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                    <CardHeader className="pb-3 border-b border-slate-100 mb-2">
-                        <CardTitle className="text-base font-black text-slate-800 flex items-center justify-between font-['DM_Sans',sans-serif]">
-                            <span className="flex items-center gap-2">
+            {/* Historical Shift Reconciliation Audit Ledger */}
+            <Card className="border border-slate-200 shadow-sm bg-white rounded-xl overflow-hidden mt-8">
+                <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
                                 <Clock className="w-4 h-4 text-slate-500" />
-                                Transaction Feed
-                            </span>
-                            <Badge variant="outline" className="font-bold text-indigo-500 bg-indigo-50 border-indigo-100">
-                                {transactions.length} entries
-                            </Badge>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                            {transactions.length === 0 ? (
-                                <div className="text-center py-12 text-slate-400">
-                                    <Receipt className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                                    <p className="text-sm font-bold">No transactions for this date</p>
-                                </div>
-                            ) : (
-                                transactions.map((t) => (
-                                    <div key={t.id} className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${
-                                        t.type === 'sale'
-                                            ? 'bg-white border-slate-100 hover:border-emerald-200'
-                                            : 'bg-orange-50/50 border-orange-100 hover:border-orange-200'
-                                    }`}>
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-none ${
-                                                t.type === 'sale' ? 'bg-emerald-100' : 'bg-orange-100'
-                                            }`}>
-                                                {t.type === 'sale' ? (
-                                                    <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                                                ) : t.description.includes('Payment:') ? (
-                                                    <Truck className="w-4 h-4 text-orange-600" />
-                                                ) : (
-                                                    <MinusCircle className="w-4 h-4 text-orange-600" />
-                                                )}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-bold text-slate-700 truncate">{t.description}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium">
-                                                    {t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    {t.cashierName && ` • ${t.cashierName}`}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-none">
-                                            <Badge variant="outline" className={`text-[9px] font-black uppercase ${
-                                                t.method.toLowerCase() === 'cash' ? 'text-emerald-600 border-emerald-200' : 'text-blue-600 border-blue-200'
-                                            }`}>
-                                                {t.method}
-                                            </Badge>
-                                            <span className={`text-sm font-black ${t.type === 'sale' ? 'text-emerald-700' : 'text-orange-600'}`}>
-                                                {t.type === 'sale' ? '+' : '-'}{t.amount.toLocaleString()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                                Historical Shift Reconciliation
+                            </CardTitle>
+                            <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-widest">Formal audit ledger for all recorded sessions</p>
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Shift History */}
-                <Card className="border border-slate-200/60 shadow-sm bg-white/80 backdrop-blur-xl">
-                    <CardHeader className="pb-3 border-b border-slate-100 mb-2">
-                        <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2 font-['DM_Sans',sans-serif]">
-                            <Clock className="w-4 h-4 text-slate-500" />
-                            Shift History
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                            {shiftHistory.length === 0 ? (
-                                <div className="text-center py-12 text-slate-400">
-                                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                                    <p className="text-sm font-bold">No closed shifts yet</p>
-                                </div>
-                            ) : (
-                                shiftHistory.map((s) => {
-                                    const v = s.variance ?? 0;
-                                    const isShort = v < 0;
-                                    const isPerfect = v === 0;
-                                    return (
-                                        <div key={s.id} className={`p-3 rounded-xl border ${
-                                            isPerfect && (s.cardVariance ?? 0) === 0 ? 'bg-emerald-50/50 border-emerald-100' :
-                                            isShort || (s.cardVariance ?? 0) < 0 ? 'bg-red-50/50 border-red-100' :
-                                            'bg-blue-50/50 border-blue-100'
-                                        }`}>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                                    {new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                </span>
-                                                <div className="flex gap-1">
-                                                    <Badge variant="outline" className={`text-[8px] font-black ${isPerfect ? 'text-emerald-600 border-emerald-200' : isShort ? 'text-red-600 border-red-200' : 'text-blue-600 border-blue-200'}`}>
-                                                        Cash {v > 0 ? '+' : ''}{v.toLocaleString()}
-                                                    </Badge>
-                                                    <Badge variant="outline" className={`text-[8px] font-black ${(s.cardVariance ?? 0) === 0 ? 'text-emerald-600 border-emerald-200' : (s.cardVariance ?? 0) < 0 ? 'text-red-600 border-red-200' : 'text-blue-600 border-blue-200'}`}>
-                                                        Card {s.cardVariance && s.cardVariance > 0 ? '+' : ''}{(s.cardVariance ?? 0).toLocaleString()}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                                <div>
-                                                    <p className="text-slate-400 font-medium">Cash Actual</p>
-                                                    <p className="font-black text-slate-700">{(s.actualClosingCash ?? 0).toLocaleString()}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-slate-400 font-medium">Card Actual</p>
-                                                    <p className="font-black text-slate-700">{(s.actualClosingCard ?? 0).toLocaleString()}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
+                        
+                        {/* Filter Bar */}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative">
+                                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Input 
+                                    placeholder="Search Cashier..." 
+                                    className="h-9 w-[180px] pl-9 text-xs border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500"
+                                    value={shiftSearch}
+                                    onChange={(e) => {
+                                        setShiftSearch(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                />
+                            </div>
+                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                {['all', 'balanced', 'variance'].map((filter) => (
+                                    <button
+                                        key={filter}
+                                        onClick={() => {
+                                            setStatusFilter(filter as any);
+                                            setCurrentPage(1);
+                                        }}
+                                        className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
+                                            statusFilter === filter 
+                                                ? 'bg-white text-indigo-600 shadow-sm font-black' 
+                                                : 'text-slate-500 hover:text-slate-700 font-bold'
+                                        }`}
+                                    >
+                                        {filter}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                <tr>
+                                    <th className="py-4 px-6 text-left font-bold">Session Date</th>
+                                    <th className="py-4 px-6 text-left font-bold">Cashier / Staff</th>
+                                    <th className="py-4 px-6 text-right font-bold">Expected (Cash/Card)</th>
+                                    <th className="py-4 px-6 text-right font-bold">Actual Collected</th>
+                                    <th className="py-4 px-6 text-right font-bold">Variance</th>
+                                    <th className="py-4 px-6 text-center font-bold">Audit Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {paginatedShifts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-12 text-center text-slate-400 font-medium italic">
+                                            {shiftSearch || statusFilter !== 'all' ? 'No records match your filters.' : 'No historical shift data recorded.'}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    paginatedShifts.map((s) => {
+                                        const v = s.variance ?? 0;
+                                        const cv = s.cardVariance ?? 0;
+                                        const totalVariance = v + cv;
+                                        const isPerfect = totalVariance === 0;
+                                        const isShort = totalVariance < 0;
 
-            {/* Start Day Dialog */}
-            <Dialog open={isStartDialogOpen} onOpenChange={setIsStartDialogOpen}>
+                                        return (
+                                            <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="py-4 px-6">
+                                                    <div className="font-bold text-slate-900">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                                    <div className="text-[9px] text-slate-400 font-medium uppercase mt-0.5 tracking-tight">
+                                                        {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {s.endTime && ` — ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                                        <span className="font-semibold text-slate-700">{s.cashierName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-right text-slate-500 font-medium leading-relaxed">
+                                                    <div>Cash: Rs. {s.expectedClosingCash?.toLocaleString()}</div>
+                                                    <div>Card: Rs. {s.expectedClosingCard?.toLocaleString()}</div>
+                                                </td>
+                                                <td className="py-4 px-6 text-right font-bold text-slate-900 tabular-nums">
+                                                    Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
+                                                </td>
+                                                <td className={`py-4 px-6 text-right font-black tabular-nums ${
+                                                    isPerfect ? 'text-emerald-600' : isShort ? 'text-rose-600' : 'text-blue-600'
+                                                }`}>
+                                                    {totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}
+                                                </td>
+                                                <td className="py-4 px-6 text-center">
+                                                    <span className={`inline-flex px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                                                        isPerfect ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                                    }`}>
+                                                        {isPerfect ? 'Balanced' : 'Variance'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination Footer */}
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            Showing {filteredShifts.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0}-{Math.min(filteredShifts.length, currentPage * rowsPerPage)} of {filteredShifts.length}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 px-3 text-[10px] font-black uppercase border-slate-200 disabled:opacity-50"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                Previous
+                            </Button>
+                            <div className="flex items-center gap-1">
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i + 1)}
+                                        className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${
+                                            currentPage === i + 1 
+                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' 
+                                                : 'text-slate-400 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                            </div>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 px-3 text-[10px] font-black uppercase border-slate-200 disabled:opacity-50"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages || totalPages === 0}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-lg font-black">
