@@ -147,15 +147,15 @@ export async function getDashboardMetrics(
     const totalLoyalty = orders.reduce((sum, order) => sum + (order.loyalty || 0), 0);
 
     const totalCOGS = activeOrders.reduce((sum, order) => {
-        return sum + order.items.reduce((itemSum, item: any) => {
+        return sum + order.items.reduce((itemSum, item: { costPrice?: number; cost_price?: number; quantity: number }) => {
             const cost = item.costPrice || item.cost_price || 0;
             return itemSum + (cost * item.quantity);
         }, 0);
     }, 0);
 
     // --- Waste & Over-yield (Portal Filtered) ---
-    let posWasteValue = activeOrders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
-    let posWasteCount = activeOrders.filter(o => o.isWaste).length;
+    const posWasteValue = activeOrders.filter(o => o.isWaste).reduce((sum, o) => sum + (o.subtotal || 0), 0);
+    const posWasteCount = activeOrders.filter(o => o.isWaste).length;
 
     let manualWasteValue = 0;
     let manualWasteCount = 0;
@@ -262,13 +262,13 @@ export async function getTopProducts(
 
     if (!Array.isArray(rawData)) return [];
 
-    const prevDataMap = new Map<string, any>();
+    const prevDataMap = new Map<string, Record<string, unknown>>();
     for (const row of prevRawData) {
         prevDataMap.set(row.product_id, row);
     }
 
     return rawData
-        .map((row: any) => {
+        .map((row: Record<string, any>) => {
             const revenue = Number(row.net_revenue) || 0;
             const cost = Number(row.total_cost) || 0;
             const quantity = Number(row.quantity_sold) || 0;

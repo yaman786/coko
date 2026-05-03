@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, ShoppingCart, Package, Menu, X, Settings, LogOut, Receipt, ChevronsLeft, ChevronsRight, TrendingUp, Truck, Warehouse, Boxes, Users, Wallet } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
 import { api } from '../services/api';
 import { ShiftReminderModal } from '../components/shift/ShiftReminderModal';
 
@@ -20,6 +22,22 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
     const { signOut, role } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Fetch Active Shift for "Live" indicator
+    const { data: activeShift } = useQuery({
+        queryKey: ['active-shift-sidebar'],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('shifts')
+                .select('id')
+                .eq('status', 'open')
+                .eq('portal', mode)
+                .limit(1)
+                .maybeSingle();
+            return data || null;
+        },
+        enabled: role === 'admin'
+    });
 
     const navigation = useMemo(() => {
         if (isRetail) {
@@ -141,14 +159,25 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                                     to={item.href}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     title={isCollapsed ? item.name : undefined}
-                                    className={`flex items-center py-3 text-sm font-bold font-['DM_Sans',sans-serif] rounded-2xl transition-all duration-300 group ${isCollapsed ? 'lg:justify-center lg:px-0 px-4' : 'px-4'
+                                    className={`flex items-center py-3 text-sm font-bold font-['DM_Sans',sans-serif] rounded-2xl transition-all duration-300 group relative ${isCollapsed ? 'lg:justify-center lg:px-0 px-4' : 'px-4'
                                         } ${isActive
                                             ? `${activeBg} ${activeText} shadow-sm border border-${isRetail ? 'purple' : 'sky'}-100/50`
                                             : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 border border-transparent'
                                         }`}
                                 >
-                                    <Icon className={`w-5 h-5 flex-none transition-colors ${isCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'} ${isActive ? iconColor : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                    <div className="relative">
+                                        <Icon className={`w-5 h-5 flex-none transition-colors ${isCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'} ${isActive ? iconColor : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                        {(item.name === 'Cash Ledger' || item.name === 'GOD Ledger') && activeShift && (
+                                            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
+                                        )}
+                                    </div>
                                     <span className={`tracking-tight transition-all duration-300 ${isCollapsed ? 'lg:hidden' : ''}`}>{item.name}</span>
+                                    {(item.name === 'Cash Ledger' || item.name === 'GOD Ledger') && activeShift && !isCollapsed && (
+                                        <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 bg-emerald-100 text-[8px] font-black uppercase text-emerald-700 rounded-full tracking-widest animate-in fade-in slide-in-from-right-2">
+                                            <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                            Live
+                                        </span>
+                                    )}
                                 </NavLink>
                             );
                         })}

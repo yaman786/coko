@@ -42,6 +42,16 @@ interface Shift {
     status: string;
 }
 
+interface SupplierPayment {
+    id: string;
+    amount: number;
+    payment_method: string;
+    date: string;
+    suppliers?: {
+        name: string;
+    };
+}
+
 interface TransactionItem {
     id: string;
     type: 'sale' | 'expense';
@@ -237,7 +247,7 @@ export function CashLedgerPage() {
             }
         });
 
-        supplierPayments.forEach((sp: any) => {
+        supplierPayments.forEach((sp: SupplierPayment) => {
             const method = (sp.payment_method as string || '').toLowerCase();
             const amount = Number(sp.amount) || 0;
             if (method === 'cash') {
@@ -298,7 +308,7 @@ export function CashLedgerPage() {
             });
         });
 
-        supplierPayments.forEach((sp: any) => {
+        supplierPayments.forEach((sp: SupplierPayment) => {
             items.push({
                 id: String(sp.id),
                 type: 'expense', // Treating as expense for feed categorization
@@ -649,41 +659,45 @@ export function CashLedgerPage() {
             )}
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Cash In */}
-                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
-                        <Banknote className="w-5 h-5 text-emerald-600" />
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-emerald-100">
+                        <Banknote className="w-6 h-6 text-emerald-600" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Cash Intake</p>
-                    <p className="text-2xl font-black text-emerald-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.cashIn.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Cash Intake</p>
+                    <p className="text-3xl font-black text-emerald-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cashIn.toLocaleString()}</p>
                 </div>
 
                 {/* Card In */}
-                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
-                    <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
-                        <CreditCard className="w-5 h-5 text-blue-600" />
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
+                    <div className="w-12 h-12 rounded-2xl bg-blue-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-blue-100">
+                        <CreditCard className="w-6 h-6 text-blue-600" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Interbank</p>
-                    <p className="text-2xl font-black text-blue-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.cardIn.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Interbank</p>
+                    <p className="text-3xl font-black text-blue-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cardIn.toLocaleString()}</p>
                 </div>
 
                 {/* Cash Expenses */}
-                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
-                    <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
-                        <MinusCircle className="w-5 h-5 text-rose-600" />
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
+                    <div className="w-12 h-12 rounded-2xl bg-rose-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-rose-100">
+                        <MinusCircle className="w-6 h-6 text-rose-600" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Outgoings</p>
-                    <p className="text-2xl font-black text-rose-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.cashExpenses.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Outgoings</p>
+                    <p className="text-3xl font-black text-rose-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cashExpenses.toLocaleString()}</p>
                 </div>
 
                 {/* Net Revenue */}
-                <div className="bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-slate-200/60 p-6 shadow-xl hover:-translate-y-1 transition-all duration-300 border group">
-                    <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
-                        <TrendingUp className="w-5 h-5 text-purple-600" />
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
+                    <div className="w-12 h-12 rounded-2xl bg-purple-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-purple-100">
+                        <TrendingUp className="w-6 h-6 text-purple-600" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-['DM_Sans',sans-serif]">Gross Liquidity</p>
-                    <p className="text-2xl font-black text-purple-600 mt-1 font-['DM_Sans',sans-serif] tracking-tight">Rs. {financials.totalRevenue.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Gross Liquidity</p>
+                    <p className="text-3xl font-black text-purple-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.totalRevenue.toLocaleString()}</p>
                 </div>
             </div>
 
@@ -699,11 +713,16 @@ export function CashLedgerPage() {
                     </Badge>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto custom-scrollbar">
+                    <div className="divide-y divide-slate-100 max-h-[550px] overflow-y-auto custom-scrollbar bg-slate-50/20">
                         {transactions.length === 0 ? (
-                            <div className="text-center py-12 text-slate-400 font-medium">
-                                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                                <p className="text-xs">No activity recorded for this period.</p>
+                            <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in zoom-in duration-700">
+                                <div className="w-20 h-20 bg-slate-100 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner border border-slate-200/50">
+                                    <Receipt className="w-10 h-10 text-slate-300" />
+                                </div>
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-2">No Feed Activity</h3>
+                                <p className="text-xs text-slate-400 font-medium max-w-[200px] leading-relaxed">
+                                    There are no transactions recorded for this session yet.
+                                </p>
                             </div>
                         ) : (
                             transactions.map((t) => (
@@ -793,12 +812,12 @@ export function CashLedgerPage() {
                         </div>
                         
                         {/* Filter Bar */}
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-4">
                             <div className="relative">
-                                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                                 <Input 
                                     placeholder="Search Cashier..." 
-                                    className="h-9 w-[180px] pl-9 text-xs border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500"
+                                    className="h-11 w-[240px] pl-11 text-sm border-slate-200/80 rounded-xl focus:ring-4 focus:ring-indigo-500/10 transition-all bg-white font-medium"
                                     value={shiftSearch}
                                     onChange={(e) => {
                                         setShiftSearch(e.target.value);
@@ -806,18 +825,18 @@ export function CashLedgerPage() {
                                     }}
                                 />
                             </div>
-                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                            <div className="flex bg-slate-200/50 p-1 rounded-xl border border-slate-200/60 shadow-inner backdrop-blur-sm">
                                 {['all', 'balanced', 'variance'].map((filter) => (
                                     <button
                                         key={filter}
                                         onClick={() => {
-                                            setStatusFilter(filter as any);
+                                            setStatusFilter(filter as 'all' | 'balanced' | 'variance');
                                             setCurrentPage(1);
                                         }}
-                                        className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
+                                        className={`px-5 py-2 text-[10px] font-black uppercase tracking-[0.15em] rounded-lg transition-all duration-300 ${
                                             statusFilter === filter 
-                                                ? 'bg-white text-indigo-600 shadow-sm font-black' 
-                                                : 'text-slate-500 hover:text-slate-700 font-bold'
+                                                ? 'bg-white text-indigo-600 shadow-md ring-1 ring-slate-200' 
+                                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-300/30'
                                         }`}
                                     >
                                         {filter}
@@ -829,15 +848,15 @@ export function CashLedgerPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                            <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                        <table className="w-full">
+                            <thead className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
                                 <tr>
-                                    <th className="py-4 px-6 text-left font-bold">Session Date</th>
-                                    <th className="py-4 px-6 text-left font-bold">Cashier / Staff</th>
-                                    <th className="py-4 px-6 text-right font-bold">Expected (Cash/Card)</th>
-                                    <th className="py-4 px-6 text-right font-bold">Actual Collected</th>
-                                    <th className="py-4 px-6 text-right font-bold">Variance</th>
-                                    <th className="py-4 px-6 text-center font-bold">Audit Status</th>
+                                    <th className="py-5 px-8 text-left font-black">Session Period</th>
+                                    <th className="py-5 px-8 text-left font-black">Cashier Identity</th>
+                                    <th className="py-5 px-8 text-right font-black">System Target</th>
+                                    <th className="py-5 px-8 text-right font-black">Hand-Counted</th>
+                                    <th className="py-5 px-8 text-right font-black">Net Discrepancy</th>
+                                    <th className="py-5 px-8 text-center font-black">Audit Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -856,38 +875,51 @@ export function CashLedgerPage() {
                                         const isShort = totalVariance < 0;
 
                                         return (
-                                            <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
-                                                <td className="py-4 px-6">
-                                                    <div className="font-bold text-slate-900">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                                    <div className="text-[9px] text-slate-400 font-medium uppercase mt-0.5 tracking-tight">
+                                            <tr key={s.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
+                                                <td className="py-6 px-8">
+                                                    <div className="font-bold text-slate-800 text-sm tracking-tight">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                                    <div className="text-[10px] text-slate-400 font-black uppercase mt-1.5 tracking-[0.1em] flex items-center gap-2">
+                                                        <Clock className="w-3 h-3" />
                                                         {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         {s.endTime && ` — ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                                                     </div>
                                                 </td>
-                                                <td className="py-4 px-6">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                                        <span className="font-semibold text-slate-700">{s.cashierName}</span>
+                                                <td className="py-6 px-8">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-9 h-9 rounded-xl ${isPerfect ? 'bg-emerald-100' : 'bg-rose-100'} flex items-center justify-center text-[11px] font-black text-slate-700 shadow-sm border border-white transition-transform group-hover:scale-110 duration-500`}>
+                                                            {s.cashierName.slice(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-bold text-slate-700 tracking-tight">{s.cashierName}</span>
                                                     </div>
                                                 </td>
-                                                <td className="py-4 px-6 text-right text-slate-500 font-medium leading-relaxed">
-                                                    <div>Cash: Rs. {s.expectedClosingCash?.toLocaleString()}</div>
-                                                    <div>Card: Rs. {s.expectedClosingCard?.toLocaleString()}</div>
+                                                <td className="py-6 px-8 text-right font-medium leading-relaxed">
+                                                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">System Target</div>
+                                                    <div className="text-slate-900 font-black tabular-nums">Rs. {( (s.expectedClosingCash ?? 0) + (s.expectedClosingCard ?? 0) ).toLocaleString()}</div>
                                                 </td>
-                                                <td className="py-4 px-6 text-right font-bold text-slate-900 tabular-nums">
+                                                <td className="py-6 px-8 text-right font-black text-slate-900 tabular-nums text-sm">
                                                     Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
                                                 </td>
-                                                <td className={`py-4 px-6 text-right font-black tabular-nums ${
+                                                <td className={`py-6 px-8 text-right font-black tabular-nums text-sm ${
                                                     isPerfect ? 'text-emerald-600' : isShort ? 'text-rose-600' : 'text-blue-600'
                                                 }`}>
-                                                    {totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-base">{totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}</span>
+                                                        {totalVariance !== 0 && (
+                                                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60 mt-1">
+                                                                {isShort ? 'Shortfall' : 'Surplus'}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
-                                                <td className="py-4 px-6 text-center">
-                                                    <span className={`inline-flex px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
-                                                        isPerfect ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                                <td className="py-6 px-8 text-center">
+                                                    <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] shadow-sm border transition-all duration-500 ${
+                                                        isPerfect 
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-500 group-hover:shadow-emerald-200' 
+                                                            : 'bg-rose-50 text-rose-700 border-rose-100 group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-500 group-hover:shadow-rose-200'
                                                     }`}>
-                                                        {isPerfect ? 'Balanced' : 'Variance'}
-                                                    </span>
+                                                        <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isPerfect ? 'bg-emerald-500 group-hover:bg-white' : 'bg-rose-500 group-hover:bg-white'}`} />
+                                                        {isPerfect ? 'Balanced' : 'Discrepancy'}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
