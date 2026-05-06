@@ -42,6 +42,7 @@ interface Shift {
     cardVariance: number | null;
     status: string;
     portal: string;
+    notes?: string;
 }
 
 interface TransactionItem {
@@ -63,7 +64,9 @@ export function WholesaleCashLedgerPage() {
     const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
     const [closingCashInput, setClosingCashInput] = useState('');
     const [closingCardInput, setClosingCardInput] = useState('');
+    const [closingNotes, setClosingNotes] = useState('');
     const [startingCashInput, setStartingCashInput] = useState('');
+    const [startingCardInput, setStartingCardInput] = useState('');
     const [selectedDate, setSelectedDate] = useState(() => {
         const now = new Date();
         return now.toISOString().split('T')[0];
@@ -269,12 +272,13 @@ export function WholesaleCashLedgerPage() {
 
     // ── Mutations ──
     const openShiftMutation = useMutation({
-        mutationFn: async (startingCash: number) => {
+        mutationFn: async (payload: { cash: number, card: number }) => {
             const { error } = await supabase.from('shifts').insert({
                 cashierId: user?.email || 'unknown',
                 cashierName: user?.email?.split('@')[0] || 'Unknown',
                 startTime: new Date().toISOString(),
-                startingCash,
+                startingCash: payload.cash,
+                startingCard: payload.card,
                 status: 'open',
                 portal: 'wholesale',
                 user_id: user?.id
@@ -286,12 +290,13 @@ export function WholesaleCashLedgerPage() {
             queryClient.invalidateQueries({ queryKey: ['shift-history-wholesale'] });
             setIsStartDialogOpen(false);
             setStartingCashInput('');
-            toast.success('GOD Shift Started');
+            setStartingCardInput('');
+            toast.success('Wholesale Register Opened');
         }
     });
 
     const closeShiftMutation = useMutation({
-        mutationFn: async (payload: { actualCash: number, actualCard: number }) => {
+        mutationFn: async (payload: { actualCash: number, actualCard: number, notes?: string }) => {
             if (!activeShift) throw new Error('No active shift');
             const variance = payload.actualCash - financials.expectedDrawer;
             const cardVariance = payload.actualCard - financials.expectedCardTotal;
@@ -306,7 +311,8 @@ export function WholesaleCashLedgerPage() {
                     expectedClosingCard: financials.expectedCardTotal,
                     actualClosingCard: payload.actualCard,
                     cardVariance,
-                    status: 'closed'
+                    status: 'closed',
+                    notes: payload.notes
                 })
                 .eq('id', activeShift.id);
             if (error) throw error;
@@ -318,7 +324,8 @@ export function WholesaleCashLedgerPage() {
             setIsCloseDialogOpen(false);
             setClosingCashInput('');
             setClosingCardInput('');
-            toast.success('GOD Shift Terminated');
+            setClosingNotes('');
+            toast.success('Wholesale Reconciliation Complete');
         }
     });
 
@@ -581,18 +588,19 @@ export function WholesaleCashLedgerPage() {
                         <table className="w-full text-xs">
                             <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-500">
                                 <tr>
-                                    <th className="py-4 px-6 text-left font-bold">Session Date</th>
-                                    <th className="py-4 px-6 text-left font-bold">Manager / Staff</th>
-                                    <th className="py-4 px-6 text-right font-bold">Expected (Cash/Card)</th>
-                                    <th className="py-4 px-6 text-right font-bold">Actual Collected</th>
-                                    <th className="py-4 px-6 text-right font-bold">Variance</th>
-                                    <th className="py-4 px-6 text-center font-bold">Audit Status</th>
+                                    <th className="py-5 px-8 text-left font-black">Session Period</th>
+                                    <th className="py-5 px-8 text-left font-black">Operator</th>
+                                    <th className="py-5 px-8 text-right font-black">Target</th>
+                                    <th className="py-5 px-8 text-right font-black">Actual</th>
+                                    <th className="py-5 px-8 text-right font-black">Variance</th>
+                                    <th className="py-5 px-8 text-left font-black">Audit Notes</th>
+                                    <th className="py-5 px-8 text-center font-black">Audit Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {paginatedShifts.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="py-12 text-center text-slate-400 font-medium italic">
+                                        <td colSpan={7} className="py-12 text-center text-slate-400 font-medium italic">
                                             {shiftSearch || statusFilter !== 'all' ? 'No records match your filters.' : 'No historical shift data recorded.'}
                                         </td>
                                     </tr>
@@ -601,13 +609,15 @@ export function WholesaleCashLedgerPage() {
                                         const v = s.variance ?? 0;
                                         const cv = s.cardVariance ?? 0;
                                         const totalVariance = v + cv;
+                                        const isPerfect = totalVariance === 0;
+                                        const isShort = totalVariance < 0;
                                         return (
                                             <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="py-4 px-6">
-                                                    <p className="font-bold text-slate-800">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                                <td className="py-6 px-8">
+                                                    <p className="font-bold text-slate-800">{new Date(s.startTime).toLocaleDateString()}</p>
                                                     <p className="text-[10px] text-slate-400 font-medium">{new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {s.endTime ? new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Open'}</p>
                                                 </td>
-                                                <td className="py-4 px-6">
+                                                <td className="py-6 px-8">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-6 h-6 rounded-full bg-sky-100 flex items-center justify-center text-[10px] font-black text-sky-600 uppercase">
                                                             {s.cashierName.charAt(0)}
@@ -615,20 +625,39 @@ export function WholesaleCashLedgerPage() {
                                                         <span className="font-bold text-slate-700">{s.cashierName}</span>
                                                     </div>
                                                 </td>
-                                                <td className="py-4 px-6 text-right font-medium text-slate-500">
-                                                    <p>Nrs. {(s.expectedClosingCash ?? 0).toLocaleString()}</p>
+                                                <td className="py-6 px-8 text-right font-medium text-slate-500">
+                                                    <p>Cash: {(s.expectedClosingCash ?? 0).toLocaleString()}</p>
                                                     <p className="text-[10px]">Bank: {(s.expectedClosingCard ?? 0).toLocaleString()}</p>
                                                 </td>
-                                                <td className="py-4 px-6 text-right font-bold text-slate-800">
-                                                    <p>Nrs. {(s.actualClosingCash ?? 0).toLocaleString()}</p>
+                                                <td className="py-6 px-8 text-right font-bold text-slate-800">
+                                                    <p>Cash: {(s.actualClosingCash ?? 0).toLocaleString()}</p>
                                                     <p className="text-[10px] text-slate-500 font-medium">Bank: {(s.actualClosingCard ?? 0).toLocaleString()}</p>
                                                 </td>
-                                                <td className="py-4 px-6 text-right">
-                                                    <span className={`font-black ${totalVariance === 0 ? 'text-emerald-600' : totalVariance < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
-                                                        {totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}
-                                                    </span>
+                                                <td className={`py-6 px-8 text-right font-black tabular-nums text-sm ${
+                                                    isPerfect ? 'text-emerald-600' : isShort ? 'text-rose-600' : 'text-blue-600'
+                                                }`}>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-base">{totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}</span>
+                                                        <div className="flex gap-2 mt-1">
+                                                            {v !== 0 && (
+                                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1 rounded ${v < 0 ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                    Cash: {v > 0 ? '+' : ''}{v}
+                                                                </span>
+                                                            )}
+                                                            {cv !== 0 && (
+                                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1 rounded ${cv < 0 ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                                    Card: {cv > 0 ? '+' : ''}{cv}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </td>
-                                                <td className="py-4 px-6 text-center">
+                                                <td className="py-6 px-8">
+                                                    <div className="max-w-[150px] truncate text-[10px] font-medium text-slate-500 italic" title={s.notes || ''}>
+                                                        {s.notes || '—'}
+                                                    </div>
+                                                </td>
+                                                <td className="py-6 px-8 text-center">
                                                     {totalVariance === 0 ? (
                                                         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 font-black uppercase text-[9px] px-2 py-0.5">Balanced</Badge>
                                                     ) : (
@@ -694,24 +723,41 @@ export function WholesaleCashLedgerPage() {
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-2">
-                        <p className="text-sm text-slate-500">Enter the starting physical cash float for the GOD HUB warehouse drawer.</p>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Opening Cash (Nrs.)</label>
-                            <Input
-                                type="number"
-                                value={startingCashInput}
-                                onChange={(e) => setStartingCashInput(e.target.value)}
-                                placeholder="e.g. 5000"
-                                className="h-12 text-lg font-black text-center"
-                                autoFocus
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Starting Cash (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCashInput}
+                                    onChange={(e) => setStartingCashInput(e.target.value)}
+                                    placeholder="e.g. 5000"
+                                    className="h-12 text-lg font-black text-center"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Starting Card (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCardInput}
+                                    onChange={(e) => setStartingCardInput(e.target.value)}
+                                    placeholder="0"
+                                    className="h-12 text-lg font-black text-center"
+                                />
+                            </div>
                         </div>
                         <Button
-                            onClick={() => openShiftMutation.mutate(parseFloat(startingCashInput) || 0)}
+                            onClick={() => openShiftMutation.mutate({ 
+                                cash: parseFloat(startingCashInput) || 0, 
+                                card: parseFloat(startingCardInput) || 0 
+                            })}
                             disabled={!startingCashInput || openShiftMutation.isPending}
-                            className="w-full h-11 bg-sky-600 hover:bg-sky-700 text-white font-black"
+                            className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm"
                         >
-                            Open GOD Register
+                            {openShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Open Drawer
                         </Button>
                     </div>
                 </DialogContent>
@@ -761,16 +807,29 @@ export function WholesaleCashLedgerPage() {
                                 />
                             </div>
                         </div>
+                        
+                        {/* Closing Remarks */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Closing Remarks / Audit Notes</label>
+                            <Input
+                                value={closingNotes}
+                                onChange={(e) => setClosingNotes(e.target.value)}
+                                placeholder="Explain any shortages or overages..."
+                                className="h-10 text-sm font-medium"
+                            />
+                        </div>
 
                         <Button
                             onClick={() => closeShiftMutation.mutate({ 
                                 actualCash: parseFloat(closingCashInput) || 0, 
-                                actualCard: parseFloat(closingCardInput) || 0 
+                                actualCard: parseFloat(closingCardInput) || 0,
+                                notes: closingNotes
                             })}
                             disabled={!closingCashInput || !closingCardInput || closeShiftMutation.isPending}
-                            className="w-full h-11 bg-rose-600 hover:bg-rose-700 text-white font-black"
+                            className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-black text-sm"
                         >
-                            Finalize Shift Record
+                            {closeShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Terminate Shift & Lock Data
                         </Button>
                     </div>
                 </DialogContent>

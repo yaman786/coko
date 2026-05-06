@@ -19,6 +19,7 @@ export interface Shift {
     status: 'open' | 'closed';
     portal: 'retail' | 'wholesale';
     user_id: string;
+    notes?: string; // Added for accountability
 }
 
 /** Strongly-typed payload for order items sent to the checkout RPC */
@@ -33,10 +34,15 @@ export interface OrderItemPayload {
 export const api = {
     // Portal Context Handshake
     async setPortalContext(portal: 'retail' | 'wholesale'): Promise<void> {
-        const { error } = await supabase.rpc('set_portal', { p_portal: portal });
-        if (error) {
-            console.error('Failed to set DB portal context:', error.message);
-            // Non-blocking, but RLS will fail if not set correctly in DB
+        try {
+            const { error } = await supabase.rpc('set_portal', { p_portal: portal });
+            if (error) {
+                // If the RPC is missing, we log it but don't crash
+                // This allows the app to work even if the DB hasn't been fully migrated
+                console.warn('DB Portal Context skipped (Function missing or RLS handled via columns):', error.message);
+            }
+        } catch (e) {
+            console.warn('Portal context handshake failed, continuing with standard filters.');
         }
     },
 
@@ -551,6 +557,7 @@ export const api = {
         actualCard: number;
         expectedCash: number;
         expectedCard: number;
+        notes?: string; // Added
     }): Promise<void> {
         const variance = params.actualCash - params.expectedCash;
         const cardVariance = params.actualCard - params.expectedCard;
@@ -565,7 +572,8 @@ export const api = {
                 expectedClosingCard: params.expectedCard,
                 actualClosingCard: params.actualCard,
                 cardVariance,
-                status: 'closed'
+                status: 'closed',
+                notes: params.notes // Added
             })
             .eq('id', params.shiftId);
 

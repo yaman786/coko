@@ -40,6 +40,8 @@ interface Shift {
     actualClosingCard: number | null;
     cardVariance: number | null;
     status: string;
+    portal: string;
+    notes?: string;
 }
 
 interface SupplierPayment {
@@ -72,8 +74,10 @@ export function CashLedgerPage() {
     const [isBackdateDialogOpen, setIsBackdateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
+    const [startingCard, setStartingCard] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
     const [closingCardInput, setClosingCardInput] = useState('');
+    const [closingNotes, setClosingNotes] = useState('');
     const [backdateStartingCash, setBackdateStartingCash] = useState('');
     const [backdateClosingCash, setBackdateClosingCash] = useState('');
     const [backdateClosingCard, setBackdateClosingCard] = useState('');
@@ -340,12 +344,13 @@ export function CashLedgerPage() {
 
     // ── Mutations ──
     const openShiftMutation = useMutation({
-        mutationFn: async (startingCash: number) => {
+        mutationFn: async (payload: { cash: number, card: number }) => {
             const { error } = await supabase.from('shifts').insert({
                 cashierId: user?.email || 'unknown',
                 cashierName: user?.email?.split('@')[0] || 'Unknown',
                 startTime: new Date().toISOString(),
-                startingCash,
+                startingCash: payload.cash,
+                startingCard: payload.card,
                 status: 'open',
                 portal: 'retail',
                 user_id: user?.id
@@ -371,7 +376,7 @@ export function CashLedgerPage() {
     });
 
     const closeShiftMutation = useMutation({
-        mutationFn: async (payload: { actualCash: number, actualCard: number }) => {
+        mutationFn: async (payload: { actualCash: number, actualCard: number, notes?: string }) => {
             if (!activeShift) throw new Error('No active shift');
             const variance = payload.actualCash - financials.expectedDrawer;
             const cardVariance = payload.actualCard - financials.expectedCardTotal;
@@ -386,7 +391,8 @@ export function CashLedgerPage() {
                     expectedClosingCard: financials.expectedCardTotal,
                     actualClosingCard: payload.actualCard,
                     cardVariance,
-                    status: 'closed'
+                    status: 'closed',
+                    notes: payload.notes
                 })
                 .eq('id', activeShift.id);
             if (error) throw error;
@@ -856,7 +862,8 @@ export function CashLedgerPage() {
                                     <th className="py-5 px-8 text-right font-black">System Target</th>
                                     <th className="py-5 px-8 text-right font-black">Hand-Counted</th>
                                     <th className="py-5 px-8 text-right font-black">Net Discrepancy</th>
-                                    <th className="py-5 px-8 text-center font-black">Audit Status</th>
+                                    <th className="py-5 px-8 text-left font-black">Audit Remarks</th>
+                                    <th className="py-5 px-8 text-center font-black">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -904,11 +911,23 @@ export function CashLedgerPage() {
                                                 }`}>
                                                     <div className="flex flex-col items-end">
                                                         <span className="text-base">{totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}</span>
-                                                        {totalVariance !== 0 && (
-                                                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60 mt-1">
-                                                                {isShort ? 'Shortfall' : 'Surplus'}
-                                                            </span>
-                                                        )}
+                                                        <div className="flex gap-2 mt-1">
+                                                            {s.variance !== 0 && (
+                                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1 rounded ${s.variance! < 0 ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                    Cash: {s.variance! > 0 ? '+' : ''}{s.variance}
+                                                                </span>
+                                                            )}
+                                                            {s.cardVariance !== 0 && (
+                                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1 rounded ${s.cardVariance! < 0 ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                                    Card: {s.cardVariance! > 0 ? '+' : ''}{s.cardVariance}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-6 px-8">
+                                                    <div className="max-w-[150px] truncate text-[10px] font-medium text-slate-500 italic" title={s.notes || ''}>
+                                                        {s.notes || '—'}
                                                     </div>
                                                 </td>
                                                 <td className="py-6 px-8 text-center">
@@ -985,20 +1004,36 @@ export function CashLedgerPage() {
                         <p className="text-sm text-slate-500">
                             Count the physical cash in the drawer right now and enter the exact amount below.
                         </p>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Starting Cash (Nrs.)</label>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={startingCashInput}
-                                onChange={(e) => setStartingCashInput(e.target.value)}
-                                placeholder="e.g. 5000"
-                                className="h-12 text-lg font-black text-center"
-                                autoFocus
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Starting Cash (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCashInput}
+                                    onChange={(e) => setStartingCashInput(e.target.value)}
+                                    placeholder="e.g. 5000"
+                                    className="h-12 text-lg font-black text-center"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Starting Card (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCard}
+                                    onChange={(e) => setStartingCard(e.target.value)}
+                                    placeholder="0"
+                                    className="h-12 text-lg font-black text-center"
+                                />
+                            </div>
                         </div>
                         <Button
-                            onClick={() => openShiftMutation.mutate(parseFloat(startingCashInput) || 0)}
+                            onClick={() => openShiftMutation.mutate({ 
+                                cash: parseFloat(startingCashInput) || 0, 
+                                card: parseFloat(startingCard) || 0 
+                            })}
                             disabled={!startingCashInput || openShiftMutation.isPending}
                             className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm"
                         >
@@ -1088,10 +1123,22 @@ export function CashLedgerPage() {
                             </div>
                         )}
 
+                        {/* Closing Remarks */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Closing Remarks / Audit Notes</label>
+                            <Input
+                                value={closingNotes}
+                                onChange={(e) => setClosingNotes(e.target.value)}
+                                placeholder="Explain any shortages or overages..."
+                                className="h-10 text-sm font-medium"
+                            />
+                        </div>
+
                         <Button
                             onClick={() => closeShiftMutation.mutate({ 
                                 actualCash: parseFloat(closingCashInput) || 0, 
-                                actualCard: parseFloat(closingCardInput) || 0 
+                                actualCard: parseFloat(closingCardInput) || 0,
+                                notes: closingNotes
                             })}
                             disabled={!closingCashInput || !closingCardInput || closeShiftMutation.isPending}
                             className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-black text-sm"

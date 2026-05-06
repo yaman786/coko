@@ -9,7 +9,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../../components/ui/dialog';
 import { Input } from '../../../components/ui/input';
 import { Badge } from '../../../components/ui/badge';
 import { Separator } from '../../../components/ui/separator';
@@ -23,6 +23,7 @@ export function PosRegisterControl() {
     const [startingCard, setStartingCard] = useState(''); // Added
     const [actualCash, setActualCash] = useState('');
     const [actualCard, setActualCard] = useState('');
+    const [closingNotes, setClosingNotes] = useState(''); // Added for accountability
 
     // Fetch Active Shift
     const { data: activeShift, isLoading: shiftLoading } = useQuery<Shift | null>({
@@ -58,14 +59,15 @@ export function PosRegisterControl() {
     });
 
     const closeRegisterMutation = useMutation({
-        mutationFn: (payload: { actualCash: number, actualCard: number }) => {
+        mutationFn: (payload: { actualCash: number, actualCard: number, notes?: string }) => {
             if (!shiftStats) throw new Error('Shift statistics not loaded. Please wait a moment.');
             return api.closeShift({
                 shiftId: activeShift!.id,
                 actualCash: payload.actualCash,
                 actualCard: payload.actualCard,
                 expectedCash: shiftStats.expectedCash,
-                expectedCard: shiftStats.expectedCard
+                expectedCard: shiftStats.expectedCard,
+                notes: payload.notes
             });
         },
         onSuccess: () => {
@@ -73,6 +75,7 @@ export function PosRegisterControl() {
             setIsModalOpen(false);
             setActualCash('');
             setActualCard('');
+            setClosingNotes(''); // Reset
             toast.success('Register Closed Successfully');
         },
         onError: (err: any) => {
@@ -83,161 +86,173 @@ export function PosRegisterControl() {
     if (shiftLoading) return <Loader2 className="w-5 h-5 animate-spin text-slate-400" />;
 
     const isOpen = !!activeShift;
+    const cashVariance = (parseFloat(actualCash) || 0) - (shiftStats?.expectedCash || 0);
+    const cardVariance = (parseFloat(actualCard) || 0) - (shiftStats?.expectedCard || 0);
 
     return (
         <>
             <div 
-                className={`flex items-center gap-3 px-4 py-2 rounded-2xl border transition-all cursor-pointer ${
+                className={`flex items-center gap-3 px-4 py-2 rounded-2xl border transition-all cursor-pointer shadow-sm active:scale-95 ${
                     isOpen 
-                    ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100' 
-                    : 'bg-rose-50 border-rose-200 hover:bg-rose-100'
+                    ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:shadow-emerald-100/50' 
+                    : 'bg-rose-50 border-rose-200 hover:bg-rose-100 hover:shadow-rose-100/50'
                 }`}
                 onClick={() => setIsModalOpen(true)}
             >
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                     isOpen ? 'bg-emerald-500 shadow-emerald-200/50' : 'bg-rose-500 shadow-rose-200/50'
-                } shadow-lg`}>
+                } shadow-lg transition-transform group-hover:scale-110`}>
                     <Wallet className="w-4 h-4 text-white" />
                 </div>
                 <div className="hidden sm:block">
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${isOpen ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {isOpen ? 'Register Open' : 'Register Closed'}
+                    <p className={`text-[9px] font-black uppercase tracking-[0.15em] leading-none mb-1 ${isOpen ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {isOpen ? 'Register Live' : 'Register Closed'}
                     </p>
-                    <p className="text-xs font-bold text-slate-700">
-                        {isOpen ? `Rs. ${shiftStats?.expectedCash?.toLocaleString() || activeShift.startingCash.toLocaleString()}` : 'Start Shift'}
+                    <p className="text-sm font-black text-slate-800 leading-none">
+                        {isOpen ? `Rs. ${shiftStats?.expectedCash?.toLocaleString() || activeShift.startingCash.toLocaleString()}` : 'Initialize'}
                     </p>
                 </div>
             </div>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="sm:max-w-md bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-3 text-xl font-black font-['DM_Sans',sans-serif]">
-                            {isOpen ? (
-                                <>
-                                    <StopCircle className="w-6 h-6 text-rose-500" />
-                                    Close Register
-                                </>
-                            ) : (
-                                <>
-                                    <PlayCircle className="w-6 h-6 text-emerald-500" />
-                                    Open Register
-                                </>
-                            )}
+                <DialogContent className="sm:max-w-md bg-white/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem] p-0 overflow-hidden">
+                    <div className={`h-32 p-8 flex flex-col justify-end ${isOpen ? 'bg-gradient-to-br from-indigo-600 to-violet-700' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}>
+                        <DialogTitle className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                            {isOpen ? <StopCircle className="w-8 h-8" /> : <PlayCircle className="w-8 h-8" />}
+                            {isOpen ? 'Reconciliation' : 'Open Shift'}
                         </DialogTitle>
-                        <DialogDescription className="font-medium text-slate-500">
-                            {isOpen 
-                                ? 'Finalize today\'s sales and count the physical cash in the drawer.'
-                                : 'Initialize the cash drawer with a starting float amount.'}
+                        <DialogDescription className="text-white/70 font-bold uppercase text-[10px] tracking-[0.2em]">
+                            {isOpen ? 'Shift Settlement Protocol' : 'Initial Float Configuration'}
                         </DialogDescription>
-                    </DialogHeader>
+                    </div>
 
-                    {!isOpen ? (
-                        <div className="space-y-6 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Opening Cash (Nrs.)</label>
-                                    <Input 
-                                        type="number"
-                                        value={startingCash}
-                                        onChange={(e) => setStartingCash(e.target.value)}
-                                        placeholder="e.g. 5000"
-                                        className="h-12 text-xl font-black text-center bg-slate-50 border-slate-200 rounded-xl focus:ring-emerald-500"
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Opening Card (Nrs.)</label>
-                                    <Input 
-                                        type="number"
-                                        value={startingCard}
-                                        onChange={(e) => setStartingCard(e.target.value)}
-                                        placeholder="Bank/Wallet"
-                                        className="h-12 text-xl font-black text-center bg-slate-50 border-slate-200 rounded-xl focus:ring-emerald-500"
-                                    />
-                                </div>
-                            </div>
-                            <Button 
-                                className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-xs"
-                                onClick={() => openRegisterMutation.mutate({ 
-                                    cash: parseFloat(startingCash) || 0, 
-                                    card: parseFloat(startingCard) || 0 
-                                })}
-                                disabled={!startingCash || !startingCard || openRegisterMutation.isPending}
-                            >
-                                {openRegisterMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <PlayCircle className="w-4 h-4 mr-2" />}
-                                Initialize Register
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="space-y-6 py-4">
-                            {/* Stats Summary */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase">Cash In</p>
-                                    <p className="text-lg font-black text-emerald-600">Rs. {shiftStats?.cashIn?.toLocaleString() || 0}</p>
-                                </div>
-                                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase">Digital</p>
-                                    <p className="text-lg font-black text-blue-600">Rs. {shiftStats?.cardIn?.toLocaleString() || 0}</p>
-                                </div>
-                                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 col-span-2 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase">Expected Drawer</p>
-                                        <p className="text-xl font-black text-slate-800">Rs. {shiftStats?.expectedCash?.toLocaleString() || 0}</p>
+                    <div className="p-8 space-y-6">
+                        {!isOpen ? (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Opening Cash</label>
+                                        <Input 
+                                            type="number"
+                                            value={startingCash}
+                                            onChange={(e) => setStartingCash(e.target.value)}
+                                            placeholder="5000"
+                                            className="h-14 text-2xl font-black text-center bg-slate-50 border-0 focus:ring-2 focus:ring-emerald-500 rounded-2xl shadow-inner"
+                                            autoFocus
+                                        />
                                     </div>
-                                    <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none px-3 py-1 font-black">
-                                        Live Status
-                                    </Badge>
-                                </div>
-                            </div>
-
-                            <Separator />
-
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Physical Cash Count</label>
-                                        {actualCash && shiftStats && (
-                                            <Badge variant={parseFloat(actualCash) - shiftStats.expectedCash === 0 ? 'secondary' : 'destructive'} className="text-[9px] font-black">
-                                                {parseFloat(actualCash) - shiftStats.expectedCash > 0 ? '+' : ''}
-                                                {(parseFloat(actualCash) - shiftStats.expectedCash).toLocaleString()} Variance
-                                            </Badge>
-                                        )}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Opening Card</label>
+                                        <Input 
+                                            type="number"
+                                            value={startingCard}
+                                            onChange={(e) => setStartingCard(e.target.value)}
+                                            placeholder="0"
+                                            className="h-14 text-2xl font-black text-center bg-slate-50 border-0 focus:ring-2 focus:ring-emerald-500 rounded-2xl shadow-inner"
+                                        />
                                     </div>
-                                    <Input 
-                                        type="number"
-                                        value={actualCash}
-                                        onChange={(e) => setActualCash(e.target.value)}
-                                        placeholder="Physical cash total"
-                                        className="h-12 text-xl font-black text-center bg-slate-50 border-slate-200 rounded-xl"
-                                    />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Actual Card Total</label>
-                                    <Input 
-                                        type="number"
-                                        value={actualCard}
-                                        onChange={(e) => setActualCard(e.target.value)}
-                                        placeholder="Bank/POS total"
-                                        className="h-12 text-xl font-black text-center bg-slate-50 border-slate-200 rounded-xl"
-                                    />
-                                </div>
+                                <Button 
+                                    className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/20 transition-all active:scale-[0.98] uppercase tracking-widest text-xs"
+                                    onClick={() => openRegisterMutation.mutate({ 
+                                        cash: parseFloat(startingCash) || 0, 
+                                        card: parseFloat(startingCard) || 0 
+                                    })}
+                                    disabled={!startingCash || openRegisterMutation.isPending}
+                                >
+                                    {openRegisterMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <PlayCircle className="w-5 h-5 mr-2" />}
+                                    Establish Float
+                                </Button>
                             </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Statistics Dashboard */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between h-24">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Net Cash Flow</p>
+                                        <p className="text-2xl font-black text-slate-800">Rs. {shiftStats?.expectedCash?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between h-24">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Digital Total</p>
+                                        <p className="text-2xl font-black text-blue-600">Rs. {shiftStats?.expectedCard?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 col-span-2 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Responsible Cashier</p>
+                                            <p className="text-sm font-black text-indigo-900">{activeShift.cashierName}</p>
+                                        </div>
+                                        <Badge className="bg-indigo-500 text-white border-0 font-black px-3">
+                                            LIVE SESSION
+                                        </Badge>
+                                    </div>
+                                </div>
 
-                            <Button 
-                                className="w-full h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl shadow-lg shadow-rose-500/20 uppercase tracking-widest text-xs"
-                                onClick={() => closeRegisterMutation.mutate({ 
-                                    actualCash: parseFloat(actualCash) || 0, 
-                                    actualCard: parseFloat(actualCard) || 0 
-                                })}
-                                disabled={!actualCash || !actualCard || closeRegisterMutation.isPending}
-                            >
-                                {closeRegisterMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <StopCircle className="w-4 h-4 mr-2" />}
-                                Close Register & Reconcile
-                            </Button>
-                        </div>
-                    )}
+                                <Separator className="bg-slate-100" />
+
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Actual Cash</label>
+                                                {actualCash && (
+                                                    <Badge className={`text-[9px] h-4 font-black ${cashVariance === 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                                                        {cashVariance === 0 ? 'BALANCED' : `VAR: ${cashVariance}`}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <Input 
+                                                type="number"
+                                                value={actualCash}
+                                                onChange={(e) => setActualCash(e.target.value)}
+                                                placeholder="Physical count"
+                                                className="h-14 text-2xl font-black text-center bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-600 rounded-2xl"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Actual Card</label>
+                                                {actualCard && (
+                                                    <Badge className={`text-[9px] h-4 font-black ${cardVariance === 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                                                        {cardVariance === 0 ? 'BALANCED' : `VAR: ${cardVariance}`}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <Input 
+                                                type="number"
+                                                value={actualCard}
+                                                onChange={(e) => setActualCard(e.target.value)}
+                                                placeholder="Bank total"
+                                                className="h-14 text-2xl font-black text-center bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-600 rounded-2xl"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Closing Remarks / Variance Notes</label>
+                                        <Input 
+                                            value={closingNotes}
+                                            onChange={(e) => setClosingNotes(e.target.value)}
+                                            placeholder="Reason for variance or shift summary..."
+                                            className="h-12 bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-600 rounded-xl font-medium"
+                                        />
+                                    </div>
+                                </div>
+
+                                <Button 
+                                    className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-600/20 transition-all active:scale-[0.98] uppercase tracking-widest text-xs"
+                                    onClick={() => closeRegisterMutation.mutate({ 
+                                        actualCash: parseFloat(actualCash) || 0, 
+                                        actualCard: parseFloat(actualCard) || 0,
+                                        notes: closingNotes
+                                    })}
+                                    disabled={!actualCash || !actualCard || closeRegisterMutation.isPending}
+                                >
+                                    {closeRegisterMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <StopCircle className="w-5 h-5 mr-2" />}
+                                    Finalize Settlement
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </>
