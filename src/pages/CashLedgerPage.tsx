@@ -667,43 +667,43 @@ export function CashLedgerPage() {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Cash In */}
-                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-6 lg:p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
                     <div className="w-12 h-12 rounded-2xl bg-emerald-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-emerald-100">
                         <Banknote className="w-6 h-6 text-emerald-600" />
                     </div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Cash Intake</p>
-                    <p className="text-3xl font-black text-emerald-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cashIn.toLocaleString()}</p>
+                    <p className="text-2xl lg:text-3xl font-black text-emerald-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cashIn.toLocaleString()}</p>
                 </div>
 
                 {/* Card In */}
-                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-6 lg:p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
                     <div className="w-12 h-12 rounded-2xl bg-blue-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-blue-100">
                         <CreditCard className="w-6 h-6 text-blue-600" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Interbank</p>
-                    <p className="text-3xl font-black text-blue-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cardIn.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Digital Intake</p>
+                    <p className="text-2xl lg:text-3xl font-black text-blue-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cardIn.toLocaleString()}</p>
                 </div>
 
                 {/* Cash Expenses */}
-                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-6 lg:p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
                     <div className="w-12 h-12 rounded-2xl bg-rose-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-rose-100">
                         <MinusCircle className="w-6 h-6 text-rose-600" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Outgoings</p>
-                    <p className="text-3xl font-black text-rose-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cashExpenses.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Cash Outgoings</p>
+                    <p className="text-2xl lg:text-3xl font-black text-rose-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cashExpenses.toLocaleString()}</p>
                 </div>
 
-                {/* Net Revenue */}
-                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+                {/* Card Expenses */}
+                <div className="bg-white/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/60 p-6 lg:p-8 shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
                     <div className="w-12 h-12 rounded-2xl bg-purple-100/50 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-500 shadow-sm border border-purple-100">
                         <TrendingUp className="w-6 h-6 text-purple-600" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Gross Liquidity</p>
-                    <p className="text-3xl font-black text-purple-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.totalRevenue.toLocaleString()}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-['DM_Sans',sans-serif] mb-1">Digital Outgoings</p>
+                    <p className="text-2xl lg:text-3xl font-black text-purple-600 font-['DM_Sans',sans-serif] tracking-tighter">Rs. {financials.cardExpenses.toLocaleString()}</p>
                 </div>
             </div>
 
