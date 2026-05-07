@@ -34,6 +34,7 @@ interface Shift {
     startTime: string;
     endTime: string | null;
     startingCash: number;
+    startingCard?: number;
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;

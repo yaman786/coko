@@ -33,6 +33,7 @@ interface Shift {
     startTime: string;
     endTime: string | null;
     startingCash: number;
+    startingCard?: number;
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
@@ -893,7 +894,6 @@ export function ShiftLedgerPage() {
                                         const cv = s.cardVariance ?? 0;
                                         const totalVariance = v + cv;
                                         const isPerfect = totalVariance === 0;
-                                        const isShort = totalVariance < 0;
 
                                         return (
                                             <tr key={s.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
