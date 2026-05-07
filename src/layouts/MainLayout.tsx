@@ -44,7 +44,7 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
             return [
                 { name: 'POS', href: '/pos', icon: ShoppingCart },
                 { name: 'Dashboard', href: '/pos/dashboard', icon: Home },
-                { name: 'Cash Ledger', href: '/pos/ledger', icon: Wallet },
+                { name: 'Shift Ledger', href: '/pos/ledger', icon: Wallet },
                 { name: 'Analytics', href: '/pos/analytics', icon: TrendingUp },
                 { name: 'Orders', href: '/pos/orders', icon: Receipt },
                 { name: 'Inventory', href: '/pos/inventory', icon: Package },
@@ -132,7 +132,7 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                         .filter(item => {
                             // Definitive Permission Check
                             const adminOnlySections = [
-                                'Dashboard', 'Cash Ledger', 'Analytics', 
+                                'Dashboard', 'Shift Ledger', 'Analytics', 
                                 'GOD Dashboard', 'GOD Ledger', 'GOD Expenses',
                                 'Expenses', 'Settings', 'System Settings'
                             ];
@@ -167,12 +167,12 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                                 >
                                     <div className="relative">
                                         <Icon className={`w-5 h-5 flex-none transition-colors ${isCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'} ${isActive ? iconColor : 'text-slate-400 group-hover:text-slate-600'}`} />
-                                        {(item.name === 'Cash Ledger' || item.name === 'GOD Ledger') && activeShift && (
+                                        {(item.name === 'Shift Ledger' || item.name === 'GOD Ledger') && activeShift && (
                                             <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
                                         )}
                                     </div>
                                     <span className={`tracking-tight transition-all duration-300 ${isCollapsed ? 'lg:hidden' : ''}`}>{item.name}</span>
-                                    {(item.name === 'Cash Ledger' || item.name === 'GOD Ledger') && activeShift && !isCollapsed && (
+                                    {(item.name === 'Shift Ledger' || item.name === 'GOD Ledger') && activeShift && !isCollapsed && (
                                         <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 bg-emerald-100 text-[8px] font-black uppercase text-emerald-700 rounded-full tracking-widest animate-in fade-in slide-in-from-right-2">
                                             <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                                             Live

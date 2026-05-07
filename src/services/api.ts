@@ -595,6 +595,7 @@ export const api = {
         let cashIn = 0;
         let cardIn = 0;
         let cashOut = 0;
+        let cardOut = 0;
 
         if (portal === 'retail') {
             const { data: orders } = await supabase
@@ -648,6 +649,8 @@ export const api = {
         (expenses || []).forEach((e: any) => {
             if ((e.payment_method || '').toLowerCase() === 'cash') {
                 cashOut += Number(e.amount) || 0;
+            } else {
+                cardOut += Number(e.amount) || 0;
             }
         });
 
@@ -655,8 +658,9 @@ export const api = {
             cashIn,
             cardIn,
             cashOut,
+            cardOut,
             expectedCash: shift.startingCash + cashIn - cashOut,
-            expectedCard: (shift.startingCard || 0) + cardIn
+            expectedCard: (shift.startingCard || 0) + cardIn - cardOut
         };
     }
 };

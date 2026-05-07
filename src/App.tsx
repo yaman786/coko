@@ -22,10 +22,10 @@ const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(m => ({ defa
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
-const CashLedgerPage = lazy(() => import('./pages/CashLedgerPage').then(m => ({ default: m.CashLedgerPage })));
+const ShiftLedgerPage = lazy(() => import('./pages/ShiftLedgerPage').then(m => ({ default: m.ShiftLedgerPage })));
 const WholesaleSuppliersPage = lazy(() => import('./pages/wholesale/WholesaleSuppliersPage'));
 const WholesaleSettingsPage = lazy(() => import('./pages/wholesale/WholesaleSettingsPage'));
-const WholesaleCashLedgerPage = lazy(() => import('./pages/wholesale/WholesaleCashLedgerPage').then(m => ({ default: m.WholesaleCashLedgerPage })));
+const WholesaleShiftLedgerPage = lazy(() => import('./pages/wholesale/WholesaleShiftLedgerPage').then(m => ({ default: m.WholesaleShiftLedgerPage })));
 
 function PageLoader() {
   return (
@@ -99,7 +99,7 @@ export function App() {
                   <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                   <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
                   <Route path="analytics" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
-                  <Route path="ledger" element={<AdminRoute><CashLedgerPage /></AdminRoute>} />
+                  <Route path="ledger" element={<AdminRoute><ShiftLedgerPage /></AdminRoute>} />
                   <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
                 </Route>
 
@@ -111,7 +111,7 @@ export function App() {
                    <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
                    <Route path="orders" element={<AdminRoute><WholesaleOrdersPage /></AdminRoute>} />
                    <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
-                   <Route path="ledger" element={<AdminRoute><WholesaleCashLedgerPage /></AdminRoute>} />
+                   <Route path="ledger" element={<AdminRoute><WholesaleShiftLedgerPage /></AdminRoute>} />
                    <Route path="suppliers" element={<AdminRoute><WholesaleSuppliersPage /></AdminRoute>} />
                    <Route path="settings" element={<AdminRoute><WholesaleSettingsPage /></AdminRoute>} />
                 </Route>

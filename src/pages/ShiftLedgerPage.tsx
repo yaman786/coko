@@ -65,7 +65,7 @@ interface TransactionItem {
     cashierName?: string;
 }
 
-export function CashLedgerPage() {
+export function ShiftLedgerPage() {
     const { user, role } = useAuth();
     const queryClient = useQueryClient();
 
@@ -279,7 +279,7 @@ export function CashLedgerPage() {
         // Use selectedDateShift for historical, activeShift for today
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
         const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
-        const expectedCardTotal = netCard; // Card usually starts at 0 every shift
+        const expectedCardTotal = (shiftForCalc?.startingCard || 0) + netCard;
         const hasShiftData = !!shiftForCalc;
 
         return {
@@ -546,7 +546,7 @@ export function CashLedgerPage() {
                         <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-200/50">
                             <Wallet className="w-6 h-6 text-white" />
                         </div>
-                        Cash Flow <span className="text-emerald-600">Ledger</span>
+                        Shift <span className="text-emerald-600">Ledger</span>
                     </h1>
                     <p className="text-slate-500 font-medium font-['DM_Sans',sans-serif] ml-16">Real-time audit of every transaction and shift variance.</p>
                 </div>
@@ -913,30 +913,50 @@ export function CashLedgerPage() {
                                                         <span className="font-bold text-slate-700 tracking-tight">{s.cashierName}</span>
                                                     </div>
                                                 </td>
-                                                <td className="py-6 px-8 text-right font-medium leading-relaxed">
-                                                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">System Target</div>
-                                                    <div className="text-slate-900 font-black tabular-nums">Rs. {( (s.expectedClosingCash ?? 0) + (s.expectedClosingCard ?? 0) ).toLocaleString()}</div>
-                                                </td>
-                                                <td className="py-6 px-8 text-right font-black text-slate-900 tabular-nums text-sm">
-                                                    Rs. {((s.actualClosingCash ?? 0) + (s.actualClosingCard ?? 0)).toLocaleString()}
-                                                </td>
-                                                <td className={`py-6 px-8 text-right font-black tabular-nums text-sm ${
-                                                    isPerfect ? 'text-emerald-600' : isShort ? 'text-rose-600' : 'text-blue-600'
-                                                }`}>
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="text-base">{totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}</span>
-                                                        <div className="flex gap-2 mt-1">
-                                                            {s.variance !== 0 && (
-                                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1 rounded ${s.variance! < 0 ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                                    Cash: {s.variance! > 0 ? '+' : ''}{s.variance}
-                                                                </span>
-                                                            )}
-                                                            {s.cardVariance !== 0 && (
-                                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1 rounded ${s.cardVariance! < 0 ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                                                                    Card: {s.cardVariance! > 0 ? '+' : ''}{s.cardVariance}
-                                                                </span>
-                                                            )}
+                                                <td className="py-6 px-8 text-right">
+                                                    <div className="flex flex-col gap-1.5 font-medium">
+                                                        <div className="flex items-center justify-end gap-2 text-slate-700">
+                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Cash</span>
+                                                            <span className="tabular-nums">{(s.expectedClosingCash ?? 0).toLocaleString()}</span>
                                                         </div>
+                                                        <div className="flex items-center justify-end gap-2 text-slate-500">
+                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Card</span>
+                                                            <span className="tabular-nums text-[11px]">{(s.expectedClosingCard ?? 0).toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-6 px-8 text-right">
+                                                    <div className="flex flex-col gap-1.5 font-black">
+                                                        <div className="flex items-center justify-end gap-2 text-slate-900">
+                                                            <span className="tabular-nums">{(s.actualClosingCash ?? 0).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-end gap-2 text-slate-600">
+                                                            <span className="tabular-nums text-[11px]">{(s.actualClosingCard ?? 0).toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-6 px-8 text-right font-black tabular-nums text-sm">
+                                                    <div className="flex flex-col items-end gap-1.5">
+                                                        {v === 0 ? (
+                                                            <div className="text-emerald-500 text-xs font-bold uppercase tracking-widest flex items-center gap-1">
+                                                                Balanced
+                                                            </div>
+                                                        ) : (
+                                                            <div className={`flex items-center gap-1 ${v < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
+                                                                <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">C:</span>
+                                                                {v > 0 ? '+' : ''}{v.toLocaleString()}
+                                                            </div>
+                                                        )}
+                                                        {cv === 0 ? (
+                                                            <div className="text-emerald-400/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                                                                Balanced
+                                                            </div>
+                                                        ) : (
+                                                            <div className={`flex items-center gap-1 text-[11px] ${cv < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                                                                <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Card:</span>
+                                                                {cv > 0 ? '+' : ''}{cv.toLocaleString()}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="py-6 px-8">

@@ -55,7 +55,7 @@ interface TransactionItem {
     cashierName?: string;
 }
 
-export function WholesaleCashLedgerPage() {
+export function WholesaleShiftLedgerPage() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
@@ -216,7 +216,7 @@ export function WholesaleCashLedgerPage() {
         const netCard = cardIn - cardExpenses;
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
         const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
-        const expectedCardTotal = netCard;
+        const expectedCardTotal = (shiftForCalc?.startingCard || 0) + netCard;
         const hasShiftData = !!shiftForCalc;
 
         return {
