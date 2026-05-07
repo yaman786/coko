@@ -32,6 +32,7 @@ export interface Expense {
     cashier_id?: string;
     cashier_name?: string;
     portal?: 'retail' | 'wholesale';
+    fund_source?: 'drawer' | 'safe'; // Added for ledger calculation
     createdat: Date;
     updatedat: Date;
 }
@@ -63,6 +64,7 @@ export interface SupplierTransaction {
     due_date?: Date;
     is_deleted: boolean;
     deleted_at?: Date;
+    fund_source?: 'drawer' | 'safe'; // Added for ledger calculation
     createdAt: Date;
     updatedAt: Date;
 }

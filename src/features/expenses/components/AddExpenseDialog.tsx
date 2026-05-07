@@ -27,6 +27,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
         category: 'Other',
         description: '',
         payment_method: 'Cash',
+        fund_source: 'drawer' as 'drawer' | 'safe',
         date: new Date().toISOString().split('T')[0]
     });
 
@@ -37,6 +38,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
                 category: editingExpense.category,
                 description: editingExpense.description || '',
                 payment_method: editingExpense.payment_method || 'Cash',
+                fund_source: editingExpense.fund_source || 'drawer',
                 date: new Date(editingExpense.date).toISOString().split('T')[0]
             });
         } else {
@@ -45,6 +47,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
                 category: 'Other',
                 description: '',
                 payment_method: 'Cash',
+                fund_source: 'drawer',
                 date: new Date().toISOString().split('T')[0]
             });
         }
@@ -69,6 +72,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
                 description: formData.description,
                 date: new Date(formData.date),
                 payment_method: formData.payment_method,
+                fund_source: formData.fund_source,
                 cashier_id: session?.user.email || 'system',
                 cashier_name: session?.user.email?.split('@')[0] || 'System',
                 portal: currentPortal
@@ -137,6 +141,25 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
                             </Select>
                         </div>
                     </div>
+                    {formData.payment_method === 'Cash' && (
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="fund_source" className="text-right">Fund Source</Label>
+                            <div className="col-span-3">
+                                <Select 
+                                    value={formData.fund_source} 
+                                    onValueChange={(val: 'drawer' | 'safe') => setFormData({ ...formData, fund_source: val })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Where is the cash from?" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="drawer">POS Drawer (Affects Shift)</SelectItem>
+                                        <SelectItem value="safe">Main Safe</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    )}
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="amount" className="text-right">Amount</Label>
                         <Input

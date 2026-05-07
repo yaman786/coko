@@ -37,7 +37,8 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
         description: '',
         reference_number: '',
         attachment_url: '',
-        due_date: ''
+        due_date: '',
+        fund_source: 'drawer' as 'drawer' | 'safe'
     });
 
     useEffect(() => {
@@ -50,7 +51,8 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                 description: editingTransaction.description || '',
                 reference_number: editingTransaction.reference_number || '',
                 attachment_url: editingTransaction.attachment_url || '',
-                due_date: editingTransaction.due_date ? new Date(editingTransaction.due_date).toISOString().split('T')[0] : ''
+                due_date: editingTransaction.due_date ? new Date(editingTransaction.due_date).toISOString().split('T')[0] : '',
+                fund_source: editingTransaction.fund_source || 'drawer'
             });
         } else {
             setType('BILL');
@@ -61,7 +63,8 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                 description: '',
                 reference_number: '',
                 attachment_url: '',
-                due_date: ''
+                due_date: '',
+                fund_source: 'drawer'
             });
         }
     }, [editingTransaction, open]);
@@ -86,6 +89,7 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                 reference_number: formData.reference_number,
                 attachment_url: formData.attachment_url,
                 due_date: type === 'BILL' && formData.due_date ? new Date(formData.due_date) : undefined,
+                fund_source: type === 'PAYMENT' && formData.payment_method === 'Cash' ? formData.fund_source : undefined,
                 created_by: editingTransaction?.created_by || user?.email || 'System'
             });
             toast.success(editingTransaction ? 'Transaction updated' : (type === 'BILL' ? 'Bill recorded' : 'Payment recorded'));
@@ -206,6 +210,24 @@ export function RecordTransactionDialog({ supplier, open, onOpenChange, onSucces
                                     <SelectItem value="Card">Card</SelectItem>
                                     <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
                                     <SelectItem value="Fonepay">Fonepay</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {type === 'PAYMENT' && formData.payment_method === 'Cash' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="fund_source">Fund Source</Label>
+                            <Select 
+                                value={formData.fund_source} 
+                                onValueChange={(val: 'drawer' | 'safe') => setFormData({ ...formData, fund_source: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Where is the cash from?" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="drawer">POS Drawer (Affects Shift)</SelectItem>
+                                    <SelectItem value="safe">Main Safe (Does not affect Shift)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

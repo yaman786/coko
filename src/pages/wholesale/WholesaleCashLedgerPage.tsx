@@ -174,7 +174,8 @@ export function WholesaleCashLedgerPage() {
     const financials = useMemo(() => {
         let cashIn = 0;
         let cardIn = 0;
-        let cashExpenses = 0;
+        let drawerCashExpenses = 0;
+        let safeCashExpenses = 0;
         let cardExpenses = 0;
         let totalOrders = 0;
 
@@ -198,14 +199,20 @@ export function WholesaleCashLedgerPage() {
         expenses.forEach((e: Record<string, unknown>) => {
             const method = (e.payment_method as string || '').toLowerCase();
             const amount = Number(e.amount) || 0;
+            const fundSource = (e.fund_source as string || 'drawer').toLowerCase();
             if (method === 'cash') {
-                cashExpenses += amount;
+                if (fundSource === 'safe') {
+                    safeCashExpenses += amount;
+                } else {
+                    drawerCashExpenses += amount;
+                }
             } else {
                 cardExpenses += amount;
             }
         });
 
-        const netCash = cashIn - cashExpenses;
+        const totalCashExpenses = drawerCashExpenses + safeCashExpenses;
+        const netCash = cashIn - drawerCashExpenses; // Safe expenses do not affect drawer
         const netCard = cardIn - cardExpenses;
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
         const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
@@ -213,10 +220,11 @@ export function WholesaleCashLedgerPage() {
         const hasShiftData = !!shiftForCalc;
 
         return {
-            cashIn, cardIn, cashExpenses, cardExpenses,
+            cashIn, cardIn, cashExpenses: totalCashExpenses, cardExpenses,
+            drawerCashExpenses, safeCashExpenses,
             netCash, netCard,
             totalRevenue: cashIn + cardIn,
-            totalExpenses: cashExpenses + cardExpenses,
+            totalExpenses: totalCashExpenses + cardExpenses,
             expectedDrawer,
             expectedCardTotal,
             hasShiftData,

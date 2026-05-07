@@ -48,6 +48,7 @@ interface SupplierPayment {
     id: string;
     amount: number;
     payment_method: string;
+    fund_source?: string;
     date: string;
     suppliers?: {
         name: string;
@@ -215,7 +216,8 @@ export function CashLedgerPage() {
     const financials = useMemo(() => {
         let cashIn = 0;
         let cardIn = 0;
-        let cashExpenses = 0;
+        let drawerCashExpenses = 0;
+        let safeCashExpenses = 0;
         let cardExpenses = 0;
         let totalOrders = 0;
         let totalExpenseCount = 0;
@@ -244,8 +246,13 @@ export function CashLedgerPage() {
             totalExpenseCount++;
             const method = (e.payment_method as string || '').toLowerCase();
             const amount = Number(e.amount) || 0;
+            const fundSource = (e.fund_source as string || 'drawer').toLowerCase();
             if (method === 'cash') {
-                cashExpenses += amount;
+                if (fundSource === 'safe') {
+                    safeCashExpenses += amount;
+                } else {
+                    drawerCashExpenses += amount;
+                }
             } else {
                 cardExpenses += amount;
             }
@@ -254,14 +261,20 @@ export function CashLedgerPage() {
         supplierPayments.forEach((sp: SupplierPayment) => {
             const method = (sp.payment_method as string || '').toLowerCase();
             const amount = Number(sp.amount) || 0;
+            const fundSource = (sp.fund_source as string || 'drawer').toLowerCase();
             if (method === 'cash') {
-                cashExpenses += amount;
+                if (fundSource === 'safe') {
+                    safeCashExpenses += amount;
+                } else {
+                    drawerCashExpenses += amount;
+                }
             } else {
                 cardExpenses += amount;
             }
         });
 
-        const netCash = cashIn - cashExpenses;
+        const totalCashExpenses = drawerCashExpenses + safeCashExpenses;
+        const netCash = cashIn - drawerCashExpenses; // Safe expenses do not affect drawer
         const netCard = cardIn - cardExpenses;
         // Use selectedDateShift for historical, activeShift for today
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
@@ -270,10 +283,11 @@ export function CashLedgerPage() {
         const hasShiftData = !!shiftForCalc;
 
         return {
-            cashIn, cardIn, cashExpenses, cardExpenses,
+            cashIn, cardIn, cashExpenses: totalCashExpenses, cardExpenses,
+            drawerCashExpenses, safeCashExpenses,
             netCash, netCard,
             totalRevenue: cashIn + cardIn,
-            totalExpenses: cashExpenses + cardExpenses,
+            totalExpenses: totalCashExpenses + cardExpenses,
             expectedDrawer,
             expectedCardTotal,
             hasShiftData,
