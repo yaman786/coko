@@ -22,9 +22,16 @@ import {
     Loader2,
     Receipt,
     MinusCircle,
-    Search
+    Search,
+    BookOpen,
+    Download,
+    FileText,
+    History,
+    Edit2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface Shift {
     id: number;
@@ -62,10 +69,15 @@ interface TransactionItem {
     id: string;
     type: 'sale' | 'expense';
     description: string;
-    amount: number;
     method: string;
     time: Date;
     cashierName?: string;
+    cashIn: number;
+    cashOut: number;
+    cashBalance: number;
+    digitalIn: number;
+    digitalOut: number;
+    digitalBalance: number;
 }
 
 export function ShiftLedgerPage() {
@@ -78,14 +90,16 @@ export function ShiftLedgerPage() {
     const [isBackdateDialogOpen, setIsBackdateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
-    const [startingCard, setStartingCard] = useState('');
+    const [startingCardInput, setStartingCardInput] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
     const [closingCardInput, setClosingCardInput] = useState('');
     const [closingNotes, setClosingNotes] = useState('');
     const [backdateStartingCash, setBackdateStartingCash] = useState('');
+    const [backdateStartingCard, setBackdateStartingCard] = useState('');
     const [backdateClosingCash, setBackdateClosingCash] = useState('');
     const [backdateClosingCard, setBackdateClosingCard] = useState('');
     const [editStartingCash, setEditStartingCash] = useState('');
+    const [editStartingCard, setEditStartingCard] = useState('');
     const [editClosingCash, setEditClosingCash] = useState('');
     const [editClosingCard, setEditClosingCard] = useState('');
     const [selectedDate, setSelectedDate] = useState(() => {
@@ -98,6 +112,10 @@ export function ShiftLedgerPage() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'variance'>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage] = useState(10);
+    
+    // Consolidated Ledger Feed State
+    const [ledgerFilter, setLedgerFilter] = useState<'all' | 'sale' | 'expense'>('all');
+    const [ledgerSearch, setLedgerSearch] = useState('');
 
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
@@ -256,8 +274,10 @@ export function ShiftLedgerPage() {
                 } else {
                     drawerCashExpenses += amount;
                 }
-            } else {
-                cardExpenses += amount;
+            } else if (method === 'card') {
+                if (fundSource !== 'external') {
+                    cardExpenses += amount;
+                }
             }
         });
 
@@ -271,8 +291,10 @@ export function ShiftLedgerPage() {
                 } else {
                     drawerCashExpenses += amount;
                 }
-            } else {
-                cardExpenses += amount;
+            } else if (method === 'card') {
+                if (fundSource !== 'external') {
+                    cardExpenses += amount;
+                }
             }
         });
 
@@ -299,49 +321,202 @@ export function ShiftLedgerPage() {
         };
     }, [orders, expenses, supplierPayments, activeShift, selectedDateShift, isToday]);
 
-    // ── Transaction Feed ──
+    // ── Consolidated EOD Ledger Feed ──
     const transactions = useMemo<TransactionItem[]>(() => {
-        const items: TransactionItem[] = [];
-
+        let salesCashIn = 0;
+        let salesDigitalIn = 0;
+        
         orders.forEach((o: Record<string, unknown>) => {
             if (o.isWaste) return;
-            const orderItems = (o.items as Array<{name: string}>) || [];
-            const itemNames = orderItems.map((i) => i.name).join(', ');
-            items.push({
-                id: String(o.id),
-                type: 'sale',
-                description: itemNames || 'POS Sale',
-                amount: Number(o.totalAmount) || 0,
-                method: String(o.paymentMethod || 'Cash'),
-                time: new Date(o.createdAt as string),
-                cashierName: String(o.cashierName || '')
-            });
+            const method = String(o.paymentMethod || 'Cash').toLowerCase();
+            const total = Number(o.totalAmount) || 0;
+            const cash = Number(o.cashAmount) || 0;
+            const card = Number(o.cardAmount) || 0;
+            
+            if (method === 'cash') salesCashIn += total;
+            else if (method === 'card') salesDigitalIn += total;
+            else if (method === 'split') {
+                salesCashIn += cash;
+                salesDigitalIn += card;
+            }
         });
+
+        let expCashOut = 0;
+        let expDigitalOut = 0;
 
         expenses.forEach((e: Record<string, unknown>) => {
-            items.push({
-                id: String(e.id),
-                type: 'expense',
-                description: String(e.description || e.category || 'Expense'),
-                amount: Number(e.amount) || 0,
-                method: String(e.payment_method || 'Cash'),
-                time: new Date(e.date as string),
-            });
+            const method = String(e.payment_method || 'Cash').toLowerCase();
+            const fundSource = String(e.fund_source || 'drawer').toLowerCase();
+            const amount = Number(e.amount) || 0;
+            
+            if (method === 'cash' && fundSource !== 'safe') expCashOut += amount;
+            else if (method === 'card' && fundSource !== 'external') expDigitalOut += amount;
         });
+
+        // Group supplier payments by supplier name
+        const supplierAggregates: Record<string, { cashOut: number, digitalOut: number }> = {};
 
         supplierPayments.forEach((sp: SupplierPayment) => {
-            items.push({
-                id: String(sp.id),
-                type: 'expense', // Treating as expense for feed categorization
-                description: `Payment: ${sp.suppliers?.name || 'Supplier'}`,
-                amount: Number(sp.amount) || 0,
-                method: String(sp.payment_method || 'Cash'),
-                time: new Date(sp.date as string),
-            });
+            const method = String(sp.payment_method || 'Cash').toLowerCase();
+            const fundSource = String(sp.fund_source || 'drawer').toLowerCase();
+            const amount = Number(sp.amount) || 0;
+            const supplierName = sp.suppliers?.name || 'Unknown Supplier';
+            
+            if (!supplierAggregates[supplierName]) {
+                supplierAggregates[supplierName] = { cashOut: 0, digitalOut: 0 };
+            }
+
+            if (method === 'cash' && fundSource !== 'safe') {
+                supplierAggregates[supplierName].cashOut += amount;
+            } else if (method === 'card' && fundSource !== 'external') {
+                supplierAggregates[supplierName].digitalOut += amount;
+            }
         });
 
-        return items.sort((a, b) => b.time.getTime() - a.time.getTime());
-    }, [orders, expenses, supplierPayments]);
+        const shiftForCalc = isToday ? activeShift : selectedDateShift;
+        const startCash = shiftForCalc?.startingCash || 0;
+        const startDigital = shiftForCalc?.startingCard || 0;
+        
+        const now = new Date();
+        const items: TransactionItem[] = [];
+
+        // 1. Aggregate Sales
+        if (salesCashIn > 0 || salesDigitalIn > 0) {
+            items.push({
+                id: 'eod_sales',
+                type: 'sale',
+                description: 'End of Day: Total POS Sales',
+                method: 'Mixed',
+                time: now,
+                cashierName: 'System',
+                cashIn: salesCashIn,
+                cashOut: 0,
+                cashBalance: startCash + salesCashIn,
+                digitalIn: salesDigitalIn,
+                digitalOut: 0,
+                digitalBalance: startDigital + salesDigitalIn
+            });
+        }
+
+        // 2. Aggregate Expenses
+        if (expCashOut > 0 || expDigitalOut > 0) {
+            const currentCash = items.length > 0 ? items[items.length - 1].cashBalance : startCash;
+            const currentDigital = items.length > 0 ? items[items.length - 1].digitalBalance : startDigital;
+            items.push({
+                id: 'eod_exp',
+                type: 'expense',
+                description: 'End of Day: Total Operational Expenses',
+                method: 'Mixed',
+                time: now,
+                cashierName: 'System',
+                cashIn: 0,
+                cashOut: expCashOut,
+                cashBalance: currentCash - expCashOut,
+                digitalIn: 0,
+                digitalOut: expDigitalOut,
+                digitalBalance: currentDigital - expDigitalOut
+            });
+        }
+
+        // 3. Aggregate Supplier Payments (Per Supplier)
+        Object.entries(supplierAggregates).forEach(([supplierName, totals]) => {
+            if (totals.cashOut > 0 || totals.digitalOut > 0) {
+                const currentCash = items.length > 0 ? items[items.length - 1].cashBalance : startCash;
+                const currentDigital = items.length > 0 ? items[items.length - 1].digitalBalance : startDigital;
+                items.push({
+                    id: `eod_sp_${supplierName.replace(/\s+/g, '_')}`,
+                    type: 'expense',
+                    description: `Supplier Payout: ${supplierName}`,
+                    method: 'Mixed',
+                    time: now,
+                    cashierName: 'System',
+                    cashIn: 0,
+                    cashOut: totals.cashOut,
+                    cashBalance: currentCash - totals.cashOut,
+                    digitalIn: 0,
+                    digitalOut: totals.digitalOut,
+                    digitalBalance: currentDigital - totals.digitalOut
+                });
+            }
+        });
+
+        return items;
+    }, [orders, expenses, supplierPayments, activeShift, selectedDateShift, isToday]);
+
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(t => {
+            const matchesFilter = ledgerFilter === 'all' || t.type === ledgerFilter;
+            const matchesSearch = t.description.toLowerCase().includes(ledgerSearch.toLowerCase()) || 
+                                  (t.cashierName && t.cashierName.toLowerCase().includes(ledgerSearch.toLowerCase()));
+            return matchesFilter && matchesSearch;
+        });
+    }, [transactions, ledgerFilter, ledgerSearch]);
+
+    const exportLedgerCSV = () => {
+        const headers = ['Time', 'Type', 'Description', 'Method', 'Cash In', 'Cash Out', 'Cash Balance', 'Online In', 'Online Out', 'Online Balance', 'Cashier'];
+        const csvContent = [
+            headers.join(','),
+            ...filteredTransactions.map(t => [
+                t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                t.type,
+                `"${t.description.replace(/"/g, '""')}"`,
+                t.method,
+                t.cashIn,
+                t.cashOut,
+                t.cashBalance,
+                t.digitalIn,
+                t.digitalOut,
+                t.digitalBalance,
+                `"${t.cashierName || ''}"`
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Coko_Daily_Ledger_${selectedDate}.csv`;
+        link.click();
+        toast.success('CSV Exported Successfully');
+    };
+
+    const exportLedgerPDF = () => {
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text(`Coko Daily Ledger - ${selectedDate}`, 14, 15);
+        
+        const tableColumn = ["Time", "Description", "Cash In", "Cash Out", "Cash Bal", "Online In", "Online Out", "Online Bal"];
+        const tableRows = filteredTransactions.map(t => [
+            t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            t.description.length > 25 ? t.description.substring(0, 25) + '...' : t.description,
+            t.cashIn > 0 ? t.cashIn : '-',
+            t.cashOut > 0 ? t.cashOut : '-',
+            t.cashBalance,
+            t.digitalIn > 0 ? t.digitalIn : '-',
+            t.digitalOut > 0 ? t.digitalOut : '-',
+            t.digitalBalance
+        ]);
+
+        (doc as any).autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 20,
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [79, 70, 229] }, // Indigo-600
+            columnStyles: {
+                0: { cellWidth: 15 },
+                1: { cellWidth: 'auto' },
+                2: { halign: 'right', cellWidth: 20 },
+                3: { halign: 'right', cellWidth: 20 },
+                4: { halign: 'right', cellWidth: 20, fontStyle: 'bold' },
+                5: { halign: 'right', cellWidth: 20 },
+                6: { halign: 'right', cellWidth: 20 },
+                7: { halign: 'right', cellWidth: 20, fontStyle: 'bold' },
+            }
+        });
+
+        doc.save(`Coko_Daily_Ledger_${selectedDate}.pdf`);
+        toast.success('PDF Exported Successfully');
+    };
 
     // ── Filtered & Paginated Shift History ──
     const filteredShifts = useMemo(() => {
@@ -462,17 +637,18 @@ export function ShiftLedgerPage() {
     const addHistoricalShiftMutation = useMutation({
         mutationFn: async () => {
             const start = parseFloat(backdateStartingCash) || 0;
+            const startCard = parseFloat(backdateStartingCard) || 0;
             const actual = parseFloat(backdateClosingCash) || 0;
             const actualCard = parseFloat(backdateClosingCard) || 0;
-            const expected = start + financials.netCash; // netCash is based on selectedDate
+            const expected = start + financials.netCash;
+            const expectedCard = startCard + financials.netCard;
             const variance = actual - expected;
-            const expectedCard = financials.netCard;
             const cardVariance = actualCard - expectedCard;
 
             const shiftStart = new Date(selectedDate);
-            shiftStart.setHours(9, 0, 0, 0); // Pretend it started at 9 AM
+            shiftStart.setHours(9, 0, 0, 0);
             const shiftEnd = new Date(selectedDate);
-            shiftEnd.setHours(21, 0, 0, 0); // Pretend it ended at 9 PM
+            shiftEnd.setHours(21, 0, 0, 0);
 
             const { error } = await supabase.from('shifts').insert({
                 cashierId: user?.email || 'unknown',
@@ -480,6 +656,7 @@ export function ShiftLedgerPage() {
                 startTime: shiftStart.toISOString(),
                 endTime: shiftEnd.toISOString(),
                 startingCash: start,
+                startingCard: startCard,
                 expectedClosingCash: expected,
                 actualClosingCash: actual,
                 variance,
@@ -509,17 +686,19 @@ export function ShiftLedgerPage() {
         mutationFn: async () => {
             if (!selectedDateShift) throw new Error('No shift to edit');
             const start = parseFloat(editStartingCash) || 0;
+            const startCard = parseFloat(editStartingCard) || 0;
             const actual = parseFloat(editClosingCash) || 0;
             const actualCard = parseFloat(editClosingCard) || 0;
             const expected = start + financials.netCash;
+            const expectedCard = startCard + financials.netCard;
             const variance = actual - expected;
-            const expectedCard = financials.netCard;
             const cardVariance = actualCard - expectedCard;
 
             const { error } = await supabase
                 .from('shifts')
                 .update({
                     startingCash: start,
+                    startingCard: startCard,
                     expectedClosingCash: expected,
                     actualClosingCash: actual,
                     variance,
@@ -738,50 +917,107 @@ export function ShiftLedgerPage() {
                 </div>
             </div>
 
-            {/* Transaction Feed - TOP SECTION */}
+            {/* Consolidated Ledger Feed - Matches Handwritten Ledger */}
             <Card className="border border-slate-200/60 shadow-sm bg-white rounded-xl mb-8">
-                <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 font-['DM_Sans',sans-serif]">
-                        <Receipt className="w-4 h-4 text-slate-500" />
-                        Live Transaction Stream
-                    </CardTitle>
-                    <Badge variant="outline" className="text-[10px] font-black uppercase px-3 py-1 bg-white text-slate-400 border-slate-200">
-                        {transactions.length} Records
-                    </Badge>
+                <CardHeader className="p-5 border-b border-slate-100 bg-slate-50/30 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 font-['DM_Sans',sans-serif]">
+                            <BookOpen className="w-4 h-4 text-indigo-600" />
+                            Consolidated Daily Ledger
+                        </CardTitle>
+                        <Badge variant="outline" className="text-[10px] font-black uppercase px-3 py-1 bg-white text-slate-400 border-slate-200">
+                            {filteredTransactions.length} Entries
+                        </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                        <div className="relative flex-grow max-w-sm">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Input 
+                                placeholder="Search description..." 
+                                className="h-9 pl-9 text-xs border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500 bg-white w-full"
+                                value={ledgerSearch}
+                                onChange={(e) => setLedgerSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                            {['all', 'sale', 'expense'].map((filter) => (
+                                <button
+                                    key={filter}
+                                    onClick={() => setLedgerFilter(filter as any)}
+                                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
+                                        ledgerFilter === filter 
+                                            ? 'bg-white text-indigo-600 shadow-sm font-black' 
+                                            : 'text-slate-500 hover:text-slate-700 font-bold'
+                                    }`}
+                                >
+                                    {filter}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                            <Button variant="outline" size="sm" onClick={exportLedgerCSV} className="h-9 text-xs gap-2 border-slate-200 hover:bg-slate-50">
+                                <FileText className="w-3.5 h-3.5 text-blue-600" /> Export CSV
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={exportLedgerPDF} className="h-9 text-xs gap-2 border-slate-200 hover:bg-slate-50">
+                                <Download className="w-3.5 h-3.5 text-rose-600" /> Export PDF
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="divide-y divide-slate-100 max-h-[550px] overflow-y-auto custom-scrollbar bg-slate-50/20">
-                        {transactions.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in zoom-in duration-700">
-                                <div className="w-20 h-20 bg-slate-100 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner border border-slate-200/50">
-                                    <Receipt className="w-10 h-10 text-slate-300" />
-                                </div>
-                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-2">No Feed Activity</h3>
-                                <p className="text-xs text-slate-400 font-medium max-w-[200px] leading-relaxed">
-                                    There are no transactions recorded for this session yet.
-                                </p>
-                            </div>
-                        ) : (
-                            transactions.map((t) => (
-                                <div key={t.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'sale' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                            {t.type === 'sale' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-800">{t.description}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {t.cashierName}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-8">
-                                        <Badge variant="outline" className="text-[10px] font-bold uppercase px-3 py-0.5 border-slate-200 text-slate-500">{t.method}</Badge>
-                                        <span className={`text-sm font-bold tabular-nums ${t.type === 'sale' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            {t.type === 'sale' ? '+' : '−'}Rs. {t.amount.toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+                    <div className="overflow-x-auto max-h-[600px] custom-scrollbar bg-slate-50/20">
+                        <table className="w-full text-xs">
+                            <thead className="bg-slate-100/50 border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 sticky top-0 z-10 backdrop-blur-md">
+                                <tr>
+                                    <th className="py-4 px-6 text-left border-r border-slate-200/50">Time</th>
+                                    <th className="py-4 px-6 text-left border-r border-slate-200/50">Title / Desc</th>
+                                    <th className="py-4 px-4 text-right text-emerald-600 border-r border-slate-200/50">Cash In(+)</th>
+                                    <th className="py-4 px-4 text-right text-rose-600 border-r border-slate-200/50">Cash Out(-)</th>
+                                    <th className="py-4 px-4 text-right text-slate-800 font-bold border-r border-slate-300">Cash Blc</th>
+                                    <th className="py-4 px-4 text-right text-emerald-600 border-r border-slate-200/50">Online In(+)</th>
+                                    <th className="py-4 px-4 text-right text-rose-600 border-r border-slate-200/50">Online Out(-)</th>
+                                    <th className="py-4 px-4 text-right text-slate-800 font-bold">Online Blc</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredTransactions.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-12 text-center text-slate-400 font-medium italic">No transactions match your filters.</td>
+                                    </tr>
+                                ) : (
+                                    filteredTransactions.map((t) => (
+                                        <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="py-4 px-6 whitespace-nowrap text-slate-500 font-medium border-r border-slate-100/50">
+                                                {t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </td>
+                                            <td className="py-4 px-6 border-r border-slate-100/50">
+                                                <div className="font-bold text-slate-800 line-clamp-2 max-w-[200px]">{t.description}</div>
+                                                {t.cashierName && <div className="text-[9px] uppercase tracking-widest text-slate-400 mt-1">{t.cashierName}</div>}
+                                            </td>
+                                            <td className="py-4 px-4 text-right font-medium text-emerald-600 border-r border-slate-100/50">
+                                                {t.cashIn > 0 ? t.cashIn.toLocaleString() : '-'}
+                                            </td>
+                                            <td className="py-4 px-4 text-right font-medium text-rose-600 border-r border-slate-100/50">
+                                                {t.cashOut > 0 ? t.cashOut.toLocaleString() : '-'}
+                                            </td>
+                                            <td className="py-4 px-4 text-right font-black text-slate-700 bg-slate-50/30 border-r border-slate-300/50">
+                                                {t.cashBalance.toLocaleString()}
+                                            </td>
+                                            <td className="py-4 px-4 text-right font-medium text-emerald-600 border-r border-slate-100/50">
+                                                {t.digitalIn > 0 ? t.digitalIn.toLocaleString() : '-'}
+                                            </td>
+                                            <td className="py-4 px-4 text-right font-medium text-rose-600 border-r border-slate-100/50">
+                                                {t.digitalOut > 0 ? t.digitalOut.toLocaleString() : '-'}
+                                            </td>
+                                            <td className="py-4 px-4 text-right font-black text-slate-700 bg-slate-50/30">
+                                                {t.digitalBalance.toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </CardContent>
             </Card>
@@ -880,6 +1116,15 @@ export function ShiftLedgerPage() {
                                     </button>
                                 ))}
                             </div>
+                            {role === 'admin' && (
+                                <Button 
+                                    onClick={() => setIsBackdateDialogOpen(true)}
+                                    className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200/50 flex items-center gap-2"
+                                >
+                                    <History className="w-4 h-4" />
+                                    Backdate Historical Entry
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </CardHeader>
@@ -895,6 +1140,7 @@ export function ShiftLedgerPage() {
                                     <th className="py-5 px-8 text-right font-black">Net Discrepancy</th>
                                     <th className="py-5 px-8 text-left font-black">Audit Remarks</th>
                                     <th className="py-5 px-8 text-center font-black">Status</th>
+                                    <th className="py-5 px-8 text-center font-black">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -1003,6 +1249,25 @@ export function ShiftLedgerPage() {
                                                         {isPerfect ? 'Balanced' : 'Discrepancy'}
                                                     </div>
                                                 </td>
+                                                <td className="py-6 px-8 text-center">
+                                                    {role === 'admin' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setEditStartingCash(String(s.startingCash || 0));
+                                                                setEditStartingCard(String(s.startingCard || 0));
+                                                                setEditClosingCash(String(s.actualClosingCash || 0));
+                                                                setEditClosingCard(String(s.actualClosingCard || 0));
+                                                                setSelectedDateShift(s);
+                                                                setIsEditDialogOpen(true);
+                                                            }}
+                                                            className="h-9 w-9 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                </td>
                                             </tr>
                                         );
                                     })
@@ -1085,8 +1350,8 @@ export function ShiftLedgerPage() {
                                 <Input
                                     type="number"
                                     min="0"
-                                    value={startingCard}
-                                    onChange={(e) => setStartingCard(e.target.value)}
+                                    value={startingCardInput}
+                                    onChange={(e) => setStartingCardInput(e.target.value)}
                                     placeholder="0"
                                     className="h-12 text-lg font-black text-center"
                                 />
@@ -1095,7 +1360,7 @@ export function ShiftLedgerPage() {
                         <Button
                             onClick={() => openShiftMutation.mutate({ 
                                 cash: parseFloat(startingCashInput) || 0, 
-                                card: parseFloat(startingCard) || 0 
+                                card: parseFloat(startingCardInput) || 0 
                             })}
                             disabled={!startingCashInput || openShiftMutation.isPending}
                             className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm"
@@ -1240,39 +1505,50 @@ export function ShiftLedgerPage() {
                             </div>
                         </div>
                         <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Starting Cash (Float)</label>
                                 <Input
                                     type="number"
                                     value={backdateStartingCash}
                                     onChange={(e) => setBackdateStartingCash(e.target.value)}
-                                    placeholder="Enter opening amount"
+                                    placeholder="Opening cash"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Cash</label>
-                                    <Input
-                                        type="number"
-                                        value={backdateClosingCash}
-                                        onChange={(e) => setBackdateClosingCash(e.target.value)}
-                                        placeholder="Enter final count"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Card</label>
-                                    <Input
-                                        type="number"
-                                        value={backdateClosingCard}
-                                        onChange={(e) => setBackdateClosingCard(e.target.value)}
-                                        placeholder="Enter final total"
-                                    />
-                                </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Starting Card (Balance)</label>
+                                <Input
+                                    type="number"
+                                    value={backdateStartingCard}
+                                    onChange={(e) => setBackdateStartingCard(e.target.value)}
+                                    placeholder="Opening card"
+                                />
                             </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Cash</label>
+                                <Input
+                                    type="number"
+                                    value={backdateClosingCash}
+                                    onChange={(e) => setBackdateClosingCash(e.target.value)}
+                                    placeholder="Enter final count"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Card</label>
+                                <Input
+                                    type="number"
+                                    value={backdateClosingCard}
+                                    onChange={(e) => setBackdateClosingCard(e.target.value)}
+                                    placeholder="Enter final total"
+                                />
+                            </div>
+                        </div>
                         </div>
                         <Button
                             onClick={() => addHistoricalShiftMutation.mutate()}
-                            disabled={!backdateStartingCash || !backdateClosingCash || !backdateClosingCard || addHistoricalShiftMutation.isPending}
+                            disabled={!backdateStartingCash || !backdateStartingCard || !backdateClosingCash || !backdateClosingCard || addHistoricalShiftMutation.isPending}
                             className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm relative overflow-hidden"
                         >
                             {addHistoricalShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin relative z-10" />}
@@ -1295,36 +1571,46 @@ export function ShiftLedgerPage() {
                             <strong>Admin Only:</strong> Correct a typo in the shift values. This will permanently update the variance.
                         </p>
                         <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Corrected Starting Cash</label>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Corrected Start Cash</label>
                                 <Input
                                     type="number"
                                     value={editStartingCash}
                                     onChange={(e) => setEditStartingCash(e.target.value)}
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Cash</label>
-                                    <Input
-                                        type="number"
-                                        value={editClosingCash}
-                                        onChange={(e) => setEditClosingCash(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Card</label>
-                                    <Input
-                                        type="number"
-                                        value={editClosingCard}
-                                        onChange={(e) => setEditClosingCard(e.target.value)}
-                                    />
-                                </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Corrected Start Card</label>
+                                <Input
+                                    type="number"
+                                    value={editStartingCard}
+                                    onChange={(e) => setEditStartingCard(e.target.value)}
+                                />
                             </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Cash</label>
+                                <Input
+                                    type="number"
+                                    value={editClosingCash}
+                                    onChange={(e) => setEditClosingCash(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Actual Card</label>
+                                <Input
+                                    type="number"
+                                    value={editClosingCard}
+                                    onChange={(e) => setEditClosingCard(e.target.value)}
+                                />
+                            </div>
+                        </div>
                         </div>
                         <Button
                             onClick={() => editShiftMutation.mutate()}
-                            disabled={!editStartingCash || !editClosingCash || !editClosingCard || editShiftMutation.isPending}
+                            disabled={!editStartingCash || !editStartingCard || !editClosingCash || !editClosingCard || editShiftMutation.isPending}
                             className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm relative overflow-hidden"
                         >
                             {editShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin relative z-10" />}
