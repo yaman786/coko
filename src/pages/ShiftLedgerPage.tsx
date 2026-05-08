@@ -377,7 +377,7 @@ export function ShiftLedgerPage() {
         const startCash = shiftForCalc?.startingCash || 0;
         const startDigital = shiftForCalc?.startingCard || 0;
         
-        const now = new Date();
+        const ledgerDate = new Date(selectedDate);
         const items: TransactionItem[] = [];
 
         // 1. Aggregate Sales
@@ -387,7 +387,7 @@ export function ShiftLedgerPage() {
                 type: 'sale',
                 description: 'End of Day: Total POS Sales',
                 method: 'Mixed',
-                time: now,
+                time: ledgerDate,
                 cashierName: 'System',
                 cashIn: salesCashIn,
                 cashOut: 0,
@@ -407,7 +407,7 @@ export function ShiftLedgerPage() {
                 type: 'expense',
                 description: 'End of Day: Total Operational Expenses',
                 method: 'Mixed',
-                time: now,
+                time: ledgerDate,
                 cashierName: 'System',
                 cashIn: 0,
                 cashOut: expCashOut,
@@ -428,7 +428,7 @@ export function ShiftLedgerPage() {
                     type: 'expense',
                     description: `Supplier Payout: ${supplierName}`,
                     method: 'Mixed',
-                    time: now,
+                    time: ledgerDate,
                     cashierName: 'System',
                     cashIn: 0,
                     cashOut: totals.cashOut,
@@ -453,11 +453,11 @@ export function ShiftLedgerPage() {
     }, [transactions, ledgerFilter, ledgerSearch]);
 
     const exportLedgerCSV = () => {
-        const headers = ['Time', 'Type', 'Description', 'Method', 'Cash In', 'Cash Out', 'Cash Balance', 'Online In', 'Online Out', 'Online Balance', 'Cashier'];
+        const headers = ['Date', 'Type', 'Description', 'Method', 'Cash In', 'Cash Out', 'Cash Balance', 'Online In', 'Online Out', 'Online Balance', 'Cashier'];
         const csvContent = [
             headers.join(','),
             ...filteredTransactions.map(t => [
-                t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                t.time.toLocaleDateString(),
                 t.type,
                 `"${t.description.replace(/"/g, '""')}"`,
                 t.method,
@@ -484,9 +484,9 @@ export function ShiftLedgerPage() {
         doc.setFontSize(16);
         doc.text(`Coko Daily Ledger - ${selectedDate}`, 14, 15);
         
-        const tableColumn = ["Time", "Description", "Cash In", "Cash Out", "Cash Bal", "Online In", "Online Out", "Online Bal"];
+        const tableColumn = ["Date", "Description", "Cash In", "Cash Out", "Cash Bal", "Online In", "Online Out", "Online Bal"];
         const tableRows = filteredTransactions.map(t => [
-            t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            t.time.toLocaleDateString(),
             t.description.length > 25 ? t.description.substring(0, 25) + '...' : t.description,
             t.cashIn > 0 ? t.cashIn : '-',
             t.cashOut > 0 ? t.cashOut : '-',
@@ -970,7 +970,7 @@ export function ShiftLedgerPage() {
                         <table className="w-full text-xs">
                             <thead className="bg-slate-100/50 border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 sticky top-0 z-10 backdrop-blur-md">
                                 <tr>
-                                    <th className="py-4 px-6 text-left border-r border-slate-200/50">Time</th>
+                                    <th className="py-4 px-6 text-left border-r border-slate-200/50">Date</th>
                                     <th className="py-4 px-6 text-left border-r border-slate-200/50">Title / Desc</th>
                                     <th className="py-4 px-4 text-right text-emerald-600 border-r border-slate-200/50">Cash In(+)</th>
                                     <th className="py-4 px-4 text-right text-rose-600 border-r border-slate-200/50">Cash Out(-)</th>
@@ -989,7 +989,7 @@ export function ShiftLedgerPage() {
                                     filteredTransactions.map((t) => (
                                         <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
                                             <td className="py-4 px-6 whitespace-nowrap text-slate-500 font-medium border-r border-slate-100/50">
-                                                {t.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {t.time.toLocaleDateString()}
                                             </td>
                                             <td className="py-4 px-6 border-r border-slate-100/50">
                                                 <div className="font-bold text-slate-800 line-clamp-2 max-w-[200px]">{t.description}</div>
