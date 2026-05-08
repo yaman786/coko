@@ -44,6 +44,8 @@ interface Shift {
     status: string;
     portal: string;
     notes?: string;
+    closedBy?: string;
+    closedByName?: string;
 }
 
 interface TransactionItem {
@@ -57,7 +59,7 @@ interface TransactionItem {
 }
 
 export function WholesaleShiftLedgerPage() {
-    const { user } = useAuth();
+    const { user, role } = useAuth();
     const queryClient = useQueryClient();
 
     // UI & Modal State
@@ -304,9 +306,15 @@ export function WholesaleShiftLedgerPage() {
         }
     });
 
+    // ── Shift Ownership Check ──
+    const isShiftOwner = activeShift?.cashierId === user?.email;
+    const isAdmin = role === 'admin';
+    const canCloseShift = isShiftOwner || isAdmin;
+
     const closeShiftMutation = useMutation({
         mutationFn: async (payload: { actualCash: number, actualCard: number, notes?: string }) => {
             if (!activeShift) throw new Error('No active shift');
+            if (!canCloseShift) throw new Error('Only the shift owner or an admin can close this shift.');
             const variance = payload.actualCash - financials.expectedDrawer;
             const cardVariance = payload.actualCard - financials.expectedCardTotal;
             
@@ -321,7 +329,9 @@ export function WholesaleShiftLedgerPage() {
                     actualClosingCard: payload.actualCard,
                     cardVariance,
                     status: 'closed',
-                    notes: payload.notes
+                    notes: payload.notes,
+                    closedBy: user?.email || 'unknown',
+                    closedByName: user?.email?.split('@')[0] || 'Unknown'
                 })
                 .eq('id', activeShift.id);
             if (error) throw error;
@@ -378,7 +388,7 @@ export function WholesaleShiftLedgerPage() {
                             Initialize Shift
                         </Button>
                     )}
-                    {isToday && activeShift && (
+                    {isToday && activeShift && canCloseShift && (
                         <Button
                             onClick={() => setIsCloseDialogOpen(true)}
                             className="h-[44px] px-8 rounded-full bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-[10px] uppercase tracking-widest transition-all shadow-sm"
@@ -386,6 +396,12 @@ export function WholesaleShiftLedgerPage() {
                             <StopCircle className="w-4 h-4 mr-2" />
                             Terminate Day
                         </Button>
+                    )}
+                    {isToday && activeShift && !canCloseShift && (
+                        <div className="h-[44px] px-6 rounded-full bg-slate-100 border border-slate-200 text-slate-400 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 cursor-not-allowed">
+                            <StopCircle className="w-4 h-4" />
+                            Admin Only
+                        </div>
                     )}
                 </div>
             </div>
@@ -400,7 +416,7 @@ export function WholesaleShiftLedgerPage() {
                             <p className="text-xl font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight">
                                 Live since {new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            <p className="text-[11px] text-sky-600 font-medium">Float: Rs. {activeShift.startingCash.toLocaleString()} • Responsible: {activeShift.cashierName}</p>
+                            <p className="text-[11px] text-sky-600 font-medium">Float: Rs. {activeShift.startingCash.toLocaleString()} • Opened by: {activeShift.cashierName} ({activeShift.cashierId})</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-8">
@@ -627,11 +643,24 @@ export function WholesaleShiftLedgerPage() {
                                                     <p className="text-[10px] text-slate-400 font-medium">{new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {s.endTime ? new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Open'}</p>
                                                 </td>
                                                 <td className="py-6 px-8">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-sky-100 flex items-center justify-center text-[10px] font-black text-sky-600 uppercase">
-                                                            {s.cashierName.charAt(0)}
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-6 h-6 rounded-full bg-sky-100 flex items-center justify-center text-[10px] font-black text-sky-600 uppercase">
+                                                                {s.cashierName.charAt(0)}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Opened By</span>
+                                                                <span className="font-bold text-slate-700 tracking-tight leading-none">{s.cashierName}</span>
+                                                            </div>
                                                         </div>
-                                                        <span className="font-bold text-slate-700">{s.cashierName}</span>
+                                                        {s.closedByName && s.closedByName !== s.cashierName && (
+                                                            <div className="flex items-center gap-3 pl-2 border-l-2 border-slate-100 ml-3">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] font-black uppercase text-rose-400 tracking-widest leading-none mb-1">Closed By Admin</span>
+                                                                    <span className="font-bold text-slate-600 text-xs tracking-tight leading-none">{s.closedByName}</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="py-6 px-8 text-right font-medium text-slate-500">
