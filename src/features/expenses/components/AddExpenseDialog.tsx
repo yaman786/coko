@@ -146,7 +146,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
                         <div className="col-span-3">
                             <Select 
                                 value={formData.fund_source} 
-                                onValueChange={(val: 'drawer' | 'safe' | 'card_intake' | 'external') => setFormData({ ...formData, fund_source: val })}
+                                onValueChange={(val: 'drawer' | 'safe' | 'card_intake' | 'external') => setFormData({ ...formData, fund_source: val as any })}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Where is the money from?" />

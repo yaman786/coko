@@ -8,15 +8,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import type { Supplier } from '../../../types';
 
-interface AddSupplierDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    onSuccess: () => void;
-    editingSupplier?: Supplier | null;
-    portal: 'retail' | 'wholesale';
-}
-
-export function AddClientDialog({ open, onOpenChange, onSuccess, editingSupplier, portal }: { open: any, onOpenChange: any, onSuccess: any, editingSupplier?: any, portal: any }) {
+export function AddClientDialog({ open, onOpenChange, onSuccess, editingSupplier, portal }: { open: boolean, onOpenChange: (open: boolean) => void, onSuccess: () => void, editingSupplier?: Supplier | null, portal: string }) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -48,24 +40,19 @@ export function AddClientDialog({ open, onOpenChange, onSuccess, editingSupplier
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name) {
-            toast.error('Supplier name is required');
-            return;
-        }
-
         setLoading(true);
         try {
             await api.upsertSupplier({
-                id: editingSupplier?.id || undefined,
-                portal: editingSupplier?.portal || portal,
-                ...formData
+                ...formData,
+                id: editingSupplier?.id,
+                portal: portal as any,
+                current_balance: editingSupplier?.current_balance || 0
             });
-            toast.success(editingSupplier ? 'Supplier updated' : 'Supplier added');
+            toast.success(editingSupplier ? 'Client updated successfully' : 'Client added successfully');
             onSuccess();
             onOpenChange(false);
         } catch (error) {
-            console.error('Failed to save supplier:', error);
-            toast.error('Failed to save supplier');
+            toast.error(editingSupplier ? 'Failed to update client' : 'Failed to add client');
         } finally {
             setLoading(false);
         }
@@ -73,58 +60,65 @@ export function AddClientDialog({ open, onOpenChange, onSuccess, editingSupplier
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-none shadow-2xl bg-white/95 backdrop-blur-xl">
                 <DialogHeader>
-                    <DialogTitle>{editingSupplier ? 'Edit Vendor' : 'Add New Vendor'}</DialogTitle>
+                    <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">
+                        {editingSupplier ? 'Refine Client' : 'New Client Intake'}
+                    </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Vendor Name</Label>
+                        <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business Name</Label>
                         <Input
                             id="name"
-                            placeholder="e.g. Kathmandu Dairy"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="e.g. Acme Corp"
+                            className="rounded-xl border-slate-200 h-12"
                             required
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="contact">Contact Person</Label>
-                        <Input
-                            id="contact"
-                            placeholder="e.g. Ramesh Giri"
-                            value={formData.contact_person}
-                            onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="phone">Phone</Label>
+                            <Label htmlFor="contact" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Point of Contact</Label>
                             <Input
-                                id="phone"
-                                placeholder="98XXXXXXXX"
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                id="contact"
+                                value={formData.contact_person}
+                                onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                                placeholder="Name"
+                                className="rounded-xl border-slate-200 h-12"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone</Label>
                             <Input
-                                id="email"
-                                type="email"
-                                placeholder="vendor@example.com"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                id="phone"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                placeholder="0123456789"
+                                className="rounded-xl border-slate-200 h-12"
                             />
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="address">Address</Label>
+                        <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="client@example.com"
+                            className="rounded-xl border-slate-200 h-12"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="address" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Physical Address</Label>
                         <Input
                             id="address"
-                            placeholder="e.g. Tinkune, Kathmandu"
                             value={formData.address}
                             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                            placeholder="Street, City, State"
+                            className="rounded-xl border-slate-200 h-12"
                         />
                     </div>
                     <DialogFooter className="pt-4">
@@ -142,7 +136,7 @@ export function AddClientDialog({ open, onOpenChange, onSuccess, editingSupplier
                             className={`${portal === 'wholesale' ? 'bg-sky-600 hover:bg-sky-700 shadow-sky-100' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-100'} rounded-xl font-bold min-w-[100px] text-white shadow-lg`}
                         >
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {editingSupplier ? 'Save Changes' : 'Add Vendor'}
+                            {editingSupplier ? 'Save Changes' : 'Add Client'}
                         </Button>
                     </DialogFooter>
                 </form>

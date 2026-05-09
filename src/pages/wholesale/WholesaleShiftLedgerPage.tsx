@@ -81,8 +81,6 @@ export function WholesaleShiftLedgerPage() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'variance'>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage] = useState(10);
-    const [editingShift, setEditingShift] = useState<Shift | null>(null);
-    const [editingShift, setEditingShift] = useState<Shift | null>(null);
 
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
 

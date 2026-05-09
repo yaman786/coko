@@ -20,7 +20,7 @@ export function PosRegisterControl() {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [startingCash, setStartingCash] = useState('');
-    const [startingCard, setStartingCard] = useState(''); // Added
+    const [startingcard, setStartingCard] = useState(''); // Added
     const [actualCash, setActualCash] = useState('');
     const [actualCard, setActualCard] = useState('');
     const [closingNotes, setClosingNotes] = useState(''); // Added for accountability
@@ -43,7 +43,7 @@ export function PosRegisterControl() {
     const openRegisterMutation = useMutation({
         mutationFn: (payload: { cash: number, card: number }) => api.openShift({
             startingCash: payload.cash,
-            startingCard: payload.card,
+            startingcard: payload.card,
             cashierId: user?.email || 'unknown',
             cashierName: user?.email?.split('@')[0] || 'Unknown',
             portal: 'retail',
@@ -145,7 +145,7 @@ export function PosRegisterControl() {
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Opening Card</label>
                                         <Input 
                                             type="number"
-                                            value={startingCard}
+                                            value={startingcard}
                                             onChange={(e) => setStartingCard(e.target.value)}
                                             placeholder="0"
                                             className="h-14 text-2xl font-black text-center bg-slate-50 border-0 focus:ring-2 focus:ring-emerald-500 rounded-2xl shadow-inner"
@@ -156,7 +156,7 @@ export function PosRegisterControl() {
                                     className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/20 transition-all active:scale-[0.98] uppercase tracking-widest text-xs"
                                     onClick={() => openRegisterMutation.mutate({ 
                                         cash: parseFloat(startingCash) || 0, 
-                                        card: parseFloat(startingCard) || 0 
+                                        card: parseFloat(startingcard) || 0 
                                     })}
                                     disabled={!startingCash || openRegisterMutation.isPending}
                                 >

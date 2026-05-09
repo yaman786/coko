@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { Truck, Plus, Search, Building2, ArrowUpRight, Trash2, Edit2, Users } from 'lucide-react';
+import { Plus, Search, Building2, ArrowUpRight, Trash2, Edit2, Users } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { api } from '../services/api';
 import { toast } from 'sonner';
 import type { Supplier } from '../types';
-import { ClientLedger } from '../../features/clients/components/ClientLedger';
-import { AddClientDialog } from '../../features/clients/components/AddClientDialog';
+import { ClientLedger } from '../features/clients/components/ClientLedger';
+import { AddClientDialog } from '../features/clients/components/AddClientDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 
 export function RetailClientsPage() {

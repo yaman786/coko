@@ -20,7 +20,6 @@ import {
     StopCircle,
     TrendingUp,
     Loader2,
-    Receipt,
     MinusCircle,
     Search,
     BookOpen,
@@ -41,10 +40,10 @@ interface Shift {
     cashierName: string;
     startTime: string;
     endTime: string | null;
-    startingCash: number;
+    startingcash: number;
     startingcard?: number;
-    expectedClosingCash: number | null;
-    actualClosingCash: number | null;
+    expectedclosingcash: number | null;
+    actualclosingcash: number | null;
     variance: number | null;
     expectedclosingcard: number | null;
     actualclosingcard: number | null;
@@ -91,7 +90,7 @@ export function ShiftLedgerPage() {
     const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
     const [isBackdateDialogOpen, setIsBackdateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [startingCashInput, setStartingCashInput] = useState('');
+    const [startingcashInput, setStartingCashInput] = useState('');
     const [startingcardInput, setStartingCardInput] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
     const [closingCardInput, setClosingCardInput] = useState('');
@@ -106,10 +105,8 @@ export function ShiftLedgerPage() {
     const [editClosingCard, setEditClosingCard] = useState('');
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [shiftToDelete, setShiftToDelete] = useState<number | null>(null);
-    const [editingShift, setEditingShift] = useState<Shift | null>(null);
     const [selectedDate, setSelectedDate] = useState(() => {
-        const now = new Date();
-        return now.toISOString().split('T')[0];
+        return new Date().toISOString().split('T')[0];
     });
 
     // Shift Audit Ledger State
@@ -319,7 +316,7 @@ export function ShiftLedgerPage() {
         const netCard = cardIn - cardExpenses;
         // Use selectedDateShift for historical, activeShift for today
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
-        const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
+        const expectedDrawer = (shiftForCalc?.startingcash || 0) + netCash;
         const expectedCardTotal = (shiftForCalc?.startingcard || 0) + netCard;
         const hasShiftData = !!shiftForCalc;
 
@@ -455,7 +452,7 @@ export function ShiftLedgerPage() {
         });
 
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
-        const startCash = shiftForCalc?.startingCash || 0;
+        const startCash = shiftForCalc?.startingcash || 0;
         const startDigital = shiftForCalc?.startingcard || 0;
         
         const ledgerDate = new Date(selectedDate);
@@ -631,7 +628,7 @@ export function ShiftLedgerPage() {
                 cashierId: user?.email || 'unknown',
                 cashierName: user?.email?.split('@')[0] || 'Unknown',
                 startTime: new Date().toISOString(),
-                startingCash: payload.cash,
+                startingcash: payload.cash,
                 startingcard: payload.card,
                 status: 'open',
                 portal: 'retail',
@@ -650,7 +647,7 @@ export function ShiftLedgerPage() {
                 action: 'SHIFT_OPENED',
                 category: 'POS',
                 description: `Shift opened with Nrs. ${cashVal} starting cash.`,
-                metadata: { startingCash: cashVal },
+                metadata: { startingcash: cashVal },
                 actor_email: user?.email || 'system',
                 actor_name: user?.email?.split('@')[0] || 'System',
             });
@@ -675,8 +672,8 @@ export function ShiftLedgerPage() {
             // 1. Attempt Full Professional Update (Includes Card, Notes, Auditor info)
             const fullPayload = {
                 endTime: new Date().toISOString(),
-                expectedClosingCash: financials.expectedDrawer,
-                actualClosingCash: payload.actualCash,
+                expectedclosingcash: financials.expectedDrawer,
+                actualclosingcash: payload.actualCash,
                 variance: variance,
                 expectedclosingcard: financials.expectedCardTotal,
                 actualclosingcard: payload.actualCard,
@@ -698,8 +695,8 @@ export function ShiftLedgerPage() {
                 // 2. Fallback to Standard DB Schema (Guaranteed by supabase_schema.sql)
                 const fallbackPayload = {
                     "endTime": new Date().toISOString(),
-                    "expectedClosingCash": financials.expectedDrawer,
-                    "actualClosingCash": payload.actualCash,
+                    "expectedclosingcash": financials.expectedDrawer,
+                    "actualclosingcash": payload.actualCash,
                     "variance": variance,
                     "status": 'closed'
                 };
@@ -772,10 +769,10 @@ export function ShiftLedgerPage() {
                 cashierName: user?.email?.split('@')[0] || 'Unknown',
                 startTime: shiftStart.toISOString(),
                 endTime: shiftEnd.toISOString(),
-                startingCash: start,
+                startingcash: start,
                 startingcard: startCard,
-                expectedClosingCash: expected,
-                actualClosingCash: actual,
+                expectedclosingcash: expected,
+                actualclosingcash: actual,
                 variance,
                 expectedclosingcard: expectedCard,
                 actualclosingcard: actualCard,
@@ -814,10 +811,10 @@ export function ShiftLedgerPage() {
             const { error } = await supabase
                 .from('shifts')
                 .update({
-                    startingCash: start,
+                    startingcash: start,
                     startingcard: startCard,
-                    expectedClosingCash: expected,
-                    actualClosingCash: actual,
+                    expectedclosingcash: expected,
+                    actualclosingcash: actual,
                     variance,
                     expectedclosingcard: expectedCard,
                     actualclosingcard: actualCard,
@@ -932,7 +929,7 @@ export function ShiftLedgerPage() {
                             <p className="text-xl font-black text-emerald-800 font-['DM_Sans',sans-serif] tracking-tight">
                                 Live since {new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            <p className="text-[11px] text-emerald-600 font-medium">Float: Rs. {activeShift.startingCash.toLocaleString()} • Opened by: {activeShift.cashierName} ({activeShift.cashierId})</p>
+                            <p className="text-[11px] text-emerald-600 font-medium">Float: Rs. {activeShift.startingcash.toLocaleString()} • Opened by: {activeShift.cashierName} ({activeShift.cashierId})</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-8">
@@ -983,12 +980,12 @@ export function ShiftLedgerPage() {
                             Shift: {new Date(selectedDateShift.startTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → {selectedDateShift.endTime ? new Date(selectedDateShift.endTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Not closed'}
                         </p>
                         <p className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
-                            Float: Nrs. {selectedDateShift.startingCash.toLocaleString()} • By: {selectedDateShift.cashierName}
+                            Float: Nrs. {selectedDateShift.startingcash.toLocaleString()} • By: {selectedDateShift.cashierName}
                             {role === 'admin' && (
                                 <button 
                                     onClick={() => {
-                                        setEditStartingCash(String(selectedDateShift.startingCash));
-                                        setEditClosingCash(String(selectedDateShift.actualClosingCash ?? 0));
+                                        setEditStartingCash(String(selectedDateShift.startingcash));
+                                        setEditClosingCash(String(selectedDateShift.actualclosingcash ?? 0));
                                         setEditClosingCard(String(selectedDateShift.actualclosingcard ?? 0));
                                         setIsEditDialogOpen(true);
                                     }}
@@ -1343,7 +1340,7 @@ export function ShiftLedgerPage() {
                                                     <div className="flex flex-col gap-1.5 font-medium">
                                                         <div className="flex items-center justify-end gap-2 text-slate-700">
                                                             <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Cash</span>
-                                                            <span className="tabular-nums">{(s.expectedClosingCash ?? 0).toLocaleString()}</span>
+                                                            <span className="tabular-nums">{(s.expectedclosingcash ?? 0).toLocaleString()}</span>
                                                         </div>
                                                         <div className="flex items-center justify-end gap-2 text-slate-500">
                                                             <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Card</span>
@@ -1354,7 +1351,7 @@ export function ShiftLedgerPage() {
                                                 <td className="py-6 px-8 text-right">
                                                     <div className="flex flex-col gap-1.5 font-black">
                                                         <div className="flex items-center justify-end gap-2 text-slate-900">
-                                                            <span className="tabular-nums">{(s.actualClosingCash ?? 0).toLocaleString()}</span>
+                                                            <span className="tabular-nums">{(s.actualclosingcash ?? 0).toLocaleString()}</span>
                                                         </div>
                                                         <div className="flex items-center justify-end gap-2 text-slate-600">
                                                             <span className="tabular-nums text-[11px]">{(s.actualclosingcard ?? 0).toLocaleString()}</span>
@@ -1420,11 +1417,10 @@ export function ShiftLedgerPage() {
                                                             variant="ghost"
                                                             size="sm"
                                                             onClick={() => {
-                                                                setEditStartingCash(String(s.startingCash || 0));
+                                                                setEditStartingCash(String(s.startingcash || 0));
                                                                 setEditStartingCard(String(s.startingcard || 0));
-                                                                setEditClosingCash(String(s.actualClosingCash || 0));
+                                                                setEditClosingCash(String(s.actualclosingcash || 0));
                                                                 setEditClosingCard(String(s.actualclosingcard || 0));
-                                                                setEditingShift(s);
                                                                 setIsEditDialogOpen(true);
                                                             }}
                                                             className="h-9 w-9 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
@@ -1503,7 +1499,7 @@ export function ShiftLedgerPage() {
                                 <Input
                                     type="number"
                                     min="0"
-                                    value={startingCashInput}
+                                    value={startingcashInput}
                                     onChange={(e) => setStartingCashInput(e.target.value)}
                                     placeholder="e.g. 5000"
                                     className="h-12 text-lg font-black text-center"
@@ -1524,10 +1520,10 @@ export function ShiftLedgerPage() {
                         </div>
                         <Button
                             onClick={() => openShiftMutation.mutate({ 
-                                cash: parseFloat(startingCashInput) || 0, 
+                                cash: parseFloat(startingcashInput) || 0, 
                                 card: parseFloat(startingcardInput) || 0 
                             })}
-                            disabled={!startingCashInput || openShiftMutation.isPending}
+                            disabled={!startingcashInput || openShiftMutation.isPending}
                             className="w-full h-11 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm transition-all shadow-lg shadow-emerald-200"
                         >
                             {openShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

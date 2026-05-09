@@ -14,7 +14,7 @@ const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default:
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const WholesaleDashboard = lazy(() => import('./pages/wholesale/WholesaleDashboard'));
 const WholesaleInventoryPage = lazy(() => import('./pages/wholesale/WholesaleInventoryPage'));
-const WholesaleBoutiqueLedgerPage = lazy(() => import('./pages/wholesale/WholesaleBoutiqueLedgerPage'));
+const WholesaleBoutiqueLedgerPage = lazy(() => import('./pages/wholesale/WholesaleBoutiqueLedgerPage').then(m => ({ default: m.WholesaleBoutiqueLedgerPage })));
 const WholesaleOrdersPage = lazy(() => import('./pages/wholesale/WholesaleOrdersPage'));
 const ProductAnalyticsPage = lazy(() => import('./pages/ProductAnalyticsPage').then(m => ({ default: m.ProductAnalyticsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));

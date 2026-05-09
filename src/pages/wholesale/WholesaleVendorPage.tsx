@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Truck, Plus, Search, Building2, ArrowUpRight, Trash2, Edit2, Users } from 'lucide-react';
+import { Plus, Search, Building2, ArrowUpRight, Trash2, Edit2, Users } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent } from '../../components/ui/card';
@@ -202,7 +202,7 @@ export default function WholesaleVendorPage() {
                 {filteredSuppliers.length === 0 && (
                     <div className="col-span-full py-24 flex flex-col items-center justify-center text-center space-y-4">
                         <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                            <Truck className="w-12 h-12 text-slate-200" />
+                            <Building2 className="w-12 h-12 text-slate-200" />
                         </div>
                         <div className="space-y-1">
                             <h3 className="text-xl font-bold text-slate-400 font-['DM_Sans',sans-serif]">No vendors found</h3>
