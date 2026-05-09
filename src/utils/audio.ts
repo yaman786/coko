@@ -36,18 +36,18 @@ class AudioService {
       const gainNode = ctx.createGain();
 
       oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(880, ctx.currentTime); // Sharp A5 note
+      oscillator.frequency.setValueAtTime(750, ctx.currentTime); // Lowered from 880 for a "thicker" retail sound
       
-      // Envelope: Fast attack, quick decay for a "clicky" beep
+      // Envelope: Increased gain and slightly longer duration for more "presence"
       gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      gainNode.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.01); // Increased from 0.08
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18); // Extended from 0.12
 
       oscillator.connect(gainNode);
       gainNode.connect(ctx.destination);
 
       oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.12);
+      oscillator.stop(ctx.currentTime + 0.18);
     } catch (error) {
       console.warn('Audio feedback failed (possibly browser permission):', error);
     }
