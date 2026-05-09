@@ -9,7 +9,7 @@ export interface Shift {
     startTime: string;
     endTime: string | null;
     startingCash: number;
-    startingCard: number; // Added
+    startingcard: number; // Added
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
@@ -526,7 +526,7 @@ export const api = {
 
     async openShift(params: {
         startingCash: number;
-        startingCard: number; // Added
+        startingcard: number; // Added
         cashierId: string;
         cashierName: string;
         portal: 'retail' | 'wholesale';
@@ -539,7 +539,7 @@ export const api = {
                 cashierName: params.cashierName,
                 startTime: new Date().toISOString(),
                 startingCash: params.startingCash,
-                startingcard: params.startingCard, // Added
+                startingcard: params.startingcard, // Added
                 status: 'open',
                 portal: params.portal,
                 user_id: params.user_id
@@ -560,7 +560,7 @@ export const api = {
         notes?: string; // Added
     }): Promise<void> {
         const variance = params.actualCash - params.expectedCash;
-        const cardVariance = params.actualCard - params.expectedCard;
+        const cardvariance = params.actualCard - params.expectedCard;
 
         const { error } = await supabase
             .from('shifts')
@@ -571,7 +571,7 @@ export const api = {
                 variance,
                 expectedclosingcard: params.expectedCard,
                 actualclosingcard: params.actualCard,
-                cardvariance: cardVariance,
+                cardvariance: cardvariance,
                 status: 'closed',
                 notes: params.notes // Added
             })
@@ -660,7 +660,7 @@ export const api = {
             cashOut,
             cardOut,
             expectedCash: shift.startingCash + cashIn - cashOut,
-            expectedCard: (shift.startingCard || 0) + cardIn - cardOut
+            expectedCard: (shift.startingcard || 0) + cardIn - cardOut
         };
     }
 };

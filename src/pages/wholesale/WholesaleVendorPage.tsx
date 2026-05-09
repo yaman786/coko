@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Truck, Plus, Search, Building2, ArrowUpRight, Trash2, Edit2 } from 'lucide-react';
+import { Truck, Plus, Search, Building2, ArrowUpRight, Trash2, Edit2, Users } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent } from '../../components/ui/card';
 import { api } from '../../services/api';
 import { toast } from 'sonner';
 import type { Supplier } from '../../types';
-import { SupplierLedger } from '../../features/suppliers/components/SupplierLedger';
-import { AddSupplierDialog } from '../../features/suppliers/components/AddSupplierDialog';
+import { ClientLedger } from '../../features/clients/components/ClientLedger';
+import { AddClientDialog } from '../../features/clients/components/AddClientDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
 
 export default function WholesaleVendorPage() {
@@ -71,7 +71,7 @@ export default function WholesaleVendorPage() {
     if (selectedSupplier) {
         return (
             <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
-                <SupplierLedger 
+                <ClientLedger 
                     supplier={selectedSupplier} 
                     onBack={() => setSelectedSupplier(null)}
                     onRefreshSupplier={fetchSuppliers}
@@ -212,7 +212,7 @@ export default function WholesaleVendorPage() {
                 )}
             </div>
 
-            <AddSupplierDialog 
+            <AddClientDialog 
                 open={isAddOpen} 
                 onOpenChange={setIsAddOpen} 
                 onSuccess={fetchSuppliers}
@@ -238,6 +238,4 @@ export default function WholesaleVendorPage() {
             </AlertDialog>
         </div>
     );
-}
-
-export default WholesaleVendorPage;
+};

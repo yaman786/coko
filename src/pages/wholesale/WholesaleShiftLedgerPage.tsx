@@ -26,6 +26,7 @@ import {
     Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '../../services/api';
 
 interface Shift {
     id: number;
@@ -34,7 +35,7 @@ interface Shift {
     startTime: string;
     endTime: string | null;
     startingCash: number;
-    startingCard?: number;
+    startingcard?: number;
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
@@ -69,7 +70,7 @@ export function WholesaleShiftLedgerPage() {
     const [closingCardInput, setClosingCardInput] = useState('');
     const [closingNotes, setClosingNotes] = useState('');
     const [startingCashInput, setStartingCashInput] = useState('');
-    const [startingCardInput, setStartingCardInput] = useState('');
+    const [startingcardInput, setStartingCardInput] = useState('');
     const [selectedDate, setSelectedDate] = useState(() => {
         const now = new Date();
         return now.toISOString().split('T')[0];
@@ -80,6 +81,8 @@ export function WholesaleShiftLedgerPage() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'balanced' | 'variance'>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage] = useState(10);
+    const [editingShift, setEditingShift] = useState<Shift | null>(null);
+    const [editingShift, setEditingShift] = useState<Shift | null>(null);
 
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
@@ -271,7 +274,7 @@ export function WholesaleShiftLedgerPage() {
     const filteredShifts = useMemo(() => {
         return shiftHistory.filter(s => {
             const matchesSearch = s.cashierName.toLowerCase().includes(shiftSearch.toLowerCase());
-            const totalVariance = (s.variance ?? 0) + (s.cardVariance ?? 0);
+            const totalVariance = (s.variance ?? 0) + (s.cardvariance ?? 0);
             const isPerfect = totalVariance === 0;
             
             if (statusFilter === 'balanced') return matchesSearch && isPerfect;
@@ -319,7 +322,7 @@ export function WholesaleShiftLedgerPage() {
             if (!canCloseShift) throw new Error('Only the shift owner or an admin can close this shift.');
             
             const variance = payload.actualCash - financials.expectedDrawer;
-            const cardVariance = payload.actualCard - financials.expectedCardTotal;
+            const cardvariance = payload.actualCard - financials.expectedCardTotal;
             
             // Professional Schema-Aware Fallback Strategy
             // 1. Attempt Full Professional Update (Includes Card, Notes, Auditor info)
@@ -330,7 +333,7 @@ export function WholesaleShiftLedgerPage() {
                 variance: variance,
                 expectedclosingcard: financials.expectedCardTotal,
                 actualclosingcard: payload.actualCard,
-                cardvariance: cardVariance,
+                cardvariance: cardvariance,
                 status: 'closed',
                 notes: payload.notes,
                 closedBy: user?.email || 'unknown',
@@ -366,7 +369,7 @@ export function WholesaleShiftLedgerPage() {
                 });
             }
 
-            return { variance, cardVariance };
+            return { variance, cardvariance };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['active-shift-wholesale'] });
@@ -384,7 +387,7 @@ export function WholesaleShiftLedgerPage() {
                 metadata: { 
                     shiftId: activeShift?.id,
                     variance: data.variance,
-                    cardVariance: data.cardVariance,
+                    cardvariance: data.cardvariance,
                     portal: 'wholesale'
                 },
                 actor_email: user?.email || 'system',
@@ -685,7 +688,7 @@ export function WholesaleShiftLedgerPage() {
                                 ) : (
                                     paginatedShifts.map((s) => {
                                         const v = s.variance ?? 0;
-                                        const cv = s.cardVariance ?? 0;
+                                        const cv = s.cardvariance ?? 0;
                                         const totalVariance = v + cv;
                                         const isPerfect = totalVariance === 0;
                                         const isShort = totalVariance < 0;
@@ -837,7 +840,7 @@ export function WholesaleShiftLedgerPage() {
                                 <Input
                                     type="number"
                                     min="0"
-                                    value={startingCardInput}
+                                    value={startingcardInput}
                                     onChange={(e) => setStartingCardInput(e.target.value)}
                                     placeholder="0"
                                     className="h-12 text-lg font-black text-center"
@@ -847,7 +850,7 @@ export function WholesaleShiftLedgerPage() {
                         <Button
                             onClick={() => openShiftMutation.mutate({ 
                                 cash: parseFloat(startingCashInput) || 0, 
-                                card: parseFloat(startingCardInput) || 0 
+                                card: parseFloat(startingcardInput) || 0 
                             })}
                             disabled={!startingCashInput || openShiftMutation.isPending}
                             className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm"

@@ -202,5 +202,3 @@ export function WholesaleBoutiqueLedgerPage() {
         </div>
     );
 }
-
-export default WholesaleBoutiqueLedgerPage;

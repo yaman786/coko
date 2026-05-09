@@ -42,7 +42,7 @@ interface Shift {
     startTime: string;
     endTime: string | null;
     startingCash: number;
-    startingCard?: number;
+    startingcard?: number;
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
@@ -92,7 +92,7 @@ export function ShiftLedgerPage() {
     const [isBackdateDialogOpen, setIsBackdateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
-    const [startingCardInput, setStartingCardInput] = useState('');
+    const [startingcardInput, setStartingCardInput] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
     const [closingCardInput, setClosingCardInput] = useState('');
     const [closingNotes, setClosingNotes] = useState('');
@@ -106,6 +106,7 @@ export function ShiftLedgerPage() {
     const [editClosingCard, setEditClosingCard] = useState('');
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [shiftToDelete, setShiftToDelete] = useState<number | null>(null);
+    const [editingShift, setEditingShift] = useState<Shift | null>(null);
     const [selectedDate, setSelectedDate] = useState(() => {
         const now = new Date();
         return now.toISOString().split('T')[0];
@@ -455,7 +456,7 @@ export function ShiftLedgerPage() {
 
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
         const startCash = shiftForCalc?.startingCash || 0;
-        const startDigital = shiftForCalc?.startingCard || 0;
+        const startDigital = shiftForCalc?.startingcard || 0;
         
         const ledgerDate = new Date(selectedDate);
         const items: TransactionItem[] = [];
@@ -611,7 +612,7 @@ export function ShiftLedgerPage() {
     const filteredShifts = useMemo(() => {
         return shiftHistory.filter(s => {
             const matchesSearch = s.cashierName.toLowerCase().includes(shiftSearch.toLowerCase());
-            const totalVariance = (s.variance ?? 0) + (s.cardVariance ?? 0);
+            const totalVariance = (s.variance ?? 0) + (s.cardvariance ?? 0);
             const isPerfect = totalVariance === 0;
             
             if (statusFilter === 'balanced') return matchesSearch && isPerfect;
@@ -668,7 +669,7 @@ export function ShiftLedgerPage() {
             if (!canCloseShift) throw new Error('Only the shift owner or an admin can close this shift.');
             
             const variance = payload.actualCash - financials.expectedDrawer;
-            const cardVariance = payload.actualCard - financials.expectedCardTotal;
+            const cardvariance = payload.actualCard - financials.expectedCardTotal;
             
             // Professional Schema-Aware Fallback Strategy
             // 1. Attempt Full Professional Update (Includes Card, Notes, Auditor info)
@@ -679,7 +680,7 @@ export function ShiftLedgerPage() {
                 variance: variance,
                 expectedclosingcard: financials.expectedCardTotal,
                 actualclosingcard: payload.actualCard,
-                cardvariance: cardVariance,
+                cardvariance: cardvariance,
                 status: 'closed',
                 notes: payload.notes,
                 closedBy: user?.email || 'unknown',
@@ -715,7 +716,7 @@ export function ShiftLedgerPage() {
                 });
             }
 
-            return { variance, cardVariance };
+            return { variance, cardvariance };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['active-shift-retail'] });
@@ -733,7 +734,7 @@ export function ShiftLedgerPage() {
                 metadata: { 
                     shiftId: activeShift?.id,
                     variance: data.variance,
-                    cardVariance: data.cardVariance
+                    cardvariance: data.cardvariance
                 },
                 actor_email: user?.email || 'system',
                 actor_name: user?.email?.split('@')[0] || 'System',
@@ -759,7 +760,7 @@ export function ShiftLedgerPage() {
             const expected = start + backdateFinancials.netCash;
             const expectedCard = startCard + 0; // We don't have bNetCard yet but can add it if needed
             const variance = actual - expected;
-            const cardVariance = actualCard - expectedCard;
+            const cardvariance = actualCard - expectedCard;
 
             const shiftStart = new Date(backdateDate);
             shiftStart.setHours(9, 0, 0, 0);
@@ -772,13 +773,13 @@ export function ShiftLedgerPage() {
                 startTime: shiftStart.toISOString(),
                 endTime: shiftEnd.toISOString(),
                 startingCash: start,
-                startingCard: startCard,
+                startingcard: startCard,
                 expectedClosingCash: expected,
                 actualClosingCash: actual,
                 variance,
-                expectedClosingCard: expectedCard,
-                actualClosingCard: actualCard,
-                cardVariance,
+                expectedclosingcard: expectedCard,
+                actualclosingcard: actualCard,
+                cardvariance,
                 status: 'closed',
                 portal: 'retail',
                 user_id: user?.id
@@ -808,19 +809,19 @@ export function ShiftLedgerPage() {
             const expected = start + financials.netCash;
             const expectedCard = startCard + financials.netCard;
             const variance = actual - expected;
-            const cardVariance = actualCard - expectedCard;
+            const cardvariance = actualCard - expectedCard;
 
             const { error } = await supabase
                 .from('shifts')
                 .update({
                     startingCash: start,
-                    startingCard: startCard,
+                    startingcard: startCard,
                     expectedClosingCash: expected,
                     actualClosingCash: actual,
                     variance,
-                    expectedClosingCard: expectedCard,
-                    actualClosingCard: actualCard,
-                    cardVariance,
+                    expectedclosingcard: expectedCard,
+                    actualclosingcard: actualCard,
+                    cardvariance,
                 })
                 .eq('id', selectedDateShift.id);
             if (error) throw error;
@@ -974,8 +975,8 @@ export function ShiftLedgerPage() {
             {/* Historical: Closed Shift Banner */}
             {!isToday && selectedDateShift && (
                 <div className={`rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between border gap-4 ${
-                    (selectedDateShift.variance ?? 0) === 0 && (selectedDateShift.cardVariance ?? 0) === 0 ? 'bg-emerald-50 border-emerald-200' :
-                    (selectedDateShift.variance ?? 0) < 0 || (selectedDateShift.cardVariance ?? 0) < 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
+                    (selectedDateShift.variance ?? 0) === 0 && (selectedDateShift.cardvariance ?? 0) === 0 ? 'bg-emerald-50 border-emerald-200' :
+                    (selectedDateShift.variance ?? 0) < 0 || (selectedDateShift.cardvariance ?? 0) < 0 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
                 }`}>
                     <div>
                         <p className="text-sm font-black text-slate-700">
@@ -988,7 +989,7 @@ export function ShiftLedgerPage() {
                                     onClick={() => {
                                         setEditStartingCash(String(selectedDateShift.startingCash));
                                         setEditClosingCash(String(selectedDateShift.actualClosingCash ?? 0));
-                                        setEditClosingCard(String(selectedDateShift.actualClosingCard ?? 0));
+                                        setEditClosingCard(String(selectedDateShift.actualclosingcard ?? 0));
                                         setIsEditDialogOpen(true);
                                     }}
                                     className="text-indigo-600 hover:text-indigo-800 underline font-bold px-2 ml-1"
@@ -1007,12 +1008,12 @@ export function ShiftLedgerPage() {
                                 Cash Var: {selectedDateShift.variance > 0 ? '+' : ''}{selectedDateShift.variance.toLocaleString()}
                             </Badge>
                         )}
-                        {selectedDateShift.cardVariance !== null && (
+                        {selectedDateShift.cardvariance !== null && (
                             <Badge className={`font-black ${
-                                selectedDateShift.cardVariance === 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                selectedDateShift.cardVariance < 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'
+                                selectedDateShift.cardvariance === 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                selectedDateShift.cardvariance < 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'
                             }`}>
-                                Card Var: {selectedDateShift.cardVariance > 0 ? '+' : ''}{selectedDateShift.cardVariance.toLocaleString()}
+                                Card Var: {selectedDateShift.cardvariance > 0 ? '+' : ''}{selectedDateShift.cardvariance.toLocaleString()}
                             </Badge>
                         )}
                     </div>
@@ -1420,10 +1421,10 @@ export function ShiftLedgerPage() {
                                                             size="sm"
                                                             onClick={() => {
                                                                 setEditStartingCash(String(s.startingCash || 0));
-                                                                setEditStartingCard(String(s.startingCard || 0));
+                                                                setEditStartingCard(String(s.startingcard || 0));
                                                                 setEditClosingCash(String(s.actualClosingCash || 0));
-                                                                setEditClosingCard(String(s.actualClosingCard || 0));
-                                                                setSelectedDateShift(s);
+                                                                setEditClosingCard(String(s.actualclosingcard || 0));
+                                                                setEditingShift(s);
                                                                 setIsEditDialogOpen(true);
                                                             }}
                                                             className="h-9 w-9 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
@@ -1514,7 +1515,7 @@ export function ShiftLedgerPage() {
                                 <Input
                                     type="number"
                                     min="0"
-                                    value={startingCardInput}
+                                    value={startingcardInput}
                                     onChange={(e) => setStartingCardInput(e.target.value)}
                                     placeholder="0"
                                     className="h-12 text-lg font-black text-center"
@@ -1524,7 +1525,7 @@ export function ShiftLedgerPage() {
                         <Button
                             onClick={() => openShiftMutation.mutate({ 
                                 cash: parseFloat(startingCashInput) || 0, 
-                                card: parseFloat(startingCardInput) || 0 
+                                card: parseFloat(startingcardInput) || 0 
                             })}
                             disabled={!startingCashInput || openShiftMutation.isPending}
                             className="w-full h-11 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm transition-all shadow-lg shadow-emerald-200"

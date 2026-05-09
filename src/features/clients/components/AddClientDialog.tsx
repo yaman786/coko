@@ -16,7 +16,7 @@ interface AddSupplierDialogProps {
     portal: 'retail' | 'wholesale';
 }
 
-export function AddSupplierDialog({ open, onOpenChange, onSuccess, editingSupplier, portal }: AddSupplierDialogProps) {
+export function AddClientDialog({ open, onOpenChange, onSuccess, editingSupplier, portal }: { open: any, onOpenChange: any, onSuccess: any, editingSupplier?: any, portal: any }) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',

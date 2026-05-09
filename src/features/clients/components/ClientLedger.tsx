@@ -21,7 +21,7 @@ interface SupplierLedgerProps {
     portal?: 'retail' | 'wholesale';
 }
 
-export function SupplierLedger({ supplier, onBack, onRefreshSupplier, portal = 'retail' }: SupplierLedgerProps) {
+export function ClientLedger({ supplier, onBack, onRefreshSupplier, portal = 'retail' }: { supplier: any, onBack: any, onRefreshSupplier: any, portal?: string }) {
     const isWholesale = portal === 'wholesale';
     const theme = {
         primary: isWholesale ? 'sky-600' : 'purple-600',
