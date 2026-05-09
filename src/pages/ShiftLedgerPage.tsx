@@ -608,8 +608,12 @@ export function ShiftLedgerPage() {
     // ── Filtered & Paginated Shift History ──
     const filteredShifts = useMemo(() => {
         return shiftHistory.filter(s => {
-            const matchesSearch = s.cashierName.toLowerCase().includes(shiftSearch.toLowerCase());
-            const totalVariance = (s.variance ?? 0) + (s.cardvariance ?? 0);
+            const cashier = s.cashierName || 'Unknown';
+            const matchesSearch = cashier.toLowerCase().includes(shiftSearch.toLowerCase());
+            
+            const v = s.variance ?? 0;
+            const cv = s.cardvariance ?? 0;
+            const totalVariance = v + cv;
             const isPerfect = totalVariance === 0;
             
             if (statusFilter === 'balanced') return matchesSearch && isPerfect;
@@ -1289,7 +1293,7 @@ export function ShiftLedgerPage() {
                             <tbody className="divide-y divide-slate-100">
                                 {paginatedShifts.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="py-12 text-center text-slate-400 font-medium italic">
+                                        <td colSpan={8} className="py-12 text-center text-slate-400 font-medium italic">
                                             {shiftSearch || statusFilter !== 'all' ? 'No records match your filters.' : 'No historical shift data recorded.'}
                                         </td>
                                     </tr>
@@ -1314,18 +1318,18 @@ export function ShiftLedgerPage() {
                                                     <div className="flex flex-col gap-2">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-8 h-8 rounded-lg ${isPerfect ? 'bg-emerald-100' : 'bg-rose-100'} flex items-center justify-center text-[10px] font-black text-slate-700 shadow-sm border border-white`}>
-                                                                {s.cashierName.slice(0, 2).toUpperCase()}
+                                                                {(s.cashierName || 'U').slice(0, 2).toUpperCase()}
                                                             </div>
                                                             <div className="flex flex-col">
                                                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Opened By</span>
-                                                                <span className="font-bold text-slate-700 tracking-tight leading-none">{s.cashierName}</span>
+                                                                <span className="font-bold text-slate-700 tracking-tight leading-none">{s.cashierName || 'Unknown'}</span>
                                                             </div>
                                                         </div>
                                                         {s.closedByName && s.closedByName !== s.cashierName && (
                                                             <div className="flex items-center gap-3 pl-2 border-l-2 border-slate-100 ml-3">
                                                                 <div className="flex flex-col">
                                                                     <span className="text-[9px] font-black uppercase text-rose-400 tracking-widest leading-none mb-1">Closed By Admin</span>
-                                                                    <span className="font-bold text-slate-600 text-xs tracking-tight leading-none">{s.closedByName}</span>
+                                                                    <span className="font-bold text-slate-600 text-xs tracking-tight leading-none">{s.closedByName || 'Unknown'}</span>
                                                                 </div>
                                                             </div>
                                                         )}

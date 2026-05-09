@@ -34,7 +34,8 @@ interface Shift {
     cashierName: string;
     startTime: string;
     endTime: string | null;
-    startingCash: number;
+    startingcash?: number;
+    startingCash?: number;
     startingcard?: number;
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
@@ -221,8 +222,11 @@ export function WholesaleShiftLedgerPage() {
         const netCash = cashIn - drawerCashExpenses; // Safe expenses do not affect drawer
         const netCard = cardIn - cardExpenses;
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
-        const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
-        const expectedCardTotal = (shiftForCalc?.startingcard || 0) + netCard;
+        const startCash = shiftForCalc?.startingcash ?? shiftForCalc?.startingCash ?? 0;
+        const startCard = shiftForCalc?.startingcard ?? 0;
+
+        const expectedDrawer = startCash + netCash;
+        const expectedCardTotal = startCard + netCard;
         const hasShiftData = !!shiftForCalc;
 
         return {
@@ -271,7 +275,8 @@ export function WholesaleShiftLedgerPage() {
     // ── Filtered & Paginated Shift History ──
     const filteredShifts = useMemo(() => {
         return shiftHistory.filter(s => {
-            const matchesSearch = s.cashierName.toLowerCase().includes(shiftSearch.toLowerCase());
+            const cashier = s.cashierName || 'Unknown';
+            const matchesSearch = cashier.toLowerCase().includes(shiftSearch.toLowerCase());
             const totalVariance = (s.variance ?? 0) + (s.cardvariance ?? 0);
             const isPerfect = totalVariance === 0;
             
@@ -470,7 +475,7 @@ export function WholesaleShiftLedgerPage() {
                             <p className="text-xl font-black text-slate-800 font-['DM_Sans',sans-serif] tracking-tight">
                                 Live since {new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            <p className="text-[11px] text-sky-600 font-medium">Float: Rs. {activeShift.startingCash.toLocaleString()} • Opened by: {activeShift.cashierName} ({activeShift.cashierId})</p>
+                            <p className="text-[11px] text-sky-600 font-medium">Float: Rs. {(activeShift.startingcash ?? activeShift.startingCash ?? 0).toLocaleString()} • Opened by: {activeShift.cashierName} ({activeShift.cashierId})</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-8">
@@ -679,7 +684,7 @@ export function WholesaleShiftLedgerPage() {
                             <tbody className="divide-y divide-slate-100">
                                 {paginatedShifts.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="py-12 text-center text-slate-400 font-medium italic">
+                                        <td colSpan={8} className="py-12 text-center text-slate-400 font-medium italic">
                                             {shiftSearch || statusFilter !== 'all' ? 'No records match your filters.' : 'No historical shift data recorded.'}
                                         </td>
                                     </tr>
@@ -704,7 +709,7 @@ export function WholesaleShiftLedgerPage() {
                                                             </div>
                                                             <div className="flex flex-col">
                                                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Opened By</span>
-                                                                <span className="font-bold text-slate-700 tracking-tight leading-none">{s.cashierName}</span>
+                                                                <span className="font-bold text-slate-700 tracking-tight leading-none">{s.cashierName || 'Unknown'}</span>
                                                             </div>
                                                         </div>
                                                         {s.closedByName && s.closedByName !== s.cashierName && (

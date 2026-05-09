@@ -9,6 +9,7 @@ export interface Shift {
     startTime: string;
     endTime: string | null;
     startingCash: number;
+    startingcash?: number;
     startingcard: number; // Added
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
