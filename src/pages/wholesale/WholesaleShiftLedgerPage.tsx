@@ -38,9 +38,9 @@ interface Shift {
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
-    expectedClosingCard: number | null;
-    actualClosingCard: number | null;
-    cardVariance: number | null;
+    expectedclosingcard: number | null;
+    actualclosingcard: number | null;
+    cardvariance: number | null;
     status: string;
     portal: string;
     notes?: string;
@@ -209,8 +209,10 @@ export function WholesaleShiftLedgerPage() {
                 } else {
                     drawerCashExpenses += amount;
                 }
-            } else {
-                cardExpenses += amount;
+            } else if (method === 'card') {
+                if (fundSource !== 'external') {
+                    cardExpenses += amount;
+                }
             }
         });
 
@@ -219,7 +221,7 @@ export function WholesaleShiftLedgerPage() {
         const netCard = cardIn - cardExpenses;
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
         const expectedDrawer = (shiftForCalc?.startingCash || 0) + netCash;
-        const expectedCardTotal = (shiftForCalc?.startingCard || 0) + netCard;
+        const expectedCardTotal = (shiftForCalc?.startingcard || 0) + netCard;
         const hasShiftData = !!shiftForCalc;
 
         return {
@@ -289,7 +291,7 @@ export function WholesaleShiftLedgerPage() {
                 cashierName: user?.email?.split('@')[0] || 'Unknown',
                 startTime: new Date().toISOString(),
                 startingCash: payload.cash,
-                startingCard: payload.card,
+                startingcard: payload.card,
                 status: 'open',
                 portal: 'wholesale',
                 user_id: user?.id
@@ -315,36 +317,87 @@ export function WholesaleShiftLedgerPage() {
         mutationFn: async (payload: { actualCash: number, actualCard: number, notes?: string }) => {
             if (!activeShift) throw new Error('No active shift');
             if (!canCloseShift) throw new Error('Only the shift owner or an admin can close this shift.');
+            
             const variance = payload.actualCash - financials.expectedDrawer;
             const cardVariance = payload.actualCard - financials.expectedCardTotal;
             
-            const { error } = await supabase
+            // Professional Schema-Aware Fallback Strategy
+            // 1. Attempt Full Professional Update (Includes Card, Notes, Auditor info)
+            const fullPayload = {
+                endTime: new Date().toISOString(),
+                expectedClosingCash: financials.expectedDrawer,
+                actualClosingCash: payload.actualCash,
+                variance: variance,
+                expectedclosingcard: financials.expectedCardTotal,
+                actualclosingcard: payload.actualCard,
+                cardvariance: cardVariance,
+                status: 'closed',
+                notes: payload.notes,
+                closedBy: user?.email || 'unknown',
+                closedByName: user?.email?.split('@')[0] || 'Unknown'
+            };
+
+            const { error: fullError } = await supabase
                 .from('shifts')
-                .update({
-                    endTime: new Date().toISOString(),
-                    expectedClosingCash: financials.expectedDrawer,
-                    actualClosingCash: payload.actualCash,
-                    variance,
-                    expectedClosingCard: financials.expectedCardTotal,
-                    actualClosingCard: payload.actualCard,
-                    cardVariance,
-                    status: 'closed',
-                    notes: payload.notes,
-                    closedBy: user?.email || 'unknown',
-                    closedByName: user?.email?.split('@')[0] || 'Unknown'
-                })
+                .update(fullPayload)
                 .eq('id', activeShift.id);
-            if (error) throw error;
+
+            if (fullError) {
+                console.warn('Wholesale shift closure full payload failed, attempting core fallback:', fullError.message);
+                
+                // 2. Fallback to Guaranteed Schema
+                const fallbackPayload = {
+                    "endTime": new Date().toISOString(),
+                    "expectedClosingCash": financials.expectedDrawer,
+                    "actualClosingCash": payload.actualCash,
+                    "variance": variance,
+                    "status": 'closed'
+                };
+
+                const { error: fallbackError } = await supabase
+                    .from('shifts')
+                    .update(fallbackPayload)
+                    .eq('id', activeShift.id);
+
+                if (fallbackError) throw fallbackError;
+                
+                toast.info('Shift closed with core data', { 
+                    description: 'Secondary audit fields (Card/Notes) could not be saved due to schema limitations.' 
+                });
+            }
+
             return { variance, cardVariance };
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['active-shift-wholesale'] });
             queryClient.invalidateQueries({ queryKey: ['shift-history-wholesale'] });
             setIsCloseDialogOpen(false);
             setClosingCashInput('');
             setClosingCardInput('');
             setClosingNotes('');
-            toast.success('Wholesale Reconciliation Complete');
+            
+            // Audit Logging
+            api.logActivity({
+                action: 'SHIFT_CLOSED',
+                category: 'POS',
+                description: `Wholesale shift closed. Variance: Nrs. ${data.variance}`,
+                metadata: { 
+                    shiftId: activeShift?.id,
+                    variance: data.variance,
+                    cardVariance: data.cardVariance,
+                    portal: 'wholesale'
+                },
+                actor_email: user?.email || 'system',
+                actor_name: user?.email?.split('@')[0] || 'System',
+            });
+
+            toast.success('Wholesale Reconciliation Complete', {
+                description: `Records locked. Cash Variance: Nrs. ${data.variance}`
+            });
+        },
+        onError: (err: Error) => {
+            console.error('Wholesale Register Closure Error:', err);
+            toast.error('Critical: Failed to close wholesale register', { description: err.message });
         }
     });
 
@@ -661,15 +714,20 @@ export function WholesaleShiftLedgerPage() {
                                                                 </div>
                                                             </div>
                                                         )}
+                                                        {s.notes && (
+                                                            <div className="mt-2 pl-3 border-l-2 border-sky-100 italic text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                                                                "{s.notes}"
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="py-6 px-8 text-right font-medium text-slate-500">
                                                     <p>Cash: {(s.expectedClosingCash ?? 0).toLocaleString()}</p>
-                                                    <p className="text-[10px]">Bank: {(s.expectedClosingCard ?? 0).toLocaleString()}</p>
+                                                    <p className="text-[10px]">Bank: {(s.expectedclosingcard ?? 0).toLocaleString()}</p>
                                                 </td>
                                                 <td className="py-6 px-8 text-right font-bold text-slate-800">
                                                     <p>Cash: {(s.actualClosingCash ?? 0).toLocaleString()}</p>
-                                                    <p className="text-[10px] text-slate-500 font-medium">Bank: {(s.actualClosingCard ?? 0).toLocaleString()}</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">Bank: {(s.actualclosingcard ?? 0).toLocaleString()}</p>
                                                 </td>
                                                 <td className={`py-6 px-8 text-right font-black tabular-nums text-sm ${
                                                     isPerfect ? 'text-emerald-600' : isShort ? 'text-rose-600' : 'text-blue-600'

@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Separator } from '../../../components/ui/separator';
+import { playScanSound } from '../../../utils/audio';
 
 export function PosTerminal() {
     const { session, role } = useAuth();
@@ -382,6 +383,7 @@ export function PosTerminal() {
 
                                 const handleClick = () => {
                                     if (isOutOfStock) return;
+                                    playScanSound();
                                     if (isParent) {
                                         setSelectedParent(item);
                                     } else {
@@ -865,7 +867,11 @@ export function PosTerminal() {
                                         key={variant.id}
                                         variant="outline"
                                         disabled={isOutOfStock}
-                                        onClick={() => { addToCart(variant); setSelectedParent(null); }}
+                                        onClick={() => { 
+                                            playScanSound();
+                                            addToCart(variant); 
+                                            setSelectedParent(null); 
+                                        }}
                                         className="w-full h-16 justify-between px-6 bg-white hover:bg-purple-50 group border-slate-200 rounded-xl"
                                     >
                                         <div className="text-left">

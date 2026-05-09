@@ -141,25 +141,32 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editingExpense
                             </Select>
                         </div>
                     </div>
-                    {formData.payment_method === 'Cash' && (
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="fund_source" className="text-right">Fund Source</Label>
-                            <div className="col-span-3">
-                                <Select 
-                                    value={formData.fund_source} 
-                                    onValueChange={(val: 'drawer' | 'safe') => setFormData({ ...formData, fund_source: val })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Where is the cash from?" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="drawer">POS Drawer (Affects Shift)</SelectItem>
-                                        <SelectItem value="safe">Main Safe</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="fund_source" className="text-right">Fund Source</Label>
+                        <div className="col-span-3">
+                            <Select 
+                                value={formData.fund_source} 
+                                onValueChange={(val: 'drawer' | 'safe' | 'card_intake' | 'external') => setFormData({ ...formData, fund_source: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Where is the money from?" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {formData.payment_method === 'Cash' ? (
+                                        <>
+                                            <SelectItem value="drawer">POS Drawer (Affects Shift)</SelectItem>
+                                            <SelectItem value="safe">Main Safe</SelectItem>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <SelectItem value="card_intake">Daily Card Intake (Affects Shift)</SelectItem>
+                                            <SelectItem value="external">External Bank Account</SelectItem>
+                                        </>
+                                    )}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    )}
+                    </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="amount" className="text-right">Amount</Label>
                         <Input

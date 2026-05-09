@@ -9,7 +9,7 @@ import { AddWsClientDialog } from '../../features/wholesale/components/AddWsClie
 import { ClientDetailSheet } from '../../features/wholesale/components/ClientDetailSheet';
 import type { WsClient } from '../../types';
 
-export function ClientsPage() {
+export function WholesaleBoutiqueLedgerPage() {
     usePageTitle('Client Ledger', 'GOD');
     const [searchQuery, setSearchQuery] = useState('');
     const [showArchived, setShowArchived] = useState(false);
@@ -203,4 +203,4 @@ export function ClientsPage() {
     );
 }
 
-export default ClientsPage;
+export default WholesaleBoutiqueLedgerPage;

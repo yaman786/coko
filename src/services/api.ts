@@ -13,9 +13,9 @@ export interface Shift {
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
-    expectedClosingCard: number | null;
-    actualClosingCard: number | null;
-    cardVariance: number | null;
+    expectedclosingcard: number | null;
+    actualclosingcard: number | null;
+    cardvariance: number | null;
     status: 'open' | 'closed';
     portal: 'retail' | 'wholesale';
     user_id: string;
@@ -539,7 +539,7 @@ export const api = {
                 cashierName: params.cashierName,
                 startTime: new Date().toISOString(),
                 startingCash: params.startingCash,
-                startingCard: params.startingCard, // Added
+                startingcard: params.startingCard, // Added
                 status: 'open',
                 portal: params.portal,
                 user_id: params.user_id
@@ -569,9 +569,9 @@ export const api = {
                 expectedClosingCash: params.expectedCash,
                 actualClosingCash: params.actualCash,
                 variance,
-                expectedClosingCard: params.expectedCard,
-                actualClosingCard: params.actualCard,
-                cardVariance,
+                expectedclosingcard: params.expectedCard,
+                actualclosingcard: params.actualCard,
+                cardvariance: cardVariance,
                 status: 'closed',
                 notes: params.notes // Added
             })

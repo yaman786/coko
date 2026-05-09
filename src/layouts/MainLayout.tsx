@@ -48,7 +48,7 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 { name: 'Analytics', href: '/pos/analytics', icon: TrendingUp },
                 { name: 'Orders', href: '/pos/orders', icon: Receipt },
                 { name: 'Inventory', href: '/pos/inventory', icon: Package },
-                { name: 'Suppliers', href: '/pos/suppliers', icon: Truck },
+                { name: 'Clients', href: '/pos/clients', icon: Users },
                 { name: 'Expenses', href: '/pos/expenses', icon: Receipt },
                 { name: 'Settings', href: '/pos/settings', icon: Settings }
             ];
@@ -60,7 +60,7 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                 { name: 'Client Ledger', href: '/wholesale/clients', icon: Users },
                 { name: 'Supply Orders', href: '/wholesale/orders', icon: Receipt },
                 { name: 'GOD Expenses', href: '/wholesale/expenses', icon: Wallet },
-                { name: 'Supplier Ledger', href: '/wholesale/suppliers', icon: Truck },
+                { name: 'Vendor Ledger', href: '/wholesale/vendors', icon: Users },
                 { name: 'System Settings', href: '/wholesale/settings', icon: Settings }
             ];
         }

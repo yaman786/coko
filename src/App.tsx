@@ -14,16 +14,16 @@ const OrdersPage = lazy(() => import('./pages/OrdersPage').then(m => ({ default:
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const WholesaleDashboard = lazy(() => import('./pages/wholesale/WholesaleDashboard'));
 const WholesaleInventoryPage = lazy(() => import('./pages/wholesale/WholesaleInventoryPage'));
-const ClientsPage = lazy(() => import('./pages/wholesale/ClientsPage'));
+const WholesaleBoutiqueLedgerPage = lazy(() => import('./pages/wholesale/WholesaleBoutiqueLedgerPage'));
 const WholesaleOrdersPage = lazy(() => import('./pages/wholesale/WholesaleOrdersPage'));
 const ProductAnalyticsPage = lazy(() => import('./pages/ProductAnalyticsPage').then(m => ({ default: m.ProductAnalyticsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
-const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
+const RetailClientsPage = lazy(() => import('./pages/RetailClientsPage').then(m => ({ default: m.RetailClientsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const ShiftLedgerPage = lazy(() => import('./pages/ShiftLedgerPage').then(m => ({ default: m.ShiftLedgerPage })));
-const WholesaleSuppliersPage = lazy(() => import('./pages/wholesale/WholesaleSuppliersPage'));
+const WholesaleVendorPage = lazy(() => import('./pages/wholesale/WholesaleVendorPage'));
 const WholesaleSettingsPage = lazy(() => import('./pages/wholesale/WholesaleSettingsPage'));
 const WholesaleShiftLedgerPage = lazy(() => import('./pages/wholesale/WholesaleShiftLedgerPage').then(m => ({ default: m.WholesaleShiftLedgerPage })));
 
@@ -95,7 +95,7 @@ export function App() {
                   <Route index element={<POSPage />} />
                   <Route path="orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
                   <Route index={false} path="inventory" element={<AdminRoute><InventoryPage /></AdminRoute>} />
-                  <Route path="suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                  <Route path="clients" element={<AdminRoute><RetailClientsPage /></AdminRoute>} />
                   <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                   <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
                   <Route path="analytics" element={<AdminRoute><ProductAnalyticsPage /></AdminRoute>} />
@@ -108,11 +108,11 @@ export function App() {
                    <Route index element={<Navigate to="dashboard" replace />} />
                    <Route path="dashboard" element={<AdminRoute><WholesaleDashboard /></AdminRoute>} />
                    <Route path="inventory" element={<AdminRoute><WholesaleInventoryPage /></AdminRoute>} />
-                   <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
+                   <Route path="clients" element={<AdminRoute><WholesaleBoutiqueLedgerPage /></AdminRoute>} />
                    <Route path="orders" element={<AdminRoute><WholesaleOrdersPage /></AdminRoute>} />
                    <Route path="expenses" element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                    <Route path="ledger" element={<AdminRoute><WholesaleShiftLedgerPage /></AdminRoute>} />
-                   <Route path="suppliers" element={<AdminRoute><WholesaleSuppliersPage /></AdminRoute>} />
+                   <Route path="vendors" element={<AdminRoute><WholesaleVendorPage /></AdminRoute>} />
                    <Route path="settings" element={<AdminRoute><WholesaleSettingsPage /></AdminRoute>} />
                 </Route>
 
