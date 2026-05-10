@@ -41,6 +41,7 @@ interface Shift {
     startTime: string;
     endTime: string | null;
     startingcash: number;
+    startingCash?: number;
     startingcard?: number;
     expectedclosingcash: number | null;
     actualclosingcash: number | null;
@@ -933,7 +934,7 @@ export function ShiftLedgerPage() {
                             <p className="text-xl font-black text-emerald-800 font-['DM_Sans',sans-serif] tracking-tight">
                                 Live since {new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
-                            <p className="text-[11px] text-emerald-600 font-medium">Float: Rs. {activeShift.startingcash.toLocaleString()} • Opened by: {activeShift.cashierName} ({activeShift.cashierId})</p>
+                            <p className="text-[11px] text-emerald-600 font-medium">Float: Rs. {(activeShift.startingcash ?? activeShift.startingCash ?? 0).toLocaleString()} • Opened by: {activeShift.cashierName || 'Unknown'} ({activeShift.cashierId})</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-8">
@@ -984,11 +985,11 @@ export function ShiftLedgerPage() {
                             Shift: {new Date(selectedDateShift.startTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → {selectedDateShift.endTime ? new Date(selectedDateShift.endTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Not closed'}
                         </p>
                         <p className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
-                            Float: Nrs. {selectedDateShift.startingcash.toLocaleString()} • By: {selectedDateShift.cashierName}
+                            Float: Nrs. {(selectedDateShift.startingcash ?? selectedDateShift.startingCash ?? 0).toLocaleString()} • By: {selectedDateShift.cashierName || 'Unknown'}
                             {role === 'admin' && (
                                 <button 
                                     onClick={() => {
-                                        setEditStartingCash(String(selectedDateShift.startingcash));
+                                        setEditStartingCash(String(selectedDateShift.startingcash ?? selectedDateShift.startingCash ?? 0));
                                         setEditClosingCash(String(selectedDateShift.actualclosingcash ?? 0));
                                         setEditClosingCard(String(selectedDateShift.actualclosingcard ?? 0));
                                         setIsEditDialogOpen(true);

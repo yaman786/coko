@@ -30,6 +30,10 @@ interface Shift {
     expectedClosingCash: number | null;
     actualClosingCash: number | null;
     variance: number | null;
+    startingcard?: number;
+    expectedclosingcard?: number | null;
+    actualclosingcard?: number | null;
+    cardvariance?: number | null;
     status: string;
 }
 
@@ -41,7 +45,9 @@ export function ShiftReminderModal() {
     const [showCloseStaleModal, setShowCloseStaleModal] = useState(false);
     const [showCloseEveningModal, setShowCloseEveningModal] = useState(false);
     const [startingCashInput, setStartingCashInput] = useState('');
+    const [startingCardInput, setStartingCardInput] = useState('');
     const [closingCashInput, setClosingCashInput] = useState('');
+    const [closingCardInput, setClosingCardInput] = useState('');
 
     const isSnoozed = useCallback(() => {
         const snoozeUntil = localStorage.getItem('shift-snooze-until');
@@ -78,15 +84,15 @@ export function ShiftReminderModal() {
         return new Date().getHours() >= EVENING_HOUR;
     }, []);
 
-    // ── Calculate expected cash for stale shift close ──
-    const fetchExpectedCash = useCallback(async () => {
-        if (!activeShift) return 0;
+    // ── Calculate expected cash and card for stale shift close ──
+    const fetchExpectedTotals = useCallback(async () => {
+        if (!activeShift) return { expectedCash: 0, expectedCard: 0 };
         const shiftStart = new Date(activeShift.startTime);
         const shiftEnd = new Date(); // Now or end of that day
 
         const { data: orders } = await supabase
             .from('orders')
-            .select('totalAmount, cashAmount, paymentMethod, isWaste')
+            .select('totalAmount, cashAmount, cardAmount, paymentMethod, isWaste')
             .gte('createdAt', shiftStart.toISOString())
             .lte('createdAt', shiftEnd.toISOString())
             .eq('status', 'completed');
@@ -98,22 +104,33 @@ export function ShiftReminderModal() {
             .lte('date', shiftEnd.toISOString());
 
         let cashIn = 0;
+        let cardIn = 0;
         let cashOut = 0;
+        let cardOut = 0;
 
         (orders || []).forEach((o: Record<string, unknown>) => {
             if (o.isWaste) return;
             const method = (o.paymentMethod as string || '').toLowerCase();
             if (method === 'cash') cashIn += Number(o.totalAmount) || 0;
-            else if (method === 'split') cashIn += Number(o.cashAmount) || 0;
+            else if (method === 'card' || method === 'bank' || method === 'credit') cardIn += Number(o.totalAmount) || 0;
+            else if (method === 'split') {
+                cashIn += Number(o.cashAmount) || 0;
+                cardIn += Number(o.cardAmount) || 0;
+            }
         });
 
         (expenses || []).forEach((e: Record<string, unknown>) => {
             if ((e.payment_method as string || '').toLowerCase() === 'cash') {
                 cashOut += Number(e.amount) || 0;
+            } else {
+                cardOut += Number(e.amount) || 0;
             }
         });
 
-        return activeShift.startingCash + cashIn - cashOut;
+        return {
+            expectedCash: activeShift.startingCash + cashIn - cashOut,
+            expectedCard: (activeShift.startingcard || 0) + cardIn - cardOut
+        };
     }, [activeShift]);
 
     // ── Initial Check on Mount ──
@@ -163,12 +180,13 @@ export function ShiftReminderModal() {
 
     // ── Open Shift Mutation ──
     const openShiftMutation = useMutation({
-        mutationFn: async (startingCash: number) => {
+        mutationFn: async ({ startingCash, startingCard }: { startingCash: number, startingCard: number }) => {
             const { error } = await supabase.from('shifts').insert({
                 cashierId: user?.email || 'unknown',
                 cashierName: user?.email?.split('@')[0] || 'Unknown',
                 startTime: new Date().toISOString(),
                 startingCash,
+                startingcard: startingCard,
                 status: 'open',
                 user_id: user?.id
             });
@@ -179,12 +197,13 @@ export function ShiftReminderModal() {
             queryClient.invalidateQueries({ queryKey: ['shift-history'] });
             setShowOpenModal(false);
             setStartingCashInput('');
-            toast.success('Day Started!', { description: `Drawer opened with Nrs. ${startingCashInput}` });
+            setStartingCardInput('');
+            toast.success('Day Started!', { description: `Drawer opened.` });
             api.logActivity({
                 action: 'SHIFT_OPENED',
                 category: 'POS',
-                description: `Shift opened with Nrs. ${startingCashInput} starting cash.`,
-                metadata: { startingCash: parseFloat(startingCashInput) },
+                description: `Shift opened with Nrs. ${startingCashInput} cash and Nrs. ${startingCardInput} card.`,
+                metadata: { startingCash: parseFloat(startingCashInput), startingCard: parseFloat(startingCardInput) },
                 actor_email: user?.email || 'system',
                 actor_name: user?.email?.split('@')[0] || 'System',
             });
@@ -194,10 +213,11 @@ export function ShiftReminderModal() {
 
     // ── Close Stale Shift Mutation ──
     const closeShiftMutation = useMutation({
-        mutationFn: async (actualCash: number) => {
+        mutationFn: async ({ actualCash, actualCard }: { actualCash: number, actualCard: number }) => {
             if (!activeShift) throw new Error('No active shift');
-            const expectedCash = await fetchExpectedCash();
+            const { expectedCash, expectedCard } = await fetchExpectedTotals();
             const variance = actualCash - expectedCash;
+            const cardvariance = actualCard - expectedCard;
             const { error } = await supabase
                 .from('shifts')
                 .update({
@@ -205,27 +225,32 @@ export function ShiftReminderModal() {
                     expectedClosingCash: expectedCash,
                     actualClosingCash: actualCash,
                     variance,
+                    expectedclosingcard: expectedCard,
+                    actualclosingcard: actualCard,
+                    cardvariance,
                     status: 'closed'
                 })
                 .eq('id', activeShift.id);
             if (error) throw error;
-            return { variance, expectedCash };
+            return { variance, expectedCash, cardvariance, expectedCard };
         },
-        onSuccess: ({ variance }) => {
+        onSuccess: ({ variance, cardvariance }) => {
             queryClient.invalidateQueries({ queryKey: ['active-shift'] });
             queryClient.invalidateQueries({ queryKey: ['shift-history'] });
             setShowCloseStaleModal(false);
             setShowCloseEveningModal(false);
             setClosingCashInput('');
-            const desc = variance === 0
+            setClosingCardInput('');
+            const totalVariance = variance + cardvariance;
+            const desc = totalVariance === 0
                 ? 'Perfect match!'
-                : variance > 0 ? `OVER by Nrs. ${variance}` : `SHORT by Nrs. ${Math.abs(variance)}`;
+                : totalVariance > 0 ? `OVER by Nrs. ${totalVariance}` : `SHORT by Nrs. ${Math.abs(totalVariance)}`;
             toast.success('Shift Closed', { description: desc });
             api.logActivity({
                 action: 'SHIFT_CLOSED',
                 category: 'POS',
-                description: `Shift closed. Variance: Nrs. ${variance}`,
-                metadata: { actual: parseFloat(closingCashInput), variance },
+                description: `Shift closed. Variance: Nrs. ${totalVariance}`,
+                metadata: { actualCash: parseFloat(closingCashInput), actualCard: parseFloat(closingCardInput), variance, cardvariance },
                 actor_email: user?.email || 'system',
                 actor_name: user?.email?.split('@')[0] || 'System',
             });
@@ -268,22 +293,38 @@ export function ShiftReminderModal() {
                         <p className="text-sm text-slate-500 leading-relaxed">
                             No active shift detected. Count the cash in your drawer and enter the starting amount to begin tracking today's transactions.
                         </p>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Starting Cash (Nrs.)</label>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={startingCashInput}
-                                onChange={(e) => setStartingCashInput(e.target.value)}
-                                placeholder="e.g. 5000"
-                                className="h-12 text-lg font-black text-center"
-                                autoFocus
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Starting Cash (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCashInput}
+                                    onChange={(e) => setStartingCashInput(e.target.value)}
+                                    placeholder="e.g. 5000"
+                                    className="h-12 text-lg font-black text-center"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Starting Card (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={startingCardInput}
+                                    onChange={(e) => setStartingCardInput(e.target.value)}
+                                    placeholder="e.g. 0"
+                                    className="h-12 text-lg font-black text-center"
+                                />
+                            </div>
                         </div>
                         <div className="flex gap-3">
                             <Button
-                                onClick={() => openShiftMutation.mutate(parseFloat(startingCashInput) || 0)}
-                                disabled={!startingCashInput || openShiftMutation.isPending}
+                                onClick={() => openShiftMutation.mutate({ 
+                                    startingCash: parseFloat(startingCashInput) || 0,
+                                    startingCard: parseFloat(startingCardInput) || 0
+                                })}
+                                disabled={(!startingCashInput && !startingCardInput) || openShiftMutation.isPending}
                                 className="flex-1 h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black"
                             >
                                 {openShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -329,21 +370,37 @@ export function ShiftReminderModal() {
                         <p className="text-sm text-slate-500">
                             Please enter the actual cash that was in the drawer when the shift ended. This will be logged permanently.
                         </p>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-red-600 uppercase tracking-wider">Actual Closing Cash (Nrs.)</label>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={closingCashInput}
-                                onChange={(e) => setClosingCashInput(e.target.value)}
-                                placeholder="Enter the actual cash count"
-                                className="h-12 text-lg font-black text-center border-red-200 focus:ring-red-500"
-                                autoFocus
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-red-600 uppercase tracking-wider">Actual Cash (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={closingCashInput}
+                                    onChange={(e) => setClosingCashInput(e.target.value)}
+                                    placeholder="Cash count"
+                                    className="h-12 text-lg font-black text-center border-red-200 focus:ring-red-500"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-red-600 uppercase tracking-wider">Actual Card (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={closingCardInput}
+                                    onChange={(e) => setClosingCardInput(e.target.value)}
+                                    placeholder="Card count"
+                                    className="h-12 text-lg font-black text-center border-red-200 focus:ring-red-500"
+                                />
+                            </div>
                         </div>
                         <Button
-                            onClick={() => closeShiftMutation.mutate(parseFloat(closingCashInput) || 0)}
-                            disabled={!closingCashInput || closeShiftMutation.isPending}
+                            onClick={() => closeShiftMutation.mutate({
+                                actualCash: parseFloat(closingCashInput) || 0,
+                                actualCard: parseFloat(closingCardInput) || 0
+                            })}
+                            disabled={(!closingCashInput && !closingCardInput) || closeShiftMutation.isPending}
                             className="w-full h-11 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-black"
                         >
                             {closeShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -379,22 +436,38 @@ export function ShiftReminderModal() {
                                 {' • '}Starting Cash: Nrs. {(activeShift?.startingCash || 0).toLocaleString()}
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Actual Cash in Drawer (Nrs.)</label>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={closingCashInput}
-                                onChange={(e) => setClosingCashInput(e.target.value)}
-                                placeholder="Count and enter exact amount"
-                                className="h-12 text-lg font-black text-center"
-                                autoFocus
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Actual Cash (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={closingCashInput}
+                                    onChange={(e) => setClosingCashInput(e.target.value)}
+                                    placeholder="Cash count"
+                                    className="h-12 text-lg font-black text-center"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-600 uppercase tracking-wider">Actual Card (Nrs.)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={closingCardInput}
+                                    onChange={(e) => setClosingCardInput(e.target.value)}
+                                    placeholder="Card count"
+                                    className="h-12 text-lg font-black text-center"
+                                />
+                            </div>
                         </div>
                         <div className="flex gap-3">
                             <Button
-                                onClick={() => closeShiftMutation.mutate(parseFloat(closingCashInput) || 0)}
-                                disabled={!closingCashInput || closeShiftMutation.isPending}
+                                onClick={() => closeShiftMutation.mutate({
+                                    actualCash: parseFloat(closingCashInput) || 0,
+                                    actualCard: parseFloat(closingCardInput) || 0
+                                })}
+                                disabled={(!closingCashInput && !closingCardInput) || closeShiftMutation.isPending}
                                 className="flex-1 h-11 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-black"
                             >
                                 {closeShiftMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
