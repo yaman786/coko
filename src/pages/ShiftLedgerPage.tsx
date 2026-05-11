@@ -327,6 +327,8 @@ export function ShiftLedgerPage() {
             netCash, netCard,
             totalRevenue: cashIn + cardIn,
             totalExpenses: totalCashExpenses + cardExpenses,
+            startingCash: Number(shiftForCalc?.startingcash || 0),
+            startingCard: Number(shiftForCalc?.startingcard || 0),
             expectedDrawer,
             expectedCardTotal,
             hasShiftData,
@@ -402,6 +404,32 @@ export function ShiftLedgerPage() {
 
     // ── Consolidated EOD Ledger Feed ──
     const transactions = useMemo<TransactionItem[]>(() => {
+        const shiftForCalc = isToday ? activeShift : selectedDateShift;
+        const startCash = Number(shiftForCalc?.startingcash || 0);
+        const startDigital = Number(shiftForCalc?.startingcard || 0);
+        
+        const ledgerDate = new Date(selectedDate);
+        const items: TransactionItem[] = [];
+
+        // 0. Inject Opening Balance Row
+        if (shiftForCalc) {
+            items.push({
+                id: 'opening_balance',
+                type: 'sale', // Use 'sale' style for opening
+                description: 'Opening Balance (Brought Forward)',
+                method: 'Balance',
+                time: new Date(shiftForCalc.startTime),
+                cashierName: shiftForCalc.cashierName || 'System',
+                cashIn: startCash,
+                cashOut: 0,
+                cashBalance: startCash,
+                digitalIn: startDigital,
+                digitalOut: 0,
+                digitalBalance: startDigital
+            });
+        }
+
+        // Aggregate Sales
         let salesCashIn = 0;
         let salesDigitalIn = 0;
         
@@ -420,21 +448,55 @@ export function ShiftLedgerPage() {
             }
         });
 
-        let expCashOut = 0;
-        let expDigitalOut = 0;
+        // 1. Aggregate Sales (If any sales exist)
+        if (salesCashIn > 0 || salesDigitalIn > 0) {
+            const prev = items[items.length - 1] || { cashBalance: 0, digitalBalance: 0 };
+            items.push({
+                id: 'eod_sales',
+                type: 'sale',
+                description: 'Total POS Sales (Daily Aggregate)',
+                method: 'Mixed',
+                time: ledgerDate,
+                cashierName: 'System',
+                cashIn: salesCashIn,
+                cashOut: 0,
+                cashBalance: prev.cashBalance + salesCashIn,
+                digitalIn: salesDigitalIn,
+                digitalOut: 0,
+                digitalBalance: prev.digitalBalance + salesDigitalIn
+            });
+        }
 
-        expenses.forEach((e: Record<string, unknown>) => {
+        // 2. Itemized Expenses
+        expenses.forEach((e: any) => {
             const method = String(e.payment_method || 'Cash').toLowerCase();
             const fundSource = String(e.fund_source || 'drawer').toLowerCase();
             const amount = Number(e.amount) || 0;
-            
-            if (method === 'cash' && fundSource !== 'safe') expCashOut += amount;
-            else if (method === 'card' && fundSource !== 'external') expDigitalOut += amount;
+            const isCash = method === 'cash' && fundSource !== 'safe';
+            const isDigital = method === 'card' && fundSource !== 'external';
+
+            if (isCash || isDigital) {
+                const prev = items[items.length - 1] || { cashBalance: 0, digitalBalance: 0 };
+                
+                items.push({
+                    id: `eod_exp_${e.id}`,
+                    type: 'expense',
+                    description: `Expense: ${e.description || 'Misc'}`,
+                    method: e.payment_method || 'Cash',
+                    time: new Date(e.date || ledgerDate),
+                    cashierName: e.recorded_by_name || 'Staff',
+                    cashIn: 0,
+                    cashOut: isCash ? amount : 0,
+                    cashBalance: isCash ? prev.cashBalance - amount : prev.cashBalance,
+                    digitalIn: 0,
+                    digitalOut: isDigital ? amount : 0,
+                    digitalBalance: isDigital ? prev.digitalBalance - amount : prev.digitalBalance
+                });
+            }
         });
 
-        // Group supplier payments by supplier name
+        // 3. Aggregate Supplier Payments (Per Supplier)
         const supplierAggregates: Record<string, { cashOut: number, digitalOut: number }> = {};
-
         supplierPayments.forEach((sp: SupplierPayment) => {
             const method = String(sp.payment_method || 'Cash').toLowerCase();
             const fundSource = String(sp.fund_source || 'drawer').toLowerCase();
@@ -452,65 +514,9 @@ export function ShiftLedgerPage() {
             }
         });
 
-        const shiftForCalc = isToday ? activeShift : selectedDateShift;
-        const startCash = shiftForCalc?.startingcash || 0;
-        const startDigital = shiftForCalc?.startingcard || 0;
-        
-        const ledgerDate = new Date(selectedDate);
-        const items: TransactionItem[] = [];
-
-        // 1. Aggregate Sales
-        if (salesCashIn > 0 || salesDigitalIn > 0) {
-            items.push({
-                id: 'eod_sales',
-                type: 'sale',
-                description: 'End of Day: Total POS Sales',
-                method: 'Mixed',
-                time: ledgerDate,
-                cashierName: 'System',
-                cashIn: salesCashIn,
-                cashOut: 0,
-                cashBalance: startCash + salesCashIn,
-                digitalIn: salesDigitalIn,
-                digitalOut: 0,
-                digitalBalance: startDigital + salesDigitalIn
-            });
-        }
-
-        // 2. Itemized Expenses
-        expenses.forEach((e: any) => {
-            const method = String(e.payment_method || 'Cash').toLowerCase();
-            const fundSource = String(e.fund_source || 'drawer').toLowerCase();
-            const amount = Number(e.amount) || 0;
-            const isCash = method === 'cash' && fundSource !== 'safe';
-            const isDigital = method === 'card' && fundSource !== 'external';
-
-            if (isCash || isDigital) {
-                const currentCash = items.length > 0 ? items[items.length - 1].cashBalance : startCash;
-                const currentDigital = items.length > 0 ? items[items.length - 1].digitalBalance : startDigital;
-                
-                items.push({
-                    id: `eod_exp_${e.id}`,
-                    type: 'expense',
-                    description: `Expense: ${e.description || 'Misc'}`,
-                    method: e.payment_method || 'Cash',
-                    time: new Date(e.date || ledgerDate),
-                    cashierName: e.recorded_by_name || 'Staff',
-                    cashIn: 0,
-                    cashOut: isCash ? amount : 0,
-                    cashBalance: isCash ? currentCash - amount : currentCash,
-                    digitalIn: 0,
-                    digitalOut: isDigital ? amount : 0,
-                    digitalBalance: isDigital ? currentDigital - amount : currentDigital
-                });
-            }
-        });
-
-        // 3. Aggregate Supplier Payments (Per Supplier)
         Object.entries(supplierAggregates).forEach(([supplierName, totals]) => {
             if (totals.cashOut > 0 || totals.digitalOut > 0) {
-                const currentCash = items.length > 0 ? items[items.length - 1].cashBalance : startCash;
-                const currentDigital = items.length > 0 ? items[items.length - 1].digitalBalance : startDigital;
+                const prev = items[items.length - 1] || { cashBalance: 0, digitalBalance: 0 };
                 items.push({
                     id: `eod_sp_${supplierName.replace(/\s+/g, '_')}`,
                     type: 'expense',
@@ -520,10 +526,10 @@ export function ShiftLedgerPage() {
                     cashierName: 'System',
                     cashIn: 0,
                     cashOut: totals.cashOut,
-                    cashBalance: currentCash - totals.cashOut,
+                    cashBalance: prev.cashBalance - totals.cashOut,
                     digitalIn: 0,
                     digitalOut: totals.digitalOut,
-                    digitalBalance: currentDigital - totals.digitalOut
+                    digitalBalance: prev.digitalBalance - totals.digitalOut
                 });
             }
         });
@@ -1192,6 +1198,14 @@ export function ShiftLedgerPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-['DM_Sans',sans-serif]">
+                                <tr className="bg-slate-50/30">
+                                    <td className="py-4 px-6 font-bold text-slate-600 flex items-center gap-2">
+                                        <PlayCircle className="w-4 h-4" /> Opening Balance
+                                    </td>
+                                    <td className="py-4 px-6 text-right font-bold text-slate-700">{financials.startingCash.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-bold text-slate-700">{financials.startingCard.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-black text-slate-800">{(financials.startingCash + financials.startingCard).toLocaleString()}</td>
+                                </tr>
                                 <tr className="hover:bg-slate-50 transition-colors">
                                     <td className="py-4 px-6 font-bold text-emerald-700 flex items-center gap-2">
                                         <ArrowUpRight className="w-4 h-4" /> Sales In
@@ -1213,6 +1227,14 @@ export function ShiftLedgerPage() {
                                     <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCash.toLocaleString()}</td>
                                     <td className="py-4 px-6 text-right text-slate-800 font-bold">{financials.netCard.toLocaleString()}</td>
                                     <td className="py-4 px-6 text-right text-indigo-900 font-black text-base">{(financials.netCash + financials.netCard).toLocaleString()}</td>
+                                </tr>
+                                <tr className="bg-amber-50/50">
+                                    <td className="py-4 px-6 font-black text-amber-900 flex items-center gap-2 uppercase tracking-wider text-[10px]">
+                                        <StopCircle className="w-4 h-4" /> Expected Closing
+                                    </td>
+                                    <td className="py-4 px-6 text-right font-black text-amber-700">{financials.expectedDrawer.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-black text-amber-700">{financials.expectedCardTotal.toLocaleString()}</td>
+                                    <td className="py-4 px-6 text-right font-black text-amber-900 text-base">{(financials.expectedDrawer + financials.expectedCardTotal).toLocaleString()}</td>
                                 </tr>
                             </tbody>
                         </table>
