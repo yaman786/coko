@@ -27,6 +27,8 @@ import {
     FileText,
     History,
     Edit2,
+    ChevronRight,
+    PlusCircle,
     Trash2,
     AlertTriangle
 } from 'lucide-react';
@@ -405,7 +407,7 @@ export function ShiftLedgerPage() {
     // ── Consolidated EOD Ledger Feed ──
     const transactions = useMemo<TransactionItem[]>(() => {
         const shiftForCalc = isToday ? activeShift : selectedDateShift;
-        const startCash = Number(shiftForCalc?.startingcash || 0);
+        const startCash = Number(shiftForCalc?.startingcash || shiftForCalc?.startingCash || 0);
         const startDigital = Number(shiftForCalc?.startingcard || 0);
         
         const ledgerDate = new Date(selectedDate);
@@ -415,7 +417,7 @@ export function ShiftLedgerPage() {
         if (shiftForCalc) {
             items.push({
                 id: 'opening_balance',
-                type: 'sale', // Use 'sale' style for opening
+                type: 'sale',
                 description: 'Opening Balance (Brought Forward)',
                 method: 'Balance',
                 time: new Date(shiftForCalc.startTime),
@@ -433,7 +435,7 @@ export function ShiftLedgerPage() {
         let salesCashIn = 0;
         let salesDigitalIn = 0;
         
-        orders.forEach((o: Record<string, unknown>) => {
+        orders.forEach((o: any) => {
             if (o.isWaste) return;
             const method = String(o.paymentMethod || 'Cash').toLowerCase();
             const total = Number(o.totalAmount) || 0;
@@ -497,7 +499,7 @@ export function ShiftLedgerPage() {
 
         // 3. Aggregate Supplier Payments (Per Supplier)
         const supplierAggregates: Record<string, { cashOut: number, digitalOut: number }> = {};
-        supplierPayments.forEach((sp: SupplierPayment) => {
+        supplierPayments.forEach((sp: any) => {
             const method = String(sp.payment_method || 'Cash').toLowerCase();
             const fundSource = String(sp.fund_source || 'drawer').toLowerCase();
             const amount = Number(sp.amount) || 0;
@@ -535,7 +537,7 @@ export function ShiftLedgerPage() {
         });
 
         return items;
-    }, [orders, expenses, supplierPayments, activeShift, selectedDateShift, isToday]);
+    }, [orders, expenses, supplierPayments, activeShift, selectedDateShift, isToday, selectedDate]);
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
@@ -1241,272 +1243,242 @@ export function ShiftLedgerPage() {
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Historical Shift Reconciliation Audit Ledger */}
-            <Card className="border border-slate-200 shadow-sm bg-white rounded-xl overflow-hidden mt-8">
-                <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
-                                <Clock className="w-4 h-4 text-slate-500" />
-                                Historical Shift Reconciliation
-                            </CardTitle>
-                            <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-widest">Formal audit ledger for all recorded sessions</p>
-                        </div>
-                        
-                        {/* Filter Bar */}
-                        <div className="flex flex-wrap items-center gap-4">
-                            <div className="relative">
-                                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            {/* Collapsible Historical Shift Reconciliation Audit Ledger */}
+            <div className="mt-12 space-y-4">
+                <div className="flex items-center justify-between px-2">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 font-['DM_Sans',sans-serif]">
+                            <History className="w-5 h-5 text-indigo-600" />
+                            Daily Audit History
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">Formal audit records grouped by session date</p>
+                    </div>
+                    {role === 'admin' && (
+                        <div className="flex items-center gap-2">
+                            <div className="relative group">
+                                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <Input 
-                                    placeholder="Search Cashier..." 
-                                    className="h-11 w-[240px] pl-11 text-sm border-slate-200/80 rounded-xl focus:ring-4 focus:ring-indigo-500/10 transition-all bg-white font-medium"
+                                    placeholder="Search Staff..." 
+                                    className="h-9 pl-9 text-[10px] w-48 border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-500 bg-white"
                                     value={shiftSearch}
-                                    onChange={(e) => {
-                                        setShiftSearch(e.target.value);
-                                        setCurrentPage(1);
-                                    }}
+                                    onChange={(e) => setShiftSearch(e.target.value)}
                                 />
                             </div>
-                            <div className="flex bg-slate-200/50 p-1 rounded-xl border border-slate-200/60 shadow-inner backdrop-blur-sm">
-                                {['all', 'balanced', 'variance'].map((filter) => (
-                                    <button
-                                        key={filter}
-                                        onClick={() => {
-                                            setStatusFilter(filter as 'all' | 'balanced' | 'variance');
-                                            setCurrentPage(1);
-                                        }}
-                                        className={`px-5 py-2 text-[10px] font-black uppercase tracking-[0.15em] rounded-lg transition-all duration-300 ${
-                                            statusFilter === filter 
-                                                ? 'bg-white text-indigo-600 shadow-md ring-1 ring-slate-200' 
-                                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-300/30'
-                                        }`}
-                                    >
-                                        {filter}
-                                    </button>
-                                ))}
-                            </div>
-                            {role === 'admin' && (
-                                <Button 
-                                    onClick={() => setIsBackdateDialogOpen(true)}
-                                    className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200/50 flex items-center gap-2"
+                            <Button 
+                                onClick={() => setIsBackdateDialogOpen(true)}
+                                variant="outline"
+                                className="h-9 px-4 border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 flex items-center gap-2"
+                            >
+                                <PlusCircle className="w-4 h-4" />
+                                Backdate
+                            </Button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                    {paginatedShifts.length === 0 ? (
+                        <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-slate-100">
+                            <Clock className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                            <p className="text-slate-400 font-medium italic">
+                                {shiftSearch || statusFilter !== 'all' ? 'No records match your filters.' : 'No historical shift data recorded.'}
+                            </p>
+                        </div>
+                    ) : (
+                        paginatedShifts.map((s) => {
+                            const v = s.variance ?? 0;
+                            const cv = s.cardvariance ?? 0;
+                            const totalVariance = v + cv;
+                            const isPerfect = totalVariance === 0;
+                            // Check if this specific date is currently being viewed in the ledger
+                            const isCurrentlyViewed = selectedDate === new Date(s.startTime).toISOString().split('T')[0];
+
+                            return (
+                                <div 
+                                    key={s.id} 
+                                    className={`group overflow-hidden rounded-2xl border transition-all duration-300 ${
+                                        isCurrentlyViewed 
+                                            ? 'border-indigo-500 shadow-xl shadow-indigo-100/50 ring-1 ring-indigo-500/20' 
+                                            : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-md'
+                                    }`}
                                 >
-                                    <History className="w-4 h-4" />
-                                    Backdate Historical Entry
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
-                                <tr>
-                                    <th className="py-5 px-8 text-left font-black">Session Period</th>
-                                    <th className="py-5 px-8 text-left font-black">Cashier Identity</th>
-                                    <th className="py-5 px-8 text-right font-black">System Target</th>
-                                    <th className="py-5 px-8 text-right font-black">Hand-Counted</th>
-                                    <th className="py-5 px-8 text-right font-black">Net Discrepancy</th>
-                                    <th className="py-5 px-8 text-left font-black">Audit Remarks</th>
-                                    <th className="py-5 px-8 text-center font-black">Status</th>
-                                    <th className="py-5 px-8 text-center font-black">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {paginatedShifts.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="py-12 text-center text-slate-400 font-medium italic">
-                                            {shiftSearch || statusFilter !== 'all' ? 'No records match your filters.' : 'No historical shift data recorded.'}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    paginatedShifts.map((s) => {
-                                        const v = s.variance ?? 0;
-                                        const cv = s.cardvariance ?? 0;
-                                        const totalVariance = v + cv;
-                                        const isPerfect = totalVariance === 0;
-
-                                        return (
-                                            <tr key={s.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
-                                                <td className="py-6 px-8">
-                                                    <div className="font-bold text-slate-800 text-sm tracking-tight">{new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                                    <div className="text-[10px] text-slate-400 font-black uppercase mt-1.5 tracking-[0.1em] flex items-center gap-2">
-                                                        <Clock className="w-3 h-3" />
-                                                        {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        {s.endTime && ` — ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-8">
-                                                    <div className="flex flex-col gap-2">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-8 h-8 rounded-lg ${isPerfect ? 'bg-emerald-100' : 'bg-rose-100'} flex items-center justify-center text-[10px] font-black text-slate-700 shadow-sm border border-white`}>
-                                                                {(s.cashierName || 'U').slice(0, 2).toUpperCase()}
-                                                            </div>
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Opened By</span>
-                                                                <span className="font-bold text-slate-700 tracking-tight leading-none">{s.cashierName || 'Unknown'}</span>
-                                                            </div>
-                                                        </div>
-                                                        {s.closedByName && s.closedByName !== s.cashierName && (
-                                                            <div className="flex items-center gap-3 pl-2 border-l-2 border-slate-100 ml-3">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-black uppercase text-rose-400 tracking-widest leading-none mb-1">Closed By Admin</span>
-                                                                    <span className="font-bold text-slate-600 text-xs tracking-tight leading-none">{s.closedByName || 'Unknown'}</span>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        {s.notes && (
-                                                            <div className="mt-2 pl-3 border-l-2 border-emerald-100 italic text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
-                                                                "{s.notes}"
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-8 text-right">
-                                                    <div className="flex flex-col gap-1.5 font-medium">
-                                                        <div className="flex items-center justify-end gap-2 text-slate-700">
-                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Cash</span>
-                                                            <span className="tabular-nums">{(s.expectedclosingcash ?? 0).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-end gap-2 text-slate-500">
-                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Card</span>
-                                                            <span className="tabular-nums text-[11px]">{(s.expectedclosingcard ?? 0).toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-8 text-right">
-                                                    <div className="flex flex-col gap-1.5 font-black">
-                                                        <div className="flex items-center justify-end gap-2 text-slate-900">
-                                                            <span className="tabular-nums">{(s.actualclosingcash ?? 0).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-end gap-2 text-slate-600">
-                                                            <span className="tabular-nums text-[11px]">{(s.actualclosingcard ?? 0).toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-8 text-right font-black tabular-nums text-sm">
-                                                    <div className="flex flex-col items-end gap-1.5">
-                                                        {v === 0 ? (
-                                                            <div className="text-emerald-500 text-xs font-bold uppercase tracking-widest flex items-center gap-1">
-                                                                Balanced
-                                                            </div>
-                                                        ) : (
-                                                            <div className={`flex items-center gap-1 ${v < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
-                                                                <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">C:</span>
-                                                                {v > 0 ? '+' : ''}{v.toLocaleString()}
-                                                            </div>
-                                                        )}
-                                                        {cv === 0 ? (
-                                                            <div className="text-emerald-400/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                                                                Balanced
-                                                            </div>
-                                                        ) : (
-                                                            <div className={`flex items-center gap-1 text-[11px] ${cv < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
-                                                                <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Card:</span>
-                                                                {cv > 0 ? '+' : ''}{cv.toLocaleString()}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-8">
-                                                    <div className="max-w-[150px] truncate text-[10px] font-medium text-slate-500 italic" title={s.notes || ''}>
-                                                        {s.notes || '—'}
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-8 text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        {role === 'admin' && (
-                                                            <button 
-                                                                onClick={() => {
-                                                                    setShiftToDelete(s.id);
-                                                                    setIsDeleteDialogOpen(true);
-                                                                }}
-                                                                className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center shadow-sm"
-                                                                title="Delete Permanently"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                        <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] shadow-sm border transition-all duration-500 ${
-                                                            isPerfect 
-                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-500 group-hover:shadow-emerald-200' 
-                                                                : 'bg-rose-50 text-rose-700 border-rose-100 group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-500 group-hover:shadow-rose-200'
-                                                        }`}>
-                                                            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isPerfect ? 'bg-emerald-500 group-hover:bg-white' : 'bg-rose-500 group-hover:bg-white'}`} />
-                                                            {isPerfect ? 'Balanced' : 'Discrepancy'}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-8 text-center">
-                                                    {role === 'admin' && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                setEditStartingCash(String(s.startingcash || 0));
-                                                                setEditStartingCard(String(s.startingcard || 0));
-                                                                setEditClosingCash(String(s.actualclosingcash || 0));
-                                                                setEditClosingCard(String(s.actualclosingcard || 0));
-                                                                setIsEditDialogOpen(true);
-                                                            }}
-                                                            className="h-9 w-9 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                                                        >
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </Button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination Footer */}
-                    <div className="p-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                            Showing {filteredShifts.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0}-{Math.min(filteredShifts.length, currentPage * rowsPerPage)} of {filteredShifts.length}
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="h-8 px-3 text-[10px] font-black uppercase border-slate-200 disabled:opacity-50"
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                            >
-                                Previous
-                            </Button>
-                            <div className="flex items-center gap-1">
-                                {[...Array(totalPages)].map((_, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => setCurrentPage(i + 1)}
-                                        className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${
-                                            currentPage === i + 1 
-                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' 
-                                                : 'text-slate-400 hover:bg-slate-100'
-                                        }`}
+                                    {/* Header Row */}
+                                    <div 
+                                        onClick={() => setSelectedDate(new Date(s.startTime).toISOString().split('T')[0])}
+                                        className="p-5 flex flex-wrap items-center justify-between gap-4 cursor-pointer"
                                     >
-                                        {i + 1}
-                                    </button>
-                                ))}
-                            </div>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="h-8 px-3 text-[10px] font-black uppercase border-slate-200 disabled:opacity-50"
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages || totalPages === 0}
-                            >
-                                Next
-                            </Button>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-black ${
+                                                isPerfect ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                            }`}>
+                                                <span className="text-base leading-none">{new Date(s.startTime).getDate()}</span>
+                                                <span className="text-[8px] uppercase tracking-tighter mt-0.5">{new Date(s.startTime).toLocaleString('default', { month: 'short' })}</span>
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-800 tracking-tight text-sm">
+                                                    {new Date(s.startTime).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge variant="outline" className={`text-[8px] font-black uppercase px-2 py-0 border-0 ${
+                                                        isPerfect ? 'text-emerald-500 bg-emerald-50' : 'text-rose-500 bg-rose-50'
+                                                    }`}>
+                                                        {isPerfect ? 'Balanced' : 'Discrepancy'}
+                                                    </Badge>
+                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                                                        {s.cashierName || 'Staff'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-8">
+                                            <div className="hidden sm:flex flex-col items-end">
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Variance</span>
+                                                <span className={`text-xs font-black tabular-nums ${totalVariance === 0 ? 'text-emerald-500' : totalVariance < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                                                    {totalVariance > 0 ? '+' : ''}{totalVariance.toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className={`p-2 rounded-full transition-all duration-500 ${isCurrentlyViewed ? 'rotate-90 bg-indigo-50 text-indigo-600' : 'text-slate-300 group-hover:text-slate-400'}`}>
+                                                <ChevronRight className="w-4 h-4" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Expanded Audit Details */}
+                                    {isCurrentlyViewed && (
+                                        <div className="px-5 pb-6 border-t border-slate-50 bg-slate-50/20 animate-in slide-in-from-top-2 duration-300">
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6">
+                                                <div className="space-y-4 col-span-1">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Shift Period</p>
+                                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                                                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                            {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            <span className="text-slate-300">—</span>
+                                                            {s.endTime ? new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Audit Notes</p>
+                                                        <p className="text-[11px] text-slate-500 italic leading-relaxed line-clamp-3">
+                                                            {s.notes || 'No notes for this session.'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm col-span-1">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Cash Summary</p>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between text-[11px]">
+                                                            <span className="text-slate-500">Target</span>
+                                                            <span className="font-bold">Rs. {(s.expectedclosingcash || 0).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[11px] pt-1 border-t border-slate-50">
+                                                            <span className="text-slate-900 font-bold">Actual</span>
+                                                            <span className="font-black text-slate-900">Rs. {(s.actualclosingcash || 0).toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm col-span-1">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Card Summary</p>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between text-[11px]">
+                                                            <span className="text-slate-500">Target</span>
+                                                            <span className="font-bold">Rs. {(s.expectedclosingcard || 0).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[11px] pt-1 border-t border-slate-50">
+                                                            <span className="text-slate-900 font-bold">Actual</span>
+                                                            <span className="font-black text-slate-900">Rs. {(s.actualclosingcard || 0).toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col justify-between col-span-1 gap-2">
+                                                    <div className={`p-4 rounded-xl border text-center ${totalVariance === 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+                                                        <p className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-60">Result</p>
+                                                        <p className={`text-base font-black ${totalVariance === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            {totalVariance === 0 ? 'BALANCED' : `${totalVariance > 0 ? '+' : ''}${totalVariance.toLocaleString()}`}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {role === 'admin' && (
+                                                            <>
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        setEditStartingCash(String(s.startingcash || 0));
+                                                                        setEditStartingCard(String(s.startingcard || 0));
+                                                                        setEditClosingCash(String(s.actualclosingcash || 0));
+                                                                        setEditClosingCard(String(s.actualclosingcard || 0));
+                                                                        setShiftToEdit(s.id);
+                                                                        setIsEditDialogOpen(true);
+                                                                    }}
+                                                                    className="h-9 flex-1 text-[10px] font-black uppercase border-slate-200 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
+                                                                >
+                                                                    <Edit2 className="w-3.5 h-3.5 mr-2" /> Edit
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="sm"
+                                                                    onClick={() => setShiftToDelete(s.id)}
+                                                                    className="h-9 w-9 p-0 text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Pagination Footer */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 py-8">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(prev => prev - 1)}
+                            className="h-9 px-4 rounded-xl border-slate-200 text-[10px] font-black uppercase"
+                        >
+                            Previous
+                        </Button>
+                        <div className="flex items-center gap-1">
+                            {[...Array(totalPages)].map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setCurrentPage(i + 1)}
+                                    className={`w-9 h-9 rounded-xl text-[10px] font-black transition-all ${
+                                        currentPage === i + 1 
+                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                                            : 'text-slate-400 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
                         </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(prev => prev + 1)}
+                            className="h-9 px-4 rounded-xl border-slate-200 text-[10px] font-black uppercase"
+                        >
+                            Next
+                        </Button>
                     </div>
-                </CardContent>
-            </Card>
+                )}
+            </div>
 
             <Dialog open={isStartDialogOpen} onOpenChange={setIsStartDialogOpen}>
                 <DialogContent className="sm:max-w-md">
