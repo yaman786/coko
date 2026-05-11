@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
-import { Phone, Mail, MapPin, History, Wallet, ArrowUpRight, ArrowDownLeft, ChevronLeft } from 'lucide-react';
+import { Phone, Mail, MapPin, History, Wallet, ArrowUpRight, ArrowDownLeft, ChevronLeft, Edit2, Trash2 } from 'lucide-react';
 import { AddClientDialog } from './AddClientDialog';
 import { RecordTransactionDialog } from './RecordTransactionDialog';
 import type { Supplier } from '../../../types';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
+import { toast } from 'sonner';
+import type { SupplierTransaction } from '../../../types';
 
 export function ClientLedger({ 
     supplier, 
@@ -22,6 +24,7 @@ export function ClientLedger({
 }) {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState<SupplierTransaction | null>(null);
 
     const { data: transactions = [], refetch } = useQuery({
         queryKey: ['supplier-transactions', supplier.id],
@@ -31,6 +34,29 @@ export function ClientLedger({
     const sortedTransactions = [...transactions].sort((a, b) => 
         new Date(b.date).getTime() - new Date(a.date).getTime()
     );
+
+    const handleOpenNewTransaction = () => {
+        setEditingTransaction(null);
+        setIsTransactionDialogOpen(true);
+    };
+
+    const handleEditTransaction = (t: SupplierTransaction) => {
+        setEditingTransaction(t);
+        setIsTransactionDialogOpen(true);
+    };
+
+    const handleDeleteTransaction = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this transaction? This will affect the balance.')) return;
+        try {
+            await api.softDeleteSupplierTransaction(id);
+            toast.success('Transaction deleted successfully');
+            refetch();
+            onRefreshSupplier();
+        } catch (error) {
+            console.error('Failed to delete transaction:', error);
+            toast.error('Failed to delete transaction');
+        }
+    };
 
     return (
         <Card className="border-none shadow-xl bg-white/80 backdrop-blur-sm flex flex-col rounded-[2rem] overflow-hidden min-h-[600px]">
@@ -62,7 +88,7 @@ export function ClientLedger({
                     </div>
                     <div className="flex gap-2">
                         <Button
-                            onClick={() => setIsTransactionDialogOpen(true)}
+                            onClick={handleOpenNewTransaction}
                             className={`${portal === 'wholesale' ? 'bg-sky-600 hover:bg-sky-700' : 'bg-purple-600 hover:bg-purple-700'} text-white rounded-xl font-bold shadow-lg shadow-blue-100`}
                         >
                             Record Payment
@@ -122,11 +148,31 @@ export function ClientLedger({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className={`font-black ${t.type === 'PAYMENT' ? 'text-emerald-600' : 'text-orange-600'}`}>
-                                        {t.type === 'PAYMENT' ? '-' : '+'} ₹{t.amount.toLocaleString()}
-                                    </p>
-                                    <p className="text-[10px] font-medium text-slate-400">Balance Tracked</p>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <p className={`font-black ${t.type === 'PAYMENT' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                            {t.type === 'PAYMENT' ? '-' : '+'} ₹{t.amount.toLocaleString()}
+                                        </p>
+                                        <p className="text-[10px] font-medium text-slate-400">Balance Tracked</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 rounded-full hover:bg-sky-50 hover:text-sky-600"
+                                            onClick={() => handleEditTransaction(t)}
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 rounded-full hover:bg-red-50 hover:text-red-600"
+                                            onClick={() => handleDeleteTransaction(t.id)}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -155,6 +201,7 @@ export function ClientLedger({
                 open={isTransactionDialogOpen}
                 onOpenChange={setIsTransactionDialogOpen}
                 supplier={supplier}
+                editingTransaction={editingTransaction}
                 onSuccess={() => {
                     refetch();
                     onRefreshSupplier();
