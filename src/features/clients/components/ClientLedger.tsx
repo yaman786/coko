@@ -4,12 +4,11 @@ import { Button } from '../../../components/ui/button';
 import { Phone, Mail, MapPin, History, Wallet, ChevronLeft, Edit2, Trash2, Calendar, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';
 import { AddClientDialog } from './AddClientDialog';
 import { RecordTransactionDialog } from './RecordTransactionDialog';
-import type { Supplier } from '../../../types';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import type { SupplierTransaction } from '../../../types';
+import type { Supplier, SupplierTransaction } from '../../../types';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -220,6 +219,28 @@ export function ClientLedger({
                 }}
                 portal={portal}
             />
+
+            <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => !open && setTransactionToDelete(null)}>
+                <AlertDialogContent className="bg-white border-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-500">
+                            This action cannot be undone. This will permanently delete the transaction
+                            of <span className="text-slate-900 font-semibold">Rs. {transactionToDelete?.amount?.toLocaleString()}</span> and update the client's balance.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700 text-white border-none"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }
