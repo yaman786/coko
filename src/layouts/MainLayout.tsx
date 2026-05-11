@@ -115,7 +115,7 @@ export function MainLayout({ mode = 'retail' }: MainLayoutProps) {
                             )}
                         </div>
                         <span className={`transition-all duration-300 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                            {isRetail ? 'Coko POS' : 'GOD HUB'}
+                            {isRetail ? 'Coko POS v2' : 'GOD HUB'}
                         </span>
                     </span>
                     <button
