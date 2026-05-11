@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
-import { Phone, Mail, MapPin, History, Wallet, ArrowUpRight, ArrowDownLeft, ChevronLeft, Edit2, Trash2 } from 'lucide-react';
+import { Phone, Mail, MapPin, History, Wallet, ChevronLeft, Edit2, Trash2, Calendar, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';
 import { AddClientDialog } from './AddClientDialog';
 import { RecordTransactionDialog } from './RecordTransactionDialog';
 import type { Supplier } from '../../../types';
@@ -9,7 +9,18 @@ import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import type { SupplierTransaction } from '../../../types';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function ClientLedger({ 
     supplier, 
@@ -25,6 +36,8 @@ export function ClientLedger({
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<SupplierTransaction | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [transactionToDelete, setTransactionToDelete] = useState<SupplierTransaction | null>(null);
 
     const { data: transactions = [], refetch } = useQuery({
         queryKey: ['supplier-transactions', supplier.id],
@@ -45,16 +58,21 @@ export function ClientLedger({
         setIsTransactionDialogOpen(true);
     };
 
-    const handleDeleteTransaction = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this transaction? This will affect the balance.')) return;
+    const handleDelete = async () => {
+        if (!transactionToDelete) return;
+
+        setIsDeleting(true);
         try {
-            await api.softDeleteSupplierTransaction(id);
+            await api.softDeleteSupplierTransaction(transactionToDelete.id);
             toast.success('Transaction deleted successfully');
             refetch();
             onRefreshSupplier();
         } catch (error) {
             console.error('Failed to delete transaction:', error);
             toast.error('Failed to delete transaction');
+        } finally {
+            setIsDeleting(false);
+            setTransactionToDelete(null);
         }
     };
 
@@ -103,82 +121,77 @@ export function ClientLedger({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden flex flex-col p-0">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 bg-slate-50/20">
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Balance</p>
-                        <p className={`text-xl font-black ${supplier.current_balance > 0 ? 'text-orange-600' : 'text-emerald-600'}`}>
-                            ₹{supplier.current_balance.toLocaleString()}
+            <CardContent className="flex-1 overflow-hidden flex flex-col p-6 space-y-6">
+                <div className="flex justify-between items-center bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl">
+                    <div>
+                        <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Current Balance</h3>
+                        <p className={`text-4xl font-bold mt-1 ${supplier.current_balance >= 0 ? 'text-amber-500' : 'text-red-500'}`}>
+                            Rs. {Math.abs(supplier.current_balance).toLocaleString()}
+                            <span className="text-lg ml-2 font-medium">
+                                {supplier.current_balance >= 0 ? 'To Pay' : 'Advanced'}
+                            </span>
                         </p>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Payment</p>
-                        <p className="text-xl font-black text-slate-700">
-                            {sortedTransactions.find(t => t.type === 'PAYMENT') ? `₹${sortedTransactions.find(t => t.type === 'PAYMENT')?.amount.toLocaleString()}` : 'N/A'}
-                        </p>
-                    </div>
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Activity</p>
-                        <p className="text-xl font-black text-slate-700">
-                            {sortedTransactions.length} items
-                        </p>
+                    <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                        <AlertCircle className="w-8 h-8 text-amber-500" />
                     </div>
                 </div>
 
-                {/* Transaction List */}
-                <div className="flex-1 overflow-y-auto px-6">
-                    <div className="flex items-center gap-2 mb-4 mt-2">
+                <div className="flex-1 overflow-y-auto">
+                    <div className="flex items-center gap-2 mb-4">
                         <History className="w-4 h-4 text-slate-400" />
                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Activity History</h4>
                     </div>
-                    <div className="space-y-3 pb-6">
-                        {sortedTransactions.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between p-4 rounded-2xl border border-slate-50 bg-white hover:border-slate-200 transition-all group">
+                    <div className="space-y-3">
+                        {sortedTransactions.map((transaction) => (
+                            <div
+                                key={transaction.id}
+                                className="group relative flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 backdrop-blur-sm rounded-xl border border-slate-100 transition-all duration-300"
+                            >
                                 <div className="flex items-center gap-4">
-                                    <div className={`p-2.5 rounded-xl ${
-                                        t.type === 'PAYMENT' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'
+                                    <div className={`p-2.5 rounded-lg ${
+                                        transaction.type === 'PAYMENT' 
+                                            ? 'bg-emerald-50 text-emerald-600' 
+                                            : 'bg-amber-50 text-amber-600'
                                     }`}>
-                                        {t.type === 'PAYMENT' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                                        {transaction.type === 'PAYMENT' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                                     </div>
                                     <div>
-                                        <p className="font-bold text-slate-700">{t.description || (t.type === 'PAYMENT' ? 'Payment Out' : 'Purchase In')}</p>
-                                        <p className="text-[10px] font-medium text-slate-400">
-                                            {format(new Date(t.date), 'PPP p')}
+                                        <p className="font-semibold text-slate-700">
+                                            Rs. {transaction.amount.toLocaleString()}
                                         </p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                            <span className="text-xs text-slate-500">
+                                                {format(new Date(transaction.date), 'PPP')}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="text-right">
-                                        <p className={`font-black ${t.type === 'PAYMENT' ? 'text-emerald-600' : 'text-orange-600'}`}>
-                                            {t.type === 'PAYMENT' ? '-' : '+'} ₹{t.amount.toLocaleString()}
-                                        </p>
-                                        <p className="text-[10px] font-medium text-slate-400">Balance Tracked</p>
-                                    </div>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 rounded-full hover:bg-sky-50 hover:text-sky-600"
-                                            onClick={() => handleEditTransaction(t)}
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 rounded-full hover:bg-red-50 hover:text-red-600"
-                                            onClick={() => handleDeleteTransaction(t.id)}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </div>
+
+                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 rounded-full hover:bg-amber-50 hover:text-amber-600"
+                                        onClick={() => handleEditTransaction(transaction)}
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 rounded-full hover:bg-red-50 hover:text-red-600"
+                                        onClick={() => setTransactionToDelete(transaction)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
                                 </div>
                             </div>
                         ))}
                         {sortedTransactions.length === 0 && (
-                            <div className="text-center py-20 bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
-                                <Wallet className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                            <div className="text-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                <Wallet className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                                 <p className="text-slate-400 font-medium">No transactions recorded yet</p>
                             </div>
                         )}
