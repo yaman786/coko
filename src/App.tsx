@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -74,6 +74,18 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
+  useEffect(() => {
+    // Force clear any old service workers that might be caching the UI
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+          console.log('Old Service Worker unregistered');
+        }
+      });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
