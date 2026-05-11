@@ -5,7 +5,6 @@ import { Phone, Mail, MapPin, History, Wallet, ChevronLeft, Edit2, Trash2, Calen
 import { AddClientDialog } from './AddClientDialog';
 import { RecordTransactionDialog } from './RecordTransactionDialog';
 import type { Supplier } from '../../../types';
-import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { toast } from 'sonner';
@@ -20,7 +19,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "../../../components/ui/alert-dialog";
 
 export function ClientLedger({ 
     supplier, 
